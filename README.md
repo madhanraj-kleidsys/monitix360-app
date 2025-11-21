@@ -248,14 +248,6 @@ This project is licensed under the **MIT License**.
 
 ---
 
-## 📧 Contact
-
-**Developer:** Your Name  
-**Email:** your.email@example.com  
-**GitHub:** [@yourusername](https://github.com/yourusername)
-
----
-
 <div align="center">
 
 ### ⭐ If you like this project, give it a star!

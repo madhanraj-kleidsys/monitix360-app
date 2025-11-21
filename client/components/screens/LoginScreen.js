@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import Header from '../Header';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [company, setCompany] = useState('');
 
   const handleLogin = () => {
     console.log('Login:', { email, password, company });
+    // navigation.replace('Main');
+    // alert('login successful');
+    if (onLogin){
+      onLogin();
+    }
   };
 
   return (
