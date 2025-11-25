@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+import LandingScreen from './components/screens/LandingScreen';
 import LoginScreen from './components/screens/LoginScreen';
 import RegisterScreen from './components/screens/RegisterScreen';
 import HomePage from './components/screens/HomePage';
@@ -31,12 +33,40 @@ function MainTabs({ onLogout }) {
 
 
 export default function App() {
+  const [hasSeenLanding, setHasSeenLanding] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   return (
+    // <NavigationContainer>
+    //   <Stack.Navigator screenOptions={{ headerShown: false }}>
+    //     {!isLoggedIn ? (
+    //       <>
+    //         <Stack.Screen name="Login">
+    //           {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
+    //         </Stack.Screen>
+    //         <Stack.Screen name="Register" component={RegisterScreen} />
+    //       </>
+    //     ) : (
+    //       <Stack.Screen name="Main">
+    //         {(props) => <MainTabs {...props} onLogout={() => setIsLoggedIn(false)} />}
+    //       </Stack.Screen>
+    //     )}
+    //   </Stack.Navigator>
+    // </NavigationContainer>
+
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isLoggedIn ? (
+        {!hasSeenLanding ? (
+          <Stack.Screen name="Landing">
+            {(props) => (
+              <LandingScreen
+                {...props}
+                onContinue={() => setHasSeenLanding(true)}
+              />
+            )}
+          </Stack.Screen>
+        ) : !isLoggedIn ? (
+          // Show Auth Screens after landing
           <>
             <Stack.Screen name="Login">
               {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
@@ -44,6 +74,7 @@ export default function App() {
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
         ) : (
+          // Show Main App after login
           <Stack.Screen name="Main">
             {(props) => <MainTabs {...props} onLogout={() => setIsLoggedIn(false)} />}
           </Stack.Screen>

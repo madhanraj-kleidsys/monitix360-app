@@ -51,7 +51,7 @@ export default function DockNavigation({ state, descriptors, navigation }) {
                 <Ionicons
                   name={isFocused ? icons[label].active : icons[label].inactive}
                   size={24}
-                  color={isFocused ? COLORS.primary : COLORS.textLight}
+                  color={isFocused ?'#0082d9ff': COLORS.textLight}
                 />
                 {isFocused && <View style={styles.activeIndicator} />}
               </View>
