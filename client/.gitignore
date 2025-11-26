@@ -3,8 +3,11 @@
 # dependencies
 node_modules/
 .env
+*.log
+.DS_Store
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts

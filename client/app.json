@@ -17,17 +17,24 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      // "adaptiveIcon": {
+      //   "foregroundImage": "./assets/app-icon.png",
+      //   // "foregroundImage": "./assets/adaptive-icon.png",
+      //   "backgroundColor": "#ffffff"
+      // },
+      "edgeToEdgeEnabled": true,
+      "package": "com.madhaneeh.Planning_Tool"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0b1cf24e-c39f-4284-a820-84322836ddcf"
+      }
+    }
   }
 }

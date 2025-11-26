@@ -61,6 +61,14 @@
 - Works seamlessly on **Android** and **iOS**
 - Responsive design for tablets and phones
 
+
+- ✅ Cross-platform support (Android & iOS)
+- ✅ Beautiful glassmorphic UI with animations
+- ✅ Real-time task monitoring
+- ✅ Cloud synchronization via EAS Build
+- ✅ Offline-first architecture
+- ✅ Professional authentication system
+
 ---
 
 ## 🛠️ Tech Stack
@@ -79,43 +87,73 @@
 ## 📁 Project Structure
 
 monitix-360/
-├── app/ # Expo (React Native) mobile app
-│ ├── screens/ # Login, Register, Tasks, Dashboard
-│ ├── components/ # Reusable UI components
-│ └── services/ # API calls and authentication
-├── server/ # Node.js backend (Express API)
-│ ├── routes/ # API endpoints
-│ ├── controllers/ # Business logic
-│ ├── middleware/ # Auth, validation
-│ └── prisma/ # Prisma schema & migrations
-├── .env # Environment variables
-├── README.md # This file
-└── package.json # Dependencies
-
+├── app/ # 📱 Expo (React Native) mobile app
+│ ├── screens/ # 🔑 Login, Register, Tasks, Dashboard screens
+│ ├── components/ # 🧩 Reusable UI components
+│ └── services/ # 🔌 API calls and authentication logic
+├── server/ # 🖥️ Node.js backend (Express API)
+│ ├── routes/ # 🚦 API endpoints
+│ ├── controllers/ # ⚙️ Business logic
+│ ├── middleware/ # 🛡️ Auth and validation
+│ └── prisma/ # 🗄️ Prisma schema & migrations
+├── .env # 🔐 Environment variables
+├── README.md # 📄 Project documentation (this file)
+└── package.json # 📦 Project dependencies
 
 ---
+
+## 📦 Requirements
+
+Before you start, ensure you have the following installed:
+
+### Minimum Requirements
+
+- **Node.js**: v18 or higher
+- **pnpm**: v8 or higher (or npm/yarn)
+- **Git**: For version control
+- **Expo Account**: Free at [expo.dev](https://expo.dev)
+
 
 ## ⚙️ Installation Guide
 
 ### 🔧 **1. Clone the Repository**
 
+``` bash
 git clone https://github.com/madhanraj-kleidsys/monitix360-app.git
-cd monitix360-app
-
-
----
-
+```
 ### 📱 **2. Frontend Setup (Expo App)**
 
 #### ▶️ Install Dependencies
 
-cd app
-npm install || pnpm install
+cd client
+
+```bash
+# Using pnpm (recommended)
+pnpm install
+
+# Or using npm
+npm install
+
+# Or using yarn
+yarn install
+```
 
 
 #### ▶️ Start the Expo Development Server
 
+
+```bash
+
+# For Android Emulator
+npx expo start --android
+
+# For iOS Simulator (Mac only)
+npx expo start --ios
+
+
+# For Expo Go App (mobile phone)
 npx expo start
+```
 
 
 #### 📱 **How to View the App**

@@ -43,6 +43,7 @@ export default function LoginScreen({ navigation, onLogin }) {
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [anyInputFocused, setAnyInputFocused] = useState(false);
 
   const handleLogin = () => {
     console.log('Login:', { email, password });
@@ -67,176 +68,186 @@ export default function LoginScreen({ navigation, onLogin }) {
   const characterAnimatedStyle = useAnimatedStyle(() => ({ opacity: characterOpacity.value }));
 
   return (
-        <SafeAreaView style={{ flex: 1 }}>
-    
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#00D4FF" />
+    <SafeAreaView style={{ flex: 1 }}>
 
-      {/* 🎨 BACKGROUND OPTIONS - Choose one */}
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#00D4FF" />
 
-      {/* OPTION 1: Blue Ocean (Current) */}
-      <LinearGradient
-        colors={['#00D4FF', '#0099FF', '#0066CC', '#004999']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
- 
+        {/* 🎨 BACKGROUND OPTIONS - Choose one */}
 
-     {/* <LinearGradient
+        {/* OPTION 1: Blue Ocean (Current) */}
+        <LinearGradient
+          colors={['#00D4FF', '#0099FF', '#0066CC', '#004999']}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+
+
+          {/* <LinearGradient
         colors={['#667eea', '#764ba2', '#d451e3ff', '#4facfe']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       > */}
 
-      {/* BACKGROUND OPTION 3 - Sunset Gradient */}
-       {/* <LinearGradient
+          {/* BACKGROUND OPTION 3 - Sunset Gradient */}
+          {/* <LinearGradient
         colors={['#FF6B6B', '#FF8E53', '#FE8C00', '#F83600']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       > */}
 
-        {/* Enhanced Background Circles - More Visible */}
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <View style={styles.circle3} />
-        <View style={styles.circle4} />
-        <View style={styles.circle5} />
+          {/* Enhanced Background Circles - More Visible */}
+          <View style={styles.circle1} />
+          <View style={styles.circle2} />
+          <View style={styles.circle3} />
+          <View style={styles.circle4} />
+          <View style={styles.circle5} />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            {/* Logo and Title at Top */}
-            <Animated.View style={[styles.headerContainer, logoAnimatedStyle]}>
-              <View style={styles.logoBackground}>
-                <Image
-                  source={require('../../assets/app-icon.png')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={styles.companyTitle}>Kleidsys</Text>
-              <Text style={styles.companySubtitle}>Planning Tool</Text>
-            </Animated.View>
-
-            {/* Main Login Area */}
-            <View style={styles.loginArea}>
-
-              {/* Character Image - Enhanced & Repositionable */}
-              <Animated.View style={[styles.characterOverlay, characterAnimatedStyle]}>
-                <Image
-                  // source={require('../../assets/loginimg.png')}
-                  source={require('../../assets/login-girl.png')}
-                  style={styles.characterImage}
-                  resizeMode="contain"
-                />
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+            >
+              {/* Logo and Title at Top */}
+              <Animated.View style={[styles.headerContainer, logoAnimatedStyle]}>
+                <View style={styles.logoBackground}>
+                  <Image
+                    source={require('../../assets/app-icon.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.companyTitle}>Kleidsys</Text>
+                <Text style={styles.companySubtitle}>Planning Tool</Text>
               </Animated.View>
 
-              {/* Glass Login Card */}
-              <Animated.View style={[styles.cardWrapper, contentAnimatedStyle]}>
-                <BlurView intensity={30} tint="light" style={styles.blurContainer}>
-                  <View style={styles.glassCard}>
-                    <Text style={styles.heading}>Welcome Back</Text>
-                    <View style={styles.divider} />
+              {/* Main Login Area */}
+              <View style={styles.loginArea}>
 
-                    {/* Email Input - No White Flash */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>EMAIL</Text>
-                      <View style={[
-                        styles.inputWrapper,
-                        emailFocused && styles.inputWrapperFocused
-                      ]}>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter your email"
-                          placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                          value={email}
-                          onChangeText={setEmail}
-                          onFocus={() => setEmailFocused(true)}
-                          onBlur={() => setEmailFocused(false)}
-                          autoCapitalize="none"
-                          keyboardType="email-address"
-                          selectionColor="rgba(255, 255, 255, 0.8)"
-                        />
+                {/* Character Image - Enhanced & Repositionable */}
+                <Animated.View style={[styles.characterOverlay, characterAnimatedStyle]}>
+                  <Image
+                    // source={require('../../assets/loginimg.png')}
+                    source={require('../../assets/login-girl.png')}
+                    style={styles.characterImage}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
+
+                {/* Glass Login Card */}
+                <Animated.View style={[styles.cardWrapper, contentAnimatedStyle]}>
+                  <BlurView intensity={30} tint="light" style={styles.blurContainer}>
+                    <View style={styles.glassCard}>
+                      <Text style={styles.heading}>Welcome Back</Text>
+                      <View style={styles.divider} />
+
+                      {/* Email Input - No White Flash */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.label}>EMAIL</Text>
+                        <View style={[
+                          styles.inputWrapper,
+                          emailFocused && styles.inputWrapperFocused
+                        ]}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Enter your email"
+                            placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                            value={email}
+                            onChangeText={setEmail}
+                            onFocus={() => {
+                              setEmailFocused(true)
+                              setAnyInputFocused(true)
+                            }}
+                            onBlur={() => {
+                              setEmailFocused(false)
+                              setAnyInputFocused(false)
+                            }}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            selectionColor="rgba(255, 255, 255, 0.8)"
+                          />
+                        </View>
                       </View>
-                    </View>
 
-                    {/* Password Input - No White Flash */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>PASSWORD</Text>
-                      <View style={[
-                        styles.inputWrapper,
-                        passwordFocused && styles.inputWrapperFocused
-                      ]}>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Enter your password"
-                          placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                          value={password}
-                          onChangeText={setPassword}
-                          onFocus={() => setPasswordFocused(true)}
-                          onBlur={() => setPasswordFocused(false)}
-                          secureTextEntry
-                          selectionColor="rgba(255, 255, 255, 0.8)"
-                        />
+                      {/* Password Input - No White Flash */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.label}>PASSWORD</Text>
+                        <View style={[
+                          styles.inputWrapper,
+                          passwordFocused && styles.inputWrapperFocused
+                        ]}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Enter your password"
+                            placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                            value={password}
+                            onChangeText={setPassword}
+                            onFocus={() =>{ setPasswordFocused(true)
+                              setAnyInputFocused(true)
+                            }}
+                            onBlur={() =>{ setPasswordFocused(false)
+                              setAnyInputFocused(false)
+                            }}
+                            secureTextEntry
+                            selectionColor="rgba(255, 255, 255, 0.8)"
+                          />
+                        </View>
                       </View>
-                    </View>
 
-                    {/* Forgot Password */}
-                    <TouchableOpacity style={styles.forgotPassword} activeOpacity={0.7}>
-                      <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                    </TouchableOpacity>
-
-                    {/* Login Button */}
-                    <TouchableOpacity
-                      style={styles.buttonWrapper}
-                      onPress={handleLogin}
-                      activeOpacity={0.85}
-                    >
-                      <LinearGradient
-                        colors={['#FFFFFF', 'rgba(255, 255, 255, 0.95)']}
-                        style={styles.buttonGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                      >
-                        <Text style={styles.buttonText}>LOGIN</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-
-                    {/* Register Link */}
-                    <View style={styles.registerRow}>
-                      <Text style={styles.registerText}>New here? </Text>
-                      <TouchableOpacity
-                        onPress={() => navigation.navigate('Register')}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.registerLink}>Create Account</Text>
+                      {/* Forgot Password */}
+                      <TouchableOpacity style={styles.forgotPassword} activeOpacity={0.7}>
+                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                       </TouchableOpacity>
+
+                      {/* Login Button */}
+                      <TouchableOpacity
+                        style={styles.buttonWrapper}
+                        onPress={handleLogin}
+                        activeOpacity={0.85}
+                      >
+                        <LinearGradient
+                          colors={['#FFFFFF', 'rgba(255, 255, 255, 0.95)']}
+                          style={styles.buttonGradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Text style={styles.buttonText}>LOGIN</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+
+                      {/* Register Link */}
+                      <View style={styles.registerRow}>
+                        <Text style={styles.registerText}>New here? </Text>
+                        <TouchableOpacity
+                          onPress={() => navigation.navigate('Register')}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.registerLink}>Create Account</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                </BlurView>
-              </Animated.View>
-              {/* ☝️ Fixed: Changed </View> to </Animated.View> */}
+                  </BlurView>
+                </Animated.View>
+                {/* ☝️ Fixed: Changed </View> to </Animated.View> */}
 
-            </View>
+              </View>
 
-            {/* Copyright Footer */}
-            <Text style={styles.copyright}>© 2025 Kleidsys Technologies Pvt Ltd</Text>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </LinearGradient>
-    </View>
-     </SafeAreaView>
+              {/* Copyright Footer */}
+              <Text style={styles.copyright}>© 2025 Kleidsys Technologies Pvt Ltd</Text>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -313,7 +324,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: responsiveSize(SCREEN_HEIGHT * 0.025, SCREEN_HEIGHT * 0.03, SCREEN_HEIGHT * 0.04),
     paddingHorizontal: SCREEN_WIDTH * 0.05,
-    minHeight: SCREEN_HEIGHT,
+    // minHeight: SCREEN_HEIGHT,
   },
 
   // Header - Fully Responsive
@@ -350,7 +361,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
-    marginBottom: 4,
+    // marginBottom: 4,
   },
   companySubtitle: {
     fontSize: responsiveSize(SCREEN_WIDTH * 0.038, SCREEN_WIDTH * 0.04, SCREEN_WIDTH * 0.042),
@@ -368,16 +379,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginVertical: responsiveSize(10, 15, 20),
+    // marginVertical: responsiveSize(10, 15, 20),
   },
 
   // Character Image - Enhanced & Adjustable
   characterOverlay: {
     position: 'absolute',
     // left: -SCREEN_WIDTH * 0.08,
-      right: -SCREEN_WIDTH * 0.08,
+    right: -SCREEN_WIDTH * 0.08,
     top: responsiveSize('10%', '12%', '15%'),
-    zIndex: -10,
+    zIndex: 1,
+    // zIndex: -10,
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.6,
@@ -391,9 +403,9 @@ const styles = StyleSheet.create({
     maxHeight: 280,
     transform: [
       // { rotate: '-8deg' },
-       { scale: 1.80 },
-       { translateX: 0 },
-       {scaleX: -1}
+      { scale: 1.80 },
+      { translateX: 0 },
+      { scaleX: -1 }
     ],
   },
 
@@ -550,7 +562,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.75)',
     fontSize: responsiveSize(SCREEN_WIDTH * 0.029, SCREEN_WIDTH * 0.031, SCREEN_WIDTH * 0.033),
     fontWeight: '500',
-    marginTop: responsiveSize(15, 20, 25),
-    marginBottom: 10,
+    marginTop:10,
+    // marginTop: responsiveSize(15, 20, 25),
+    // marginBottom: 10,
   },
 });
