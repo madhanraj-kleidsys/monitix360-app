@@ -166,21 +166,6 @@ export default function TaskPage() {
             {/* Status Dropdown */}
             <View style={styles.statusRow}>
               <Text style={styles.label}>Status:</Text>
-              {/* <View style={styles.pickerWrapper}>
-                <RNPickerSelect
-                  value={task.status}
-                  onValueChange={(value) => {
-                    setTasks(tasks.map(t => t.id === task.id ? {...t, status: value} : t));
-                  }}
-                  items={[
-                    { label: 'Pending', value: 'Pending' },
-                    { label: 'In Progress', value: 'In Progress' },
-                    { label: 'Completed', value: 'Completed' },
-                    { label: 'Incomplete', value: 'Incomplete' },
-                  ]}
-                  style={pickerSelectStyles}
-                />
-              </View> */}
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={task.status}
@@ -189,10 +174,10 @@ export default function TaskPage() {
                   }}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Pending" value="Pending" />
-                  <Picker.Item label="In Progress" value="In Progress" />
-                  <Picker.Item label="Completed" value="Completed" />
-                  <Picker.Item label="Incomplete" value="Incomplete" />
+                  <Picker.Item label="⏳ Pending" value="Pending" />
+                  <Picker.Item label="⚙️ In Progress" value="In Progress" />
+                  <Picker.Item label="✅ Completed" value="Completed" />
+                  <Picker.Item label="❌ Incomplete" value="Incomplete" />
                 </Picker>
               </View>
 
@@ -337,9 +322,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
+    overflow:'hidden',
   },
   picker: {
-    height: 40,
+    height: 52,
     color: COLORS.text,
   },
   timerRow: {

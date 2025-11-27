@@ -257,6 +257,11 @@ Expected output:
 ```bash
 # Build release APK
 npx expo run:android --variant release
+
+# Option B: Using EAS locally
+eas build -p android --local
+
+eas build -p android --output=app.apk
 ```
 
 **Method 2: Using Gradle Directly**

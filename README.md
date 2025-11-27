@@ -252,8 +252,33 @@ npm run start:prod
 ### 🗄 **Database**
 - Use **Prisma Studio**: `npx prisma studio`
 - Or connect via PostgreSQL client:
-psql -U postgres -d monitix360
+    psql -U postgres -d monitix360
 
+---
+
+# 📱 Building ( Eas cloud & offline ) :
+
+We provide comprehensive guides for building app in Eas cloud & offline :
+
+## Build Guides
+- **[Building APK & IPA](Buildapk.md)** - Step-by-step guide for creating app packages
+  - Build with EAS Cloud (recommended)
+  - Local build with Android SDK & Xcode
+  - Testing before publishing
+
+---
+
+...
+
+# 📱 Full Publishing Guide 🚩🐦‍🔥
+
+We provide a comprehensive, up-to-date guide for publishing your app on Android and iOS:
+
+👉 **[See the complete publishing guide (app-publish-guide.md)](app-publish-guide.md)**
+
+Or jump to:
+- [Google Play Store Publishing Steps](app-publish-guide.md#part-1-google-play-store-android)
+- [Apple App Store Publishing Steps](app-publish-guide.md#part-2-apple-app-store-ios)
 
 ---
 
