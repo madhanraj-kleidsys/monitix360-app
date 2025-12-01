@@ -274,7 +274,7 @@ We provide comprehensive guides for building app in Eas cloud & offline :
 
 We provide a comprehensive, up-to-date guide for publishing your app on Android and iOS:
 
-👉 **[See the complete publishing guide (app-publish-guide.md)](app-publish-guide.md)**
+👉 **[See the complete publishing guide (app-publish-guide.md)](app-publi sh-guide.md)**
 
 Or jump to:
 - [Google Play Store Publishing Steps](app-publish-guide.md#part-1-google-play-store-android)

@@ -8,6 +8,37 @@
     "backgroundColor": "#ffffff",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
+     "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "barStyle": "light-content",
+      // "backgroundColor": "#0099FF"
+    },
+    "androidStatusBar": {
+      "hidden": true,
+      "barStyle": "light-content"
+    },
+    //  "androidNavigationBar": {
+    //   "visible": "sticky-immersive"
+    // },
+     "plugins": [
+    [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow app to save exported files",
+          "savePhotoPermission": "Allow app to save files to your device"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0099FF",
+          "modes": ["productionTime"]
+        }
+      ]
+    ],
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -17,6 +48,23 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+       "android.permission.READ_EXTERNAL_STORAGE",
+       "android.permission.WRITE_EXTERNAL_STORAGE",
+       "android.permission.POST_NOTIFICATIONS",
+      //  "android.permission.CAMERA",
+      //  "android.permission.RECORD_AUDIO",
+      //  "android.permission.READ_PHONE_STATE",
+      //  "android.permission.READ_PHONE_NUMBERS",
+      //  "android.permission.READ_CALL_LOG",
+      //  "android.permission.READ_CONTACTS",
+      //  "android.permission.READ_CALENDAR",
+      //  "android.permission.WRITE_CALENDAR",
+      //  "android.permission.ACCESS_FINE_LOCATION",
+      //  "android.permission.ACCESS_COARSE_LOCATION",
+      //  "android.permission.ACCESS_BACKGROUND_LOCATION",
+      //  "android.permission.BODY_SENSORS",
+     ],
       // "adaptiveIcon": {
       //   "foregroundImage": "./assets/app-icon.png",
       //   // "foregroundImage": "./assets/adaptive-icon.png",

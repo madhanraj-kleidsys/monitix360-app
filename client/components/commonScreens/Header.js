@@ -19,7 +19,7 @@ export default function Header() {
         end={{ x: 1, y: 1 }}
         style={styles.gradientTitle}
       >
-        <Text style={styles.title}>Kleidsys</Text>
+        <Text style={styles.title}>Kleidswwwwwwwwwsys</Text>
         <Text style={styles.subtitle}>Planning Tool</Text>
       </LinearGradient>
     </View>
