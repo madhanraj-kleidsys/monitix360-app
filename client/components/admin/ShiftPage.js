@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { TouchableWithoutFeedback } from 'react-native';
 
 const { height } = Dimensions.get('window');
 
@@ -138,6 +139,34 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
   );
   const [loading, setLoading] = useState(false);
 
+  useEffect(()=>{
+  if (visible) {
+      if (shift) {
+        // Edit existing shift
+        setFormData({
+          name: shift.name || '',
+          startTime: shift.startTime || '',
+          endTime: shift.endTime || '',
+          // Make sure each break has a stable id
+          breaks: (shift.breaks || []).map(b => ({
+            id: b.id ?? Date.now() + Math.random(),
+            name: b.name || '',
+            startTime: b.startTime || '',
+            endTime: b.endTime || '',
+          })),
+        });
+      } else {
+        // Add new shift
+        setFormData({
+          name: '',
+          startTime: '',
+          endTime: '',
+          breaks: [],
+        });
+      }
+    }
+  }, [visible, shift]);
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -206,14 +235,14 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
   };
 
   const handleClose = () => {
-    setFormData(
-      shift || {
-        name: '',
-        startTime: '',
-        endTime: '',
-        breaks: [],
-      }
-    );
+    // setFormData(
+    //   shift || {
+    //     name: '',
+    //     startTime: '',
+    //     endTime: '',
+    //     breaks: [],
+    //   }
+    // );
     onClose();
   };
 
@@ -224,7 +253,9 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
       transparent={true}
       onRequestClose={handleClose}
     >
+       <TouchableWithoutFeedback onPress={handleClose}>
       <View style={styles.overlay}>
+         <TouchableWithoutFeedback onPress={() => {}}>
         <View style={styles.modalContent}>
           {/* Modal Header */}
           <LinearGradient
@@ -360,7 +391,9 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
             </View>
           </ScrollView>
         </View>
+         </TouchableWithoutFeedback>
       </View>
+       </TouchableWithoutFeedback>
     </Modal>
   );
 }

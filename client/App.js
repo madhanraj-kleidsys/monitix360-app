@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import SplashScreen from './components/loader/SplashScreen';
 
 // common screens 
 import LandingScreen from './components/commonScreens/LandingScreen';
@@ -29,17 +31,17 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // ========== ADMIN MAIN TABS ==========
-function AdminMainTabs({ onLogout }) {
+function AdminMainTabs({ onLogout , user }) {
   const [activeScreen, setActiveScreen] = useState('home');
 
-   const handleTabPress = (id) =>{
+  const handleTabPress = (id) => {
     setActiveScreen(id);
   };
   return (
     <Tab.Navigator
       tabBar={(props) => <AdminDockNavigation {...props} onLogout={onLogout}
-      activeScreen={activeScreen} 
-      onTabPress={handleTabPress}
+        activeScreen={activeScreen}
+        onTabPress={handleTabPress}
       />}
       screenOptions={{ headerShown: false }}
     >
@@ -49,14 +51,15 @@ function AdminMainTabs({ onLogout }) {
       <Tab.Screen name="AdminHolidays" component={AdminHolidayPage} />
       <Tab.Screen name="AdminShift" component={AdminShiftPage} />
       <Tab.Screen name="AdminProfile">
-        {(props) => <AdminProfilePage {...props} onLogout={onLogout} />}
+        {(props) => <AdminProfilePage {...props} onLogout={onLogout} 
+        user={user}/>}
       </Tab.Screen>
     </Tab.Navigator>
   );
 }
 
 // ========== EMPLOYEE MAIN TABS ==========
-function MainTabs({ onLogout }) {
+function EmployeeMainTabs({ onLogout }) {
   return (
     <Tab.Navigator
       tabBar={(props) => <DockNavigation {...props} />}
@@ -74,38 +77,124 @@ function MainTabs({ onLogout }) {
 
 
 export default function App() {
-  const [hasSeenLanding, setHasSeenLanding] = useState(false);
+  // if false showslanding screen ==========
+  const [hasSeenLanding, setHasSeenLanding] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+   const [isLoading, setIsLoading] = useState(true);
 
- 
+ // Check for saved token + user on app start
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Check if user has seen landing (skip if true)
+        const seenLanding = await AsyncStorage.getItem('hasSeenLanding');
+        if (seenLanding === 'true') {
+          setHasSeenLanding(true);
+        }
+
+        // Check for saved token AND user data
+        const savedToken = await AsyncStorage.getItem('authToken');
+        const savedUser = await AsyncStorage.getItem('userData');
+        
+        if (savedToken && savedUser) {
+          setToken(savedToken);
+          setUser(JSON.parse(savedUser)); // Restore user object
+        }
+      } catch (err) {
+        console.log('Init error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initializeApp();
+  }, []);
+
+  if (isLoading) {
+    return <SplashScreen />;
+  }
 
   return (
-      <NavigationContainer>
+    <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!hasSeenLanding ? (
           <Stack.Screen name="Landing">
-            {(props) => (
+            {props => (
               <LandingScreen
                 {...props}
-                onContinue={() => setHasSeenLanding(true)}
+                onContinue={async () => {
+                  await AsyncStorage.setItem('hasSeenLanding', 'true');
+                  setHasSeenLanding(true);
+                }}
               />
             )}
           </Stack.Screen>
-        ) : !isLoggedIn ? (
-          // Show Auth Screens after landing
+        ) : !user ? (
           <>
             <Stack.Screen name="Login">
-              {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
+              {props => (
+                <LoginScreen
+                  {...props}
+                  onLogin={async (userData, jwt) => {
+                    // Save BOTH token AND user data
+                    await AsyncStorage.setItem('authToken', jwt);
+                    await AsyncStorage.setItem('userData', JSON.stringify(userData));
+                    
+                    setUser(userData);
+                    setToken(jwt);
+                  }}
+                />
+              )}
             </Stack.Screen>
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
         ) : (
-          // Show Main App after login
           <Stack.Screen name="Main">
-            {(props) => <AdminMainTabs {...props} onLogout={() => setIsLoggedIn(false)} />}
+            {props =>
+              user.role === 'admin'
+                ? <AdminMainTabs {...props} onLogout={async () => {
+                    await AsyncStorage.multiRemove(['authToken', 'userData']);
+                    setUser(null);
+                    setToken(null);
+                  }}
+                  user={user} />
+                : <EmployeeMainTabs {...props} onLogout={async () => {
+                    await AsyncStorage.multiRemove(['authToken', 'userData']);
+                    setUser(null);
+                    setToken(null);
+                  }} />
+            }
           </Stack.Screen>
         )}
       </Stack.Navigator>
     </NavigationContainer>
-  )
+  );
+    // <NavigationContainer>
+    //   <Stack.Navigator screenOptions={{ headerShown: false }}>
+    //     {!hasSeenLanding ? (
+    //       <Stack.Screen name="Landing">
+    //         {(props) => (
+    //           <LandingScreen
+    //             {...props}
+    //             onContinue={() => setHasSeenLanding(true)}
+    //           />
+    //         )}
+    //       </Stack.Screen>
+    //     ) : !isLoggedIn ? (
+    //       // Show Auth Screens after landing
+    //       <>
+    //         <Stack.Screen name="Login">
+    //           {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
+    //         </Stack.Screen>
+    //         <Stack.Screen name="Register" component={RegisterScreen} />
+    //       </>
+    //     ) : (
+    //       // Show Main App after login
+    //       <Stack.Screen name="Main">
+    //         {(props) => <AdminMainTabs {...props} onLogout={() => setIsLoggedIn(false)} />}
+    //       </Stack.Screen>
+    //     )}
+    //   </Stack.Navigator>
+    // </NavigationContainer>
 }

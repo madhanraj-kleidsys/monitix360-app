@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +9,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,6 +49,10 @@ function EmployeeCard({ employee, onEdit, onDelete }) {
           <Text style={styles.employeeDetail}>
             <Text style={styles.label}>Department:</Text> {employee.department}
           </Text>
+          <Text style={styles.employeeDetail}>
+            <Text style={styles.label}>Role:</Text>{' '}
+            {employee.role === 'admin' ? 'Admin' : 'Employee'}
+          </Text>
         </View>
 
         <View style={styles.cardActions}>
@@ -72,29 +77,62 @@ function EmployeeCard({ employee, onEdit, onDelete }) {
 
 // ========== ADD/EDIT EMPLOYEE MODAL ==========
 function EmployeeModal({ visible, employee, onClose, onSave }) {
-  const [formData, setFormData] = useState(
-    employee || {
-      firstName: '',
-      lastName: '',
-      userCode: '',
-      username: '',
-      email: '',
-      password: '',
-      contactNo: '',
-      division: '',
-      dateOfBirth: '',
-      department: '',
-      role: '',
-    }
-  );
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    userCode: '',
+    username: '',
+    email: '',
+    password: '',
+    contactNo: '',
+    division: '',
+    dateOfBirth: '',
+    department: '',
+    role: '',
+  });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (employee) {
+      setFormData({
+        firstName: employee.firstName || '',
+        lastName: employee.lastName || '',
+        userCode: employee.userCode || '',
+        username: employee.username || '',
+        email: employee.email || '',
+        password: employee.password || '',
+        contactNo: employee.contactNo || '',
+        division: employee.division || '',
+        dateOfBirth: employee.dateOfBirth || '',
+        department: employee.department || '',
+        role: employee.role || '',
+      });
+    } else {
+      setFormData({
+        firstName: '',
+        lastName: '',
+        userCode: '',
+        username: '',
+        email: '',
+        password: '',
+        contactNo: '',
+        division: '',
+        dateOfBirth: '',
+        department: '',
+        role: '',
+      });
+    }
+    setShowPassword(false);
+    setRoleDropdownOpen(false);
+  }, [employee, visible]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
-    // Validate all fields
     if (
       !formData.firstName.trim() ||
       !formData.lastName.trim() ||
@@ -114,8 +152,7 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       onSave({
         id: employee?.id || Date.now(),
@@ -131,21 +168,7 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
   };
 
   const handleClose = () => {
-    setFormData(
-      employee || {
-        firstName: '',
-        lastName: '',
-        userCode: '',
-        username: '',
-        email: '',
-        password: '',
-        contactNo: '',
-        division: '',
-        dateOfBirth: '',
-        department: '',
-        role: '',
-      }
-    );
+    setRoleDropdownOpen(false);
     onClose();
   };
 
@@ -154,166 +177,251 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
       visible={visible}
       animationType="slide"
       transparent={true}
+      statusBarTranslucent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          {/* Modal Header */}
-          <LinearGradient
-            colors={['#00D4FF', '#0099FF', '#667EEA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.modalHeader}
+      <KeyboardAvoidingView
+        style={styles.modalRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={handleClose}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+            style={styles.sheetWrapper}
           >
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {employee ? 'Edit Employee' : 'Add Employee'}
-            </Text>
-            <View style={{ width: 44 }} />
-          </LinearGradient>
-
-          {/* Modal Body */}
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.section}>
-              {/* First Name */}
-              <Text style={styles.label}>First Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter first name"
-                value={formData.firstName}
-                onChangeText={(value) => handleInputChange('firstName', value)}
-                editable={!loading}
-              />
-
-              {/* Last Name */}
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter last name"
-                value={formData.lastName}
-                onChangeText={(value) => handleInputChange('lastName', value)}
-                editable={!loading}
-              />
-
-              {/* User Code */}
-              <Text style={styles.label}>User Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter user code"
-                value={formData.userCode}
-                onChangeText={(value) => handleInputChange('userCode', value)}
-                editable={!loading}
-              />
-
-              {/* Username */}
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter username"
-                value={formData.username}
-                onChangeText={(value) => handleInputChange('username', value)}
-                editable={!loading}
-              />
-
-              {/* Email */}
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter email"
-                value={formData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
-                editable={!loading}
-                keyboardType="email-address"
-              />
-
-              {/* Password */}
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter password"
-                value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
-                editable={!loading}
-                secureTextEntry
-              />
-
-              {/* Contact No */}
-              <Text style={styles.label}>Contact No</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter contact number"
-                value={formData.contactNo}
-                onChangeText={(value) => handleInputChange('contactNo', value)}
-                editable={!loading}
-                keyboardType="phone-pad"
-              />
-
-              {/* Division */}
-              <Text style={styles.label}>Division</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter division"
-                value={formData.division}
-                onChangeText={(value) => handleInputChange('division', value)}
-                editable={!loading}
-              />
-
-              {/* Date of Birth */}
-              <Text style={styles.label}>Date of Birth</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-                value={formData.dateOfBirth}
-                onChangeText={(value) => handleInputChange('dateOfBirth', value)}
-                editable={!loading}
-              />
-
-              {/* Department */}
-              <Text style={styles.label}>Department</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter department"
-                value={formData.department}
-                onChangeText={(value) => handleInputChange('department', value)}
-                editable={!loading}
-              />
-
-              {/* Role */}
-              <Text style={styles.label}>Role</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter role (e.g., Admin, Employee)"
-                value={formData.role}
-                onChangeText={(value) => handleInputChange('role', value)}
-                editable={!loading}
-              />
-
-              {/* Buttons */}
-              <View style={styles.buttonGroup}>
-                <TouchableOpacity
-                  style={[styles.saveButton, loading && { opacity: 0.6 }]}
-                  onPress={handleSave}
-                  disabled={loading}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {loading ? 'Saving...' : 'Save'}
-                  </Text>
+            <View style={styles.modalContent}>
+              {/* Header */}
+              <LinearGradient
+                colors={['#00D4FF', '#0099FF', '#667EEA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalHeader}
+              >
+                <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                  <Ionicons name="close" size={28} color="#fff" />
                 </TouchableOpacity>
+                <Text style={styles.modalTitle}>
+                  {employee ? 'Edit Employee' : 'Add Employee'}
+                </Text>
+                <View style={{ width: 44 }} />
+              </LinearGradient>
 
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={handleClose}
-                  disabled={loading}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Body */}
+              <ScrollView
+                style={styles.modalBody}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.section}>
+                  {/* First Name */}
+                  <Text style={styles.fieldLabel}>First Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter first name"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.firstName}
+                    onChangeText={value => handleInputChange('firstName', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Last Name */}
+                  <Text style={styles.fieldLabel}>Last Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter last name"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.lastName}
+                    onChangeText={value => handleInputChange('lastName', value)}
+                    editable={!loading}
+                  />
+
+                  {/* User Code */}
+                  <Text style={styles.fieldLabel}>User Code</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter user code"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.userCode}
+                    onChangeText={value => handleInputChange('userCode', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Username */}
+                  <Text style={styles.fieldLabel}>Username</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter username"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.username}
+                    onChangeText={value => handleInputChange('username', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Email */}
+                  <Text style={styles.fieldLabel}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter email"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.email}
+                    onChangeText={value => handleInputChange('email', value)}
+                    editable={!loading}
+                    keyboardType="email-address"
+                  />
+
+                  {/* Password */}
+                  <Text style={styles.fieldLabel}>Password</Text>
+                  <View style={styles.passwordRow}>
+                    <TextInput
+                      style={[styles.input, { flex: 1, paddingRight: 40 }]}
+                      placeholder="Enter password"
+                      placeholderTextColor={COLORS.textLight}
+                      value={formData.password}
+                      onChangeText={value => handleInputChange('password', value)}
+                      editable={!loading}
+                      secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity
+                      style={styles.passwordEye}
+                      onPress={() => setShowPassword(prev => !prev)}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={20}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Contact No */}
+                  <Text style={styles.fieldLabel}>Contact No</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter contact number"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.contactNo}
+                    onChangeText={value => handleInputChange('contactNo', value)}
+                    editable={!loading}
+                    keyboardType="phone-pad"
+                  />
+
+                  {/* Division */}
+                  <Text style={styles.fieldLabel}>Division</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter division"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.division}
+                    onChangeText={value => handleInputChange('division', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Date of Birth */}
+                  <Text style={styles.fieldLabel}>Date of Birth</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.dateOfBirth}
+                    onChangeText={value => handleInputChange('dateOfBirth', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Department */}
+                  <Text style={styles.fieldLabel}>Department</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter department"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.department}
+                    onChangeText={value => handleInputChange('department', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Role dropdown */}
+                  <Text style={styles.fieldLabel}>Role</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => setRoleDropdownOpen(prev => !prev)}
+                      disabled={loading}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownText,
+                          !formData.role && { color: COLORS.textLight },
+                        ]}
+                      >
+                        {formData.role === 'admin'
+                          ? 'Admin'
+                          : formData.role === 'user'
+                          ? 'Employee'
+                          : 'Select role'}
+                      </Text>
+                      <Ionicons
+                        name={roleDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+
+                    {roleDropdownOpen && (
+                      <View style={styles.dropdownMenu}>
+                        <TouchableOpacity
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            handleInputChange('role', 'admin');
+                            setRoleDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownItemText}>Admin</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            handleInputChange('role', 'user');
+                            setRoleDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownItemText}>Employee</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Buttons */}
+                  <View style={styles.buttonGroup}>
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                      onPress={handleSave}
+                      disabled={loading}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : 'Save'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleClose}
+                      disabled={loading}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
             </View>
-          </ScrollView>
-        </View>
-      </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -333,7 +441,7 @@ export default function AdminEmployeePage() {
       division: 'Development',
       dateOfBirth: '2005-05-15',
       department: 'Development',
-      role: 'Employee',
+      role: 'user',
     },
     {
       id: 2,
@@ -347,7 +455,7 @@ export default function AdminEmployeePage() {
       division: 'Frontend',
       dateOfBirth: '2008-08-22',
       department: 'UI/UX',
-      role: 'Employee',
+      role: 'user',
     },
     {
       id: 3,
@@ -361,13 +469,13 @@ export default function AdminEmployeePage() {
       division: 'Backend',
       dateOfBirth: '1988-12-10',
       department: 'Infrastructure',
-      role: 'Employee',
+      role: 'admin',
     },
-      {
+    {
       id: 4,
       firstName: 'patel',
       lastName: 's',
-      userCode: 'EMP-003',
+      userCode: 'EMP-004',
       username: 'patel.s',
       email: 'patel@kleidsys.com',
       password: '8645465454',
@@ -375,7 +483,7 @@ export default function AdminEmployeePage() {
       division: 'Backend',
       dateOfBirth: '1988-12-10',
       department: 'Infrastructure',
-      role: 'Employee',
+      role: 'user',
     },
   ]);
 
@@ -387,48 +495,43 @@ export default function AdminEmployeePage() {
     setModalVisible(true);
   };
 
-  const handleEditEmployee = (employee) => {
+  const handleEditEmployee = employee => {
     setSelectedEmployee(employee);
     setModalVisible(true);
   };
 
-  const handleDeleteEmployee = (employeeId) => {
+  const handleDeleteEmployee = employeeId => {
     Alert.alert(
       'Delete Employee',
       'Are you sure you want to delete this employee?',
       [
-        { text: 'Cancel', onPress: () => {} },
+        { text: 'Cancel', onPress: () => { } },
         {
           text: 'Delete',
           onPress: () => {
-            setEmployees(employees.filter(e => e.id !== employeeId));
+            setEmployees(prev => prev.filter(e => e.id !== employeeId));
             Alert.alert('Success', 'Employee deleted successfully');
           },
           style: 'destructive',
         },
-      ]
+      ],
     );
   };
 
-  const handleSaveEmployee = (employeeData) => {
+  const handleSaveEmployee = employeeData => {
     if (selectedEmployee) {
-      // Edit existing employee
-      setEmployees(
-        employees.map(e =>
-          e.id === selectedEmployee.id ? { ...employeeData, id: e.id } : e
-        )
+      setEmployees(prev =>
+        prev.map(e => (e.id === selectedEmployee.id ? { ...employeeData, id: e.id } : e)),
       );
       Alert.alert('Success', 'Employee updated successfully');
     } else {
-      // Add new employee
-      setEmployees([...employees, employeeData]);
+      setEmployees(prev => [...prev, employeeData]);
       Alert.alert('Success', 'Employee added successfully');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
@@ -446,23 +549,18 @@ export default function AdminEmployeePage() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Add Employee Button */}
         <View style={styles.topSection}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddEmployee}
-          >
+          <TouchableOpacity style={styles.addButton} onPress={handleAddEmployee}>
             <Ionicons name="add-circle" size={24} color="#fff" />
             <Text style={styles.addButtonText}>Add New Employee</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Employees List */}
         <View style={styles.employeesSection}>
           <Text style={styles.sectionTitle}>All Employees ({employees.length})</Text>
 
           {employees.length > 0 ? (
-            employees.map((employee) => (
+            employees.map(employee => (
               <EmployeeCard
                 key={employee.id}
                 employee={employee}
@@ -482,7 +580,6 @@ export default function AdminEmployeePage() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Add/Edit Employee Modal */}
       <EmployeeModal
         visible={modalVisible}
         employee={selectedEmployee}
@@ -498,10 +595,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingBottom: 100,
   },
 
-  // HEADER STYLES
   headerGradient: {
     paddingTop: 50,
     paddingBottom: 30,
@@ -526,7 +621,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // CONTENT STYLES
   content: {
     flex: 1,
   },
@@ -534,7 +628,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
-  // TOP SECTION
   topSection: {
     paddingHorizontal: 16,
     paddingTop: 24,
@@ -561,7 +654,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // EMPLOYEES SECTION
   employeesSection: {
     paddingHorizontal: 16,
   },
@@ -572,7 +664,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // EMPLOYEE CARD
   card: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
@@ -614,7 +705,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  // CARD ACTIONS
   cardActions: {
     flexDirection: 'row',
     gap: 8,
@@ -633,7 +723,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.danger,
   },
 
-  // EMPTY STATE
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -650,15 +739,26 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginTop: 8,
   },
-
-  // MODAL STYLES
+  modalRoot: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  sheetWrapper: {
+  width: '100%',
+},
+  modalContainer: {
+    width: '100%',
+    maxHeight: height * 0.95,
+  },
+  // keyboardAvoidingInner: {
+  //   flex: 1,
+  // },
   modalContent: {
-    height: height * 0.9,
+    height: height * 0.95,
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -685,18 +785,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // MODAL BODY
   modalBody: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+    backgroundColor: COLORS.background,
+  },
+  scrollViewContent: {
+    paddingBottom: 40,
   },
   section: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
     padding: 16,
   },
-  label: {
+  fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.text,
@@ -713,7 +816,49 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  // BUTTON GROUP
+  passwordRow: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordEye: {
+    position: 'absolute',
+    right: 12,
+  },
+
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 2,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  dropdownMenu: {
+    marginTop: 6,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+
   buttonGroup: {
     flexDirection: 'row',
     gap: 12,

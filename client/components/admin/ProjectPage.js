@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo ,useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Platform } from 'react-native';
+import { TouchableWithoutFeedback } from 'react-native';
 
 const { height } = Dimensions.get('window');
 
@@ -67,6 +69,13 @@ function ProjectModal({ visible, project, onClose, onSave }) {
   const [projectCode, setProjectCode] = useState(project?.code || '');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (visible) {
+      setProjectName(project?.name || '');
+      setProjectCode(project?.code || '');
+    }
+  }, [visible, project]);
+
   const handleSave = async () => {
     if (!projectName.trim() || !projectCode.trim()) {
       Alert.alert('Error', 'Please fill all fields');
@@ -107,58 +116,76 @@ function ProjectModal({ visible, project, onClose, onSave }) {
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          {/* Modal Header */}
-          <LinearGradient
-            colors={['#00D4FF', '#0099FF', '#667EEA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.modalHeader}
-          >
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {project ? 'Edit Project' : 'Add Project'}
-            </Text>
-            <View style={{ width: 44 }} />
-          </LinearGradient>
-
-          {/* Modal Body */}
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.section}>
-              <Text style={styles.label}>Project Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter project name"
-                value={projectName}
-                onChangeText={setProjectName}
-                editable={!loading}
-              />
-
-              <Text style={styles.label}>Project Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter project code"
-                value={projectCode}
-                onChangeText={setProjectCode}
-                editable={!loading}
-              />
-
-              <TouchableOpacity
-                style={[styles.saveButton, loading && { opacity: 0.6 }]}
-                onPress={handleSave}
-                disabled={loading}
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={() => { }}>
+            <View style={styles.modalContent}>
+              {/* <View style={{
+            heiht:20,backgroundColor:COLORS.background
+          }} /> */}
+              {/* Modal Header */}
+              {/* <View style={styles.sheet}> */}
+                <LinearGradient
+                  colors={['#00D4FF', '#0099FF', '#667EEA']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.modalHeader}
+                >
+                  <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                    <Ionicons name="close" size={28} color="#fff" />
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>
+                    {project ? 'Edit Project' : 'Add Project'}
+                  </Text>
+                  <View style={{ width: 44 }} />
+                </LinearGradient>
+              {/* </View> */}
+              {/* Modal Body */}
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
               >
-                <Text style={styles.saveButtonText}>
-                  {loading ? 'Saving...' : 'Save Project'}
-                </Text>
-              </TouchableOpacity>
+                <ScrollView style={styles.modalBody}
+                  contentContainerStyle={{ paddingBottom: 40 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled">
+                  <View style={styles.section}>
+                    <Text style={styles.label}>Project Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter project name"
+                      value={projectName}
+                      onChangeText={setProjectName}
+                      editable={!loading}
+                    />
+
+                    <Text style={styles.label}>Project Code</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter project code"
+                      value={projectCode}
+                      onChangeText={setProjectCode}
+                      editable={!loading}
+                    />
+
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                      onPress={handleSave}
+                      disabled={loading}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : 'Save Project'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+      {/* <View style={{ height: 40, backgroundColor: COLORS.background }} /> */}
+              </KeyboardAvoidingView>
+
             </View>
-          </ScrollView>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -189,7 +216,7 @@ export default function AdminProjectPage() {
       'Delete Project',
       'Are you sure you want to delete this project?',
       [
-        { text: 'Cancel', onPress: () => {} },
+        { text: 'Cancel', onPress: () => { } },
         {
           text: 'Delete',
           onPress: () => {
@@ -219,69 +246,71 @@ export default function AdminProjectPage() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#00D4FF', '#0099FF', '#667EEA']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Projects</Text>
-          <Text style={styles.headerSubtitle}>Manage all projects</Text>
-        </View>
-      </LinearGradient>
+    <>
+      <View style={styles.container}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#00D4FF', '#0099FF', '#667EEA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Projects</Text>
+            <Text style={styles.headerSubtitle}>Manage all projects</Text>
+          </View>
+        </LinearGradient>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Add Project Button */}
-        <View style={styles.topSection}>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddProject}
-          >
-            <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.addButtonText}>Add New Project</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Add Project Button */}
+          <View style={styles.topSection}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddProject}
+            >
+              <Ionicons name="add-circle" size={24} color="#fff" />
+              <Text style={styles.addButtonText}>Add New Project</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Projects List */}
-        <View style={styles.projectsSection}>
-          <Text style={styles.sectionTitle}>All Projects ({projects.length})</Text>
+          {/* Projects List */}
+          <View style={styles.projectsSection}>
+            <Text style={styles.sectionTitle}>All Projects ({projects.length})</Text>
 
-          {projects.length > 0 ? (
-            projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onEdit={handleEditProject}
-                onDelete={handleDeleteProject}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="folder-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No projects yet</Text>
-              <Text style={styles.emptySubtext}>Click "Add New Project" to create one</Text>
-            </View>
-          )}
-        </View>
+            {projects.length > 0 ? (
+              projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onEdit={handleEditProject}
+                  onDelete={handleDeleteProject}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="folder-outline" size={48} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>No projects yet</Text>
+                <Text style={styles.emptySubtext}>Click "Add New Project" to create one</Text>
+              </View>
+            )}
+          </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
 
-      {/* Add/Edit Project Modal */}
-      <ProjectModal
-        visible={modalVisible}
-        project={selectedProject}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSaveProject}
-      />
-    </View>
+        {/* Add/Edit Project Modal */}
+        <ProjectModal
+          visible={modalVisible}
+          project={selectedProject}
+          onClose={() => setModalVisible(false)}
+          onSave={handleSaveProject}
+        />
+      </View>
+    </>
   );
 }
 
@@ -452,12 +481,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
+    // flex: 1,
+    // justifyContent: 'flex-end',
     height: height * 0.65,
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
   },
+  // sheet: {
+  //   backgroundColor: COLORS.background,
+  //   borderTopLeftRadius: 24,
+  //   borderTopRightRadius: 24,
+  //   maxHeight: height * 0.8,
+  // },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -522,3 +559,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+

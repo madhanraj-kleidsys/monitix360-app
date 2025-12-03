@@ -72,18 +72,31 @@ function ProfileStat({ label, value }) {
 }
 
 // ========== MAIN ADMIN PROFILE PAGE ==========
-export default function AdminProfilePage({ onLogout }) {
-  const [adminData] = useState({
-    id: 'ADMIN-001',
-    name: 'madhan',
-    email: 'madhan@kleidsys.com',
-    role: 'System Administrator',
+export default function AdminProfilePage({ onLogout , user }) {
+  // const [adminData] = useState({
+  //   id: 'ADMIN-001',
+  //   name: 'madhan',
+  //   email: 'madhan@kleidsys.com',
+  //   role: 'System Administrator',
+  //   department: 'Management',
+  //   profileInitial: 'M',
+  //   joinDate: 'Jan 2024',
+  //   permissions: 'Full Access',
+  //   status: 'Active',
+  // });
+
+  const adminData = {
+    id: user?.id || 'N/A',
+   name: user?.username  || 'Unknown',
+    email: user?.email || 'N/A',
+    role: user?.role || 'User',
+    profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'U',
     department: 'Management',
-    profileInitial: 'M',
     joinDate: 'Jan 2024',
     permissions: 'Full Access',
-    status: 'Active',
-  });
+    status: 'Active', 
+    Company: user?.company_id || 'N/A',
+  }
 
   const [stats] = useState({
     employees: 15,
@@ -152,8 +165,9 @@ export default function AdminProfilePage({ onLogout }) {
 
             {/* Profile Info */}
             <Text style={styles.profileName}>{adminData.name}</Text>
-            <Text style={styles.profileEmail}>{adminData.email}</Text>
+            <Text style={styles.profileEmail}>EMAIL : {adminData.email}</Text>
             <Text style={styles.profileRole}>{adminData.role}</Text>
+            <Text style={styles.profileRole}>{adminData.Company}</Text>
 
             {/* Status Badge */}
             <View style={styles.statusBadge}>

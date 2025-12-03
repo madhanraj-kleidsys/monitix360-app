@@ -23,6 +23,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -43,12 +47,39 @@ export default function LoginScreen({ navigation, onLogin }) {
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword,setShowPassword] = useState(false);
   const [anyInputFocused, setAnyInputFocused] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     console.log('Login:', { email, password });
-    if (onLogin) {
-      onLogin();
+    // if (onLogin) {
+    //   onLogin();
+    // }
+    if(!email.trim() || !password.trim()) {
+      Alert.alert('Validation Error:',"Please enter both email and password.");
+      return;
+    }
+
+    try{
+      const res = await axios.post('http://192.168.0.216:3000/api/auth/login', {
+        email: email.trim(),
+        password: password.trim(),
+      });
+      const {user,token} = res.data;
+      // console.log(res.data);
+      //saving token
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+
+      //passing to parents ========
+      if(onLogin){
+        onLogin(user,token);
+      }
+    }catch(err){
+      // const message = err.response?.data?.mesage || 'unable to connect to server';
+      // Alert.alert('Login Failed:',message);
+      Alert.alert('Login Failed', err.response?.data?.message || 'Unable to connect');
+      console.log(err);
     }
   };
 
@@ -185,6 +216,8 @@ export default function LoginScreen({ navigation, onLogin }) {
                           styles.inputWrapper,
                           passwordFocused && styles.inputWrapperFocused
                         ]}>
+                          <View style={styles.passwordRow} >
+
                           <TextInput
                             style={styles.input}
                             placeholder="Enter your password"
@@ -197,9 +230,20 @@ export default function LoginScreen({ navigation, onLogin }) {
                             onBlur={() =>{ setPasswordFocused(false)
                               setAnyInputFocused(false)
                             }}
-                            secureTextEntry
+                            // secureTextEntry
                             selectionColor="rgba(255, 255, 255, 0.8)"
-                          />
+                            secureTextEntry={!showPassword}
+                            />
+                          <TouchableOpacity
+                          style={styles.passwordEye}
+                          onPress={()=> setShowPassword(prev => !prev)}>
+                            <Ionicons
+                            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                            size={20}
+                            color='#ffffffff'
+                            />
+                          </TouchableOpacity>
+                            </View>
                         </View>
                       </View>
 
@@ -498,6 +542,17 @@ const styles = StyleSheet.create({
     fontSize: responsiveSize(SCREEN_WIDTH * 0.038, SCREEN_WIDTH * 0.04, SCREEN_WIDTH * 0.042),
     color: '#FFFFFF',
     fontWeight: '600',
+    padding: 12,
+    marginRight: 35, // space for eye icon
+  },
+  passwordRow: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordEye: {
+    position: 'absolute',
+    right: 12,
   },
 
   // Other Elements - Responsive

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,15 @@ import {
   TouchableOpacity,
   Dimensions,
   Modal,
+  KeyboardAvoidingView,
+  TextInput,
+  Alert,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Octicons from '@expo/vector-icons/Octicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -167,10 +171,10 @@ const truncateText = (text, maxLength = 20) => {
 };
 
 const formatDate = (date) => {
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
   });
 };
 
@@ -207,7 +211,7 @@ const formatDateRange = (dateRange) => {
 };
 
 // ====== excel export function ======
- const exportTasksToExcel = async (tasks, dateRange) => {
+const exportTasksToExcel = async (tasks, dateRange) => {
   try {
     // Check if there are tasks
     if (!tasks || tasks.length === 0) {
@@ -265,10 +269,10 @@ const formatDateRange = (dateRange) => {
 
     // Generate Excel file
     const filePath = `${FileSystem.documentDirectory}${fileName}`;
-    
+
     // Convert to base64
     const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-    
+
     // Save to device
     await FileSystem.writeAsStringAsync(filePath, wbout, {
       encoding: FileSystem.EncodingType.Base64,
@@ -300,7 +304,7 @@ const formatDateRange = (dateRange) => {
 
   } catch (error) {
     console.error('Error exporting tasks:', error);
-    
+
     // Show error notification
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -428,7 +432,7 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
             <Text style={styles.filterButtonText}>Today</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.dateRangeButton}
             onPress={() => setShowStartPicker(true)}
           >
@@ -437,7 +441,7 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
             <Ionicons name="chevron-down" size={16} color={COLORS.textLight} />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.exportButton}
             onPress={() => exportTasksToExcel(filteredTasks, selectedDateRange)}
           >
@@ -507,9 +511,9 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
-        style={styles.overlay} 
-        activeOpacity={1} 
+      <TouchableOpacity
+        style={styles.overlay}
+        activeOpacity={1}
         onPress={onClose}
       >
         <View style={[styles.modalContent, { height: modalHeight }]}>
@@ -589,11 +593,487 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
   );
 }
 
+// ========== ASSIGN TASK MODAL ==========
+function AssignTaskModal({ visible, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    department: '',
+    title: '',
+    projectTitle: '',
+    taskDescription: '',
+    priority: '',
+    assignUser: '',
+    duration: '',
+    startTime: '',
+    endTime: ''
+  }); 
+  const [loading, setLoading] = useState(false);
+  const [departmentOpen, setDepartmentOpen] = useState(false);
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
+  const [projectTitleOpen, setProjectTitleOpen] = useState(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [dateTimePickerMode, setDateTimePickerMode] = useState('date');
+  const [currentPicker, setCurrentPicker] = useState(null); // 'startTime' or 'endTime'
+  const scrollViewRef = useRef(null);
+
+  // Dummy data for dropdowns
+  const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
+  const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  const users = ['Madhaneeh J', 'Arun', 'Patel'];
+
+  useEffect(() => {
+    if (!visible) {
+      setFormData({
+        department: '',
+        title: '',
+        projectTitle: '',
+        taskDescription: '',
+        priority: '',
+        assignUser: '',
+        duration: '',
+        startTime: '',
+        endTime: '',
+      });
+      setDepartmentOpen(false);
+      setPriorityOpen(false);
+      setUserOpen(false);
+      setProjectTitleOpen(false);
+      setShowDateTimePicker(false);
+      setCurrentPicker(null);
+
+    }
+  }, [visible]);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  useEffect(() => {
+    if (formData.startTime && formData.endTime) {
+      const start = new Date(formData.startTime);
+      const end = new Date(formData.endTime);
+
+      if (end > start) {
+        const diffMs = end - start;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const formattedDuration = `${diffHours}.${String(diffMinutes).padStart(2, '0')}`;
+        handleInputChange('duration', formattedDuration);
+      } else {
+        handleInputChange('duration', '0.00');
+      }
+    }
+  }, [formData.startTime, formData.endTime]);
+  const handleSave = async () => {
+    if (
+      !formData.department.trim() ||
+      // !formData.title.trim() ||
+      !formData.priority.trim() ||
+      !formData.assignUser.trim()
+    ) {
+      Alert.alert('Error', 'Please fill all required fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const taskData = {
+        id: Date.now(),
+        name: formData.title,
+        status: 'Pending',
+        project: formData.projectTitle,
+        description: formData.taskDescription,
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+        priority: formData.priority,
+        assignee: formData.assignUser,
+        department: formData.department,
+        duration: formData.duration,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+      };
+
+      onSave(taskData);
+      onClose();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save task');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setDepartmentOpen(false);
+    setPriorityOpen(false);
+    setUserOpen(false);
+    setProjectTitleOpen(false);
+    onClose();
+  };
+
+  const openDateTimePicker = (pickerType, mode) => {
+    setCurrentPicker(pickerType);
+    setDateTimePickerMode(mode);
+    setShowDateTimePicker(true);
+  };
+
+  const onDateTimeChange = (event, selectedDate) => {
+    setShowDateTimePicker(false);
+    if (selectedDate) {
+      const currentVal = formData[currentPicker] ? new Date(formData[currentPicker]) : new Date();
+
+      if (dateTimePickerMode === 'date') {
+        currentVal.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        handleInputChange(currentPicker, currentVal.toISOString());
+        // Automatically open time picker next
+        setTimeout(() => openDateTimePicker(currentPicker, 'time'), 200);
+      } else { // time
+        currentVal.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+        handleInputChange(currentPicker, currentVal.toISOString());
+      }
+    }
+  };
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      statusBarTranslucent={true}
+      onRequestClose={handleClose}
+    >
+      <KeyboardAvoidingView
+        style={styles.modalRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={handleClose}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+            style={[styles.sheetWrapper, { maxHeight: height * 0.95 }]}
+          >
+            <View style={styles.modalContent}>
+              {/* Header */}
+              <LinearGradient
+                colors={['#00D4FF', '#0099FF', '#667EEA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalHeader}
+              >
+                <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Assign a Task</Text>
+                <View style={{ width: 44 }} />
+              </LinearGradient>
+
+              {/* Body */}
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.modalBody}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                scrollEventThrottle={16}
+              >
+                <View style={styles.section}>
+
+                       {/* Assign User Dropdown (required) */}
+                  <Text style={styles.fieldLabel}>Assign User <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => {
+                        setUserOpen(prev => !prev);
+                        setDepartmentOpen(false);
+                        setPriorityOpen(false);
+                        setProjectTitleOpen(false);
+                      }}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !formData.assignUser && { color: COLORS.textLight },
+                      ]}>
+                        {formData.assignUser || 'Select user'}
+                      </Text>
+                      <Ionicons
+                        name={userOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                    {userOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        {users.map((user, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('assignUser', user);
+                              setUserOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{user}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Department Dropdown */}
+                  <Text style={styles.fieldLabel}>Department</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => {
+                        setDepartmentOpen(prev => !prev);
+                        setPriorityOpen(false);
+                        setUserOpen(false);
+                        setProjectTitleOpen(false);
+                      }}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !formData.department && { color: COLORS.textLight },
+                      ]}>
+                        {formData.department || 'Select department'}
+                      </Text>
+                      <Ionicons
+                        name={departmentOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                    {departmentOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        {departments.map((dept, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('department', dept);
+                              setDepartmentOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{dept}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Title (required) */}
+                  {/* <Text style={styles.fieldLabel}>Title <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter task title"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.title}
+                    onChangeText={value => handleInputChange('title', value)}
+                    editable={!loading}
+                  /> */}
+
+                  {/* Project Title */}
+                  <Text style={styles.fieldLabel}>Project Title</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => {
+                        setProjectTitleOpen(prev => !prev);
+                        setPriorityOpen(false);
+                        setDepartmentOpen(false);
+                        setUserOpen(false);
+                      }} 
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !formData.projectTitle && { color: COLORS.textLight },
+                      ]}>
+                        {formData.projectTitle || 'Select project'}
+                      </Text>
+                      <Ionicons
+                        name={projectTitleOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                    {projectTitleOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
+                        {['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'].map((proj, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('projectTitle', proj);
+                              setProjectTitleOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{proj}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Task Description */}
+                  <Text style={styles.fieldLabel}>Task Description</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                    placeholder="Enter task description"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.taskDescription}
+                    onChangeText={value => handleInputChange('taskDescription', value)}
+                    editable={!loading}
+                    multiline
+                  />
+
+                  {/* Priority Dropdown (required) */}
+                  <Text style={styles.fieldLabel}>Priority <Text style={{ color: COLORS.danger }}>*</Text></Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => {
+                        setPriorityOpen(prev => !prev);
+                        setDepartmentOpen(false);
+                        setUserOpen(false);
+                        setProjectTitleOpen(false);
+                      }}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !formData.priority && { color: COLORS.textLight },
+                      ]}>
+                        {formData.priority || 'Select priority'}
+                      </Text>
+                      <Ionicons
+                        name={priorityOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+                    {priorityOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        {priorities.map((prior, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('priority', prior);
+                              setPriorityOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{prior}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Duration */}
+                  <Text style={styles.fieldLabel}>Calculated Duration (HH.mm)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0.00"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.duration}
+                    editable={false} // Duration is now calculated
+                  />
+
+                  {/* Start Time */}
+                  <Text style={styles.fieldLabel}>Start Time</Text>
+                  <TouchableOpacity
+                    style={styles.dropdown}
+                    onPress={() => openDateTimePicker('startTime', 'date')}
+                    disabled={loading}
+                  >
+                    <Text style={[
+                      styles.dropdownText,
+                      !formData.startTime && { color: COLORS.textLight },
+                    ]}>
+                      {formatDisplayDate(formData.startTime) || 'Select start date & time'}
+                    </Text>
+                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                  </TouchableOpacity>
+
+                  {/* End Time */}
+                  <Text style={styles.fieldLabel}>End Time</Text>
+                  <TouchableOpacity
+                    style={styles.dropdown}
+                    onPress={() => openDateTimePicker('endTime', 'date')}
+                    disabled={loading}
+                  >
+                    <Text style={[
+                      styles.dropdownText,
+                      !formData.endTime && { color: COLORS.textLight },
+                    ]}>
+                      {formatDisplayDate(formData.endTime) || 'Select end date & time'}
+                    </Text>
+                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                  </TouchableOpacity>
+
+                  {/* DateTimePicker Modal */}
+                  {showDateTimePicker && (
+                    <DateTimePicker
+                      value={formData[currentPicker] ? new Date(formData[currentPicker]) : new Date()}
+                      mode={dateTimePickerMode}
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={onDateTimeChange}
+                      minimumDate={currentPicker === 'endTime' && formData.startTime ? new Date(formData.startTime) : undefined}
+                    />
+                  )}
+
+                  {/* Buttons */}
+                  <View style={styles.buttonGroup}>
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                      onPress={handleSave}
+                      disabled={loading}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : 'Assign Task'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleClose}
+                      disabled={loading}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+ 
+
 // ========== MAIN HOME SCREEN ==========
 export default function HomePage() {
   const insets = useSafeAreaInsets();
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [assignTaskModalVisible, setAssignTaskModalVisible] = useState(false);
+  const [todaysTasks, setTodaysTasks] = useState([]);
 
   const [selectedDateRange, setSelectedDateRange] = useState({
     start: new Date(),
@@ -603,7 +1083,7 @@ export default function HomePage() {
   // ===== RESPONSIVE CALCULATIONS =====
   const bottomPadding = useMemo(() => {
     // Dock height is approximately 80-100px
-    // Add extra buffer based on device type
+    // Add extra buffer based on the device type
     if (isTablet) {
       return insets.bottom + 150;
     }
@@ -617,16 +1097,16 @@ export default function HomePage() {
 
   const filteredTasks = useMemo(() => {
     const allTasks = [];
-    
+
     employeesData.forEach(employee => {
       employee.tasks.forEach(task => {
         const taskDate = new Date(task.startDate);
         const startDate = new Date(selectedDateRange.start);
         const endDate = new Date(selectedDateRange.end);
-        
+
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
-        
+
         if (taskDate >= startDate && taskDate <= endDate) {
           allTasks.push({
             ...task,
@@ -636,13 +1116,29 @@ export default function HomePage() {
         }
       });
     });
-    
+
     return allTasks;
   }, [selectedDateRange]);
 
   const handleTaskPress = (task) => {
     setSelectedTask(task);
     setModalVisible(true);
+  };
+
+  const handleAddTask = () => {
+    setAssignTaskModalVisible(true);
+  };
+
+  // Add task to today's list
+  const handleSaveTask = (taskData) => {
+    setTodaysTasks([...todaysTasks, {
+      ...taskData,
+      employeeName: taskData.assignee,
+      employeeId: Date.now(),
+    }]);
+
+    Alert.alert('Success', 'Task assigned successfully!');
+    setAssignTaskModalVisible(false);
   };
 
   return (
@@ -653,10 +1149,10 @@ export default function HomePage() {
         setSelectedDateRange={setSelectedDateRange}
         filteredTasks={filteredTasks}
       />
-      
+
       {/* Background with opacity when modal is open */}
-      <View style={{ 
-        flex: 1, 
+      <View style={{
+        flex: 1,
         opacity: modalVisible ? 0.4 : 1,
         backgroundColor: COLORS.background
       }}>
@@ -671,9 +1167,45 @@ export default function HomePage() {
           ]}
         >
           <View style={styles.tasksSection}>
-            <Text style={styles.sectionTitle}>Employee Tasks</Text>
-            
-            {filteredTasks.length > 0 ? (
+            <View style={styles.filterContainer}>
+
+              <Text style={styles.sectionTitle}>Employee Tasks</Text>
+              <TouchableOpacity
+                style={styles.assignButton}
+                onPress={handleAddTask}
+              //  style={styles.addButton} onPress={handleAddTask} 
+              >
+                <Octicons name="tasklist" size={16} color="#fff" />
+                <Text style={styles.assignButtonText}>Assign a Task</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Show filtered tasks + today's new tasks */}
+            {(filteredTasks.length > 0 || todaysTasks.length > 0) ? (
+              <>
+                {filteredTasks.map((task, index) => (
+                  <TaskCard
+                    key={`${task.employeeId}-${task.id}`}
+                    task={task}
+                    onPress={() => handleTaskPress(task)}
+                  />
+                ))}
+                {todaysTasks.map((task) => (
+                  <TaskCard
+                    key={`today-${task.id}`}
+                    task={task}
+                    onPress={() => handleTaskPress(task)}
+                  />
+                ))}
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>No tasks for today</Text>
+              </View>
+            )}
+
+            {/* {filteredTasks.length > 0 ? (
               filteredTasks.map((task, index) => (
                 <TaskCard
                   key={`${task.employeeId}-${task.id}`}
@@ -686,7 +1218,7 @@ export default function HomePage() {
                 <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>No tasks found for selected date range</Text>
               </View>
-            )}
+            )} */}
           </View>
         </ScrollView>
       </View>
@@ -697,6 +1229,13 @@ export default function HomePage() {
         onClose={() => setModalVisible(false)}
         modalHeight={getModalHeight}
       />
+
+      <AssignTaskModal
+        visible={assignTaskModalVisible}
+        onClose={() => setAssignTaskModalVisible(false)}
+        onSave={handleSaveTask}
+      />
+
     </View>
   );
 }
@@ -873,6 +1412,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
+    justifyContent: 'space-between',  // Add this line
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    marginLeft: 'auto',  // Push button to right
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   filterButton: {
     flexDirection: 'row',
@@ -904,19 +1466,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
-  exportButton: {
+  assignButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.success,
     gap: 6,
   },
-  exportButtonText: {
+  assignButtonText: {
+    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
   },
 
   // CONTENT STYLES
@@ -1000,30 +1562,182 @@ const styles = StyleSheet.create({
   },
 
   // MODAL STYLES
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+   modalRoot: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+},
+
+overlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  justifyContent: 'flex-end',
+},
+
+sheetWrapper: {
+  width: '100%',
+  flex: 1,
+  justifyContent: 'flex-end',
+},
+
+modalContent: {
+  backgroundColor: COLORS.background,
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  overflow: 'hidden',
+  maxHeight: '95%',
+  flex: 1,
+},
+
+modalHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingVertical: 18,
+},
+
+modalTitle: {
+  fontSize: 22,
+  fontWeight: '800',
+  color: '#fff',
+  textAlign: 'center',
+  flex: 1,
+},
+
+closeButton: {
+  width: 44,
+  height: 44,
+  justifyContent: 'center',
+  alignItems: 'center',
+  borderRadius: 22,
+},
+
+modalBody: {
+  flex: 1,
+  paddingHorizontal: 20,
+  paddingTop: 16,
+  backgroundColor: COLORS.background,
+},
+
+scrollViewContent: {
+  paddingBottom: 60,
+  flexGrow: 1,
+},
+
+// Form Styles
+section: {
+  backgroundColor: COLORS.cardBg,
+  borderRadius: 16,
+  padding: 16,
+},
+
+fieldLabel: {
+  fontSize: 12,
+  fontWeight: '700',
+  color: COLORS.text,
+  marginBottom: 8,
+  marginTop: 14,
+},
+
+input: {
+  backgroundColor: '#F5F7FA',
+  borderRadius: 12,
+  padding: 12,
+  fontSize: 14,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  color: COLORS.text,
+  marginBottom: 4,
+},
+
+// Dropdown Styles
+dropdown: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  backgroundColor: '#F5F7FA',
+  borderRadius: 12,
+  paddingHorizontal: 12,
+  paddingVertical: 12,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  marginTop: 6,
+  marginBottom: 8,
+},
+
+dropdownText: {
+  fontSize: 14,
+  color: COLORS.text,
+  flex: 1,
+},
+
+dropdownMenu: {
+  marginTop: 6,
+  marginBottom: 12,
+  backgroundColor: COLORS.cardBg,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  overflow: 'hidden',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
+  elevation: 8,
+},
+
+dropdownItem: {
+  paddingVertical: 12,
+  paddingHorizontal: 12,
+  borderBottomWidth: 1,
+  borderBottomColor: COLORS.border,
+},
+
+dropdownItemText: {
+  fontSize: 14,
+  color: COLORS.text,
+  fontWeight: '500',
+},
+
+// Button Styles
+buttonGroup: {
+  flexDirection: 'row',
+  gap: 12,
+  marginTop: 24,
+  marginBottom: 16,
+},
+
+saveButton: {
+  flex: 1,
+  backgroundColor: COLORS.primary,
+  borderRadius: 12,
+  paddingVertical: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+saveButtonText: {
+  color: '#fff',
+  fontSize: 14,
+  fontWeight: '700',
+},
+
+cancelButton: {
+  flex: 1,
+  backgroundColor: COLORS.border,
+  borderRadius: 12,
+  paddingVertical: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+},
+
+cancelButtonText: {
+  color: COLORS.text,
+  fontSize: 14,
+  fontWeight: '700',
+},
+
+//======================
   employeeNameCenter: {
     fontSize: isTablet ? 28 : 24,
     fontWeight: '800',
@@ -1057,6 +1771,833 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
+
+  // ========== ASSIGN TASK MODAL ==========
+ modalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+
+  sheetWrapper: {
+    width: '100%',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+
+  // ========== MODAL CONTENT STYLES ==========
+  // UPDATE IF EXISTING, ADD IF NOT
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    maxHeight: '95%',
+    flex: 1,
+    // REMOVE: height: modalHeight (this was causing issues)
+    // REMOVE: width: '100%' (not needed with flex layout)
+  },
+
+  // ========== MODAL HEADER STYLES ==========
+  // UPDATE IF EXISTING
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    // REMOVE: elevation or extra shadows
+  },
+
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
+
+  closeButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+  },
+
+  // ========== MODAL BODY STYLES ==========
+  // ADD THESE IF NOT PRESENT
+  modalBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: COLORS.background,
+  },
+
+  scrollViewContent: {
+    paddingBottom: 60,
+    flexGrow: 1,
+  },
+
+  // ========== FORM SECTION STYLES ==========
+  // ADD THESE IF NOT PRESENT
+  section: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    padding: 16,
+  },
+
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+    marginTop: 14,
+  },
+
+  input: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+
+  // ========== DROPDOWN STYLES ==========
+  // ADD THESE IF NOT PRESENT
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+
+  dropdownText: {
+    fontSize: 14,
+    color: COLORS.text,
+    flex: 1,
+  },
+
+  dropdownMenu: {
+    marginTop: 6,
+    marginBottom: 12,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    // NEW: Added proper shadow properties for Android
+  },
+
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  dropdownItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+
+  // ========== BUTTON STYLES ==========
+  // ADD THESE IF NOT PRESENT
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 16,
+  },
+
+  saveButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+   backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+ backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+  backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+   backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+  backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+ backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  dropdownItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+
+  // ========== BUTTON STYLES ==========
+  // ADD THESE IF NOT PRESENT
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 16,
+  },
+
+  saveButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
