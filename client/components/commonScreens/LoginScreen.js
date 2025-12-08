@@ -21,12 +21,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.216:3000';
+
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -61,7 +62,7 @@ export default function LoginScreen({ navigation, onLogin }) {
     }
 
     try{
-      const res = await axios.post('http://192.168.0.216:3000/api/auth/login', {
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
         email: email.trim(),
         password: password.trim(),
       });

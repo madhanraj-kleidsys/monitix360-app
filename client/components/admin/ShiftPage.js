@@ -1,23 +1,31 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Dimensions,
   Modal,
   TextInput,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { TouchableWithoutFeedback } from 'react-native';
+import api from '../../api/client';
 
-const { height } = Dimensions.get('window');
-
+const { height, width } = Dimensions.get('window');
+const isTablet = width >= 768;
+const getModalWidth = () => {
+  if (isTablet) {
+    return Math.min(width * 0.8, 700);   // Tablets: max 80% width or 700px
+  }
+  return width;  // Phones: full width
+};
 const COLORS = {
   primary: '#0099FF',
   secondary: '#00D4FF',
@@ -30,6 +38,13 @@ const COLORS = {
   text: '#0F172A',
   textLight: '#64748B',
   border: '#E2E8F0',
+};
+
+const shiftApi = {
+  getShifts: () => api.get('/shifts'),
+  createShift: (data) => api.post('/shifts', data),
+  updateShift: (id, data) => api.put(`/shifts/${id}`, data),
+  deleteShift: (id) => api.delete(`/shifts/${id}`),
 };
 
 // ========== SHIFT CARD COMPONENT ==========
@@ -139,8 +154,8 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
   );
   const [loading, setLoading] = useState(false);
 
-  useEffect(()=>{
-  if (visible) {
+  useEffect(() => {
+    if (visible) {
       if (shift) {
         // Edit existing shift
         setFormData({
@@ -253,186 +268,251 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
       transparent={true}
       onRequestClose={handleClose}
     >
-       <TouchableWithoutFeedback onPress={handleClose}>
-      <View style={styles.overlay}>
-         <TouchableWithoutFeedback onPress={() => {}}>
-        <View style={styles.modalContent}>
-          {/* Modal Header */}
-          <LinearGradient
-            colors={['#00D4FF', '#0099FF', '#667EEA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.modalHeader}
-          >
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {shift ? 'Edit Shift' : 'Add Shift'}
-            </Text>
-            <View style={{ width: 44 }} />
-          </LinearGradient>
+      <TouchableWithoutFeedback onPress={handleClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={() => { }}>
+            <View style={styles.modalContent}>
+              {/* Modal Header */}
+              <LinearGradient
+                colors={['#00D4FF', '#0099FF', '#667EEA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalHeader}
+              >
+                <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>
+                  {shift ? 'Edit Shift' : 'Add Shift'}
+                </Text>
+                <View style={{ width: 44 }} />
+              </LinearGradient>
 
-          {/* Modal Body */}
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.section}>
-              {/* Shift Name */}
-              <Text style={styles.label}>
-                <Ionicons name="briefcase" size={14} color={COLORS.primary} /> Shift Name
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., Morning Shift"
-                value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
-                editable={!loading}
-              />
-
-              {/* Start Time */}
-              <TimePickerField
-                label={<><Ionicons name="play-circle" size={14} color={COLORS.success} /> Start Time</>}
-                value={formData.startTime}
-                onChange={(value) => handleInputChange('startTime', value)}
-              />
-
-              {/* End Time */}
-              <TimePickerField
-                label={<><Ionicons name="stop-circle" size={14} color={COLORS.danger} /> End Time</>}
-                value={formData.endTime}
-                onChange={(value) => handleInputChange('endTime', value)}
-              />
-
-              {/* Breaks Section */}
-              <View style={styles.breaksSection}>
-                <View style={styles.breaksSectionHeader}>
-                  <Text style={styles.breaksSectionTitle}>
-                    <Ionicons name="pause-circle" size={16} color={COLORS.warning} /> Breaks
+              {/* Modal Body */}
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.section}>
+                  {/* Shift Name */}
+                  <Text style={styles.label}>
+                    <Ionicons name="briefcase" size={14} color={COLORS.primary} /> Shift Name
                   </Text>
-                  <Text style={styles.breaksCount}>
-                    ({formData.breaks.length})
-                  </Text>
-                </View>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., Morning Shift"
+                    value={formData.name}
+                    onChangeText={(value) => handleInputChange('name', value)}
+                    editable={!loading}
+                  />
 
-                {formData.breaks.map((breakItem, index) => (
-                  <View key={breakItem.id} style={styles.breakCard}>
-                    <View style={styles.breakHeader}>
-                      <Text style={styles.breakIndex}>Break {index + 1}</Text>
-                      <TouchableOpacity
-                        onPress={() => handleRemoveBreak(breakItem.id)}
-                      >
-                        <Ionicons name="close-circle" size={20} color={COLORS.danger} />
-                      </TouchableOpacity>
+                  {/* Start Time */}
+                  <TimePickerField
+                    label={<><Ionicons name="play-circle" size={14} color={COLORS.success} /> Start Time</>}
+                    value={formData.startTime}
+                    onChange={(value) => handleInputChange('startTime', value)}
+                  />
+
+                  {/* End Time */}
+                  <TimePickerField
+                    label={<><Ionicons name="stop-circle" size={14} color={COLORS.danger} /> End Time</>}
+                    value={formData.endTime}
+                    onChange={(value) => handleInputChange('endTime', value)}
+                  />
+
+                  {/* Breaks Section */}
+                  <View style={styles.breaksSection}>
+                    <View style={styles.breaksSectionHeader}>
+                      <Text style={styles.breaksSectionTitle}>
+                        <Ionicons name="pause-circle" size={16} color={COLORS.warning} /> Breaks
+                      </Text>
+                      <Text style={styles.breaksCount}>
+                        ({formData.breaks.length})
+                      </Text>
                     </View>
 
-                    {/* Break Name */}
-                    <Text style={styles.label}>Break Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g., Lunch"
-                      value={breakItem.name}
-                      onChangeText={(value) =>
-                        handleBreakChange(breakItem.id, 'name', value)
-                      }
-                      editable={!loading}
-                    />
+                    {formData.breaks.map((breakItem, index) => (
+                      <View key={breakItem.id} style={styles.breakCard}>
+                        <View style={styles.breakHeader}>
+                          <Text style={styles.breakIndex}>Break {index + 1}</Text>
+                          <TouchableOpacity
+                            onPress={() => handleRemoveBreak(breakItem.id)}
+                          >
+                            <Ionicons name="close-circle" size={20} color={COLORS.danger} />
+                          </TouchableOpacity>
+                        </View>
 
-                    {/* Break Start Time */}
-                    <TimePickerField
-                      label="Break Start Time"
-                      value={breakItem.startTime}
-                      onChange={(value) =>
-                        handleBreakChange(breakItem.id, 'startTime', value)
-                      }
-                    />
+                        {/* Break Name */}
+                        <Text style={styles.label}>Break Name</Text>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="e.g., Lunch"
+                          value={breakItem.name}
+                          onChangeText={(value) =>
+                            handleBreakChange(breakItem.id, 'name', value)
+                          }
+                          editable={!loading}
+                        />
 
-                    {/* Break End Time */}
-                    <TimePickerField
-                      label="Break End Time"
-                      value={breakItem.endTime}
-                      onChange={(value) =>
-                        handleBreakChange(breakItem.id, 'endTime', value)
-                      }
-                    />
+                        {/* Break Start Time */}
+                        <TimePickerField
+                          label="Break Start Time"
+                          value={breakItem.startTime}
+                          onChange={(value) =>
+                            handleBreakChange(breakItem.id, 'startTime', value)
+                          }
+                        />
+
+                        {/* Break End Time */}
+                        <TimePickerField
+                          label="Break End Time"
+                          value={breakItem.endTime}
+                          onChange={(value) =>
+                            handleBreakChange(breakItem.id, 'endTime', value)
+                          }
+                        />
+                      </View>
+                    ))}
+
+                    {/* Add More Breaks Button */}
+                    <TouchableOpacity
+                      style={styles.addBreakButton}
+                      onPress={handleAddBreak}
+                    >
+                      <Ionicons name="add-circle" size={18} color="#fff" />
+                      <Text style={styles.addBreakButtonText}>Add Break</Text>
+                    </TouchableOpacity>
                   </View>
-                ))}
 
-                {/* Add More Breaks Button */}
-                <TouchableOpacity
-                  style={styles.addBreakButton}
-                  onPress={handleAddBreak}
-                >
-                  <Ionicons name="add-circle" size={18} color="#fff" />
-                  <Text style={styles.addBreakButtonText}>Add Break</Text>
-                </TouchableOpacity>
-              </View>
+                  {/* Action Buttons */}
+                  <View style={styles.buttonGroup}>
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                      onPress={handleSave}
+                      disabled={loading}
+                    >
+                      <Ionicons name="checkmark-done" size={18} color="#fff" />
+                      <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : 'Save'}
+                      </Text>
+                    </TouchableOpacity>
 
-              {/* Action Buttons */}
-              <View style={styles.buttonGroup}>
-                <TouchableOpacity
-                  style={[styles.saveButton, loading && { opacity: 0.6 }]}
-                  onPress={handleSave}
-                  disabled={loading}
-                >
-                  <Ionicons name="checkmark-done" size={18} color="#fff" />
-                  <Text style={styles.saveButtonText}>
-                    {loading ? 'Saving...' : 'Save'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={handleClose}
-                  disabled={loading}
-                >
-                  <Ionicons name="close" size={18} color={COLORS.text} />
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleClose}
+                      disabled={loading}
+                    >
+                      <Ionicons name="close" size={18} color={COLORS.text} />
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
             </View>
-          </ScrollView>
+          </TouchableWithoutFeedback>
         </View>
-         </TouchableWithoutFeedback>
-      </View>
-       </TouchableWithoutFeedback>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
 
 // ========== MAIN SHIFT PAGE ==========
 export default function AdminShiftPage() {
-  const [shifts, setShifts] = useState([
-    {
-      id: 1,
-      name: 'Morning Shift',
-      startTime: '08:00',
-      endTime: '16:00',
-      breaks: [
-        { id: 101, name: 'Breakfast', startTime: '10:00', endTime: '10:30' },
-        { id: 102, name: 'Lunch', startTime: '12:30', endTime: '13:30' },
-      ],
-    },
-    {
-      id: 2,
-      name: 'Afternoon Shift',
-      startTime: '16:00',
-      endTime: '00:00',
-      breaks: [
-        { id: 201, name: 'Dinner', startTime: '19:00', endTime: '20:00' },
-      ],
-    },
-    {
-      id: 3,
-      name: 'Night Shift',
-      startTime: '22:00',
-      endTime: '06:00',
-      breaks: [
-        { id: 301, name: 'Midnight Snack', startTime: '02:00', endTime: '02:30' },
-      ],
-    },
-  ]);
+  const [shifts, setShifts] = useState([]);
 
+  // {
+  //   id: 1,
+  //   name: 'Morning Shift',
+  //   startTime: '08:00',
+  //   endTime: '16:00',
+  //   breaks: [
+  //     { id: 101, name: 'Breakfast', startTime: '10:00', endTime: '10:30' },
+  //     { id: 102, name: 'Lunch', startTime: '12:30', endTime: '13:30' },
+  //   ],
+  // },
+  // {
+  //   id: 2,
+  //   name: 'Afternoon Shift',
+  //   startTime: '16:00',
+  //   endTime: '00:00',
+  //   breaks: [
+  //     { id: 201, name: 'Dinner', startTime: '19:00', endTime: '20:00' },
+  //   ],
+  // },
+  // {
+  //   id: 3,
+  //   name: 'Night Shift',
+  //   startTime: '22:00',
+  //   endTime: '06:00',
+  //   breaks: [
+  //     { id: 301, name: 'Midnight Snack', startTime: '02:00', endTime: '02:30' },
+  //   ],
+  // },
+
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
+
+  // Load shifts when component mounts
+  useEffect(() => {
+    fetchShifts();
+  }, []);
+
+
+  // ========== FETCH SHIFTS WITH COMPREHENSIVE LOGGING ==========
+  const fetchShifts = async () => {
+    setRefreshing(true);
+    try {
+      // console.log('📡 [FETCH] Fetching shifts from API...');
+      const response = await shiftApi.getShifts();
+
+      // console.log('✅ [RESPONSE] Raw API response received');
+      // console.log('📊 [DATA] Number of shifts:', response.data?.length);
+
+      // Check first shift structure
+      // if (response.data?.length > 0) {
+      //   console.log('📋 [FIRST SHIFT] Raw data:', JSON.stringify(response.data[0], null, 2));
+      //   console.log('🔗 [BREAKS COUNT]:', response.data[0]?.breaks?.length || 0);
+
+      //   if (response.data[0]?.breaks?.length > 0) {
+      //     console.log('📌 [FIRST BREAK]:', JSON.stringify(response.data[0].breaks[0], null, 2));
+      //   }
+      // }
+
+      // Transform backend data to frontend format
+      const formatted = (response.data || []).map((shift, idx) => {
+        const rawBreaks = shift.shift_breaks || [];   // 👈 use shift_breaks from API
+        // console.log(`⚙️ [TRANSFORM] Shift ${idx + 1}: "${shift.shift_name}" has ${rawBreaks.length} breaks`);
+
+        return {
+          id: shift.id,
+          name: shift.shift_name,
+          startTime: shift.shift_start,
+          endTime: shift.shift_end,
+          breaks: rawBreaks.map((b, bidx) => {
+            // console.log(
+            //   `  └─ Break ${bidx + 1}: ${b.break_type} (${b.break_start} - ${b.break_end})`
+            // );
+            return {
+              id: b.id,
+              name: b.break_type,
+              startTime: b.break_start,
+              endTime: b.break_end,
+            };
+          }),
+        };
+      });
+      // console.log('✅ [SUCCESS] Formatted shifts:', JSON.stringify(formatted, null, 2));
+      setShifts(formatted);
+
+    } catch (error) {
+      console.error('❌ [ERROR] Fetch failed:', error.message);
+      console.error('📍 [ERROR DETAILS]:', error.response?.data);
+      const msg = error.response?.data?.error || error.message || 'Failed to fetch';
+      Alert.alert('❌ Error', msg);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
 
   const handleAddShift = () => {
     setSelectedShift(null);
@@ -444,35 +524,86 @@ export default function AdminShiftPage() {
     setModalVisible(true);
   };
 
+  // ========== DELETE SHIFT ==========
   const handleDeleteShift = (shiftId) => {
     Alert.alert(
       'Delete Shift',
       'Are you sure you want to delete this shift?',
       [
-        { text: 'Cancel', onPress: () => {} },
+        { text: 'Cancel' },
+        //  onPress: () => { } },
         {
           text: 'Delete',
-          onPress: () => {
-            setShifts(shifts.filter(s => s.id !== shiftId));
-            Alert.alert('Success', 'Shift deleted successfully');
-          },
           style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              // console.log(`🗑️ Deleting shift ${shiftId}...`);
+              await shiftApi.deleteShift(shiftId);
+              setShifts(shifts.filter((s) => s.id !== shiftId));
+              Alert.alert('✅ Success', 'Shift deleted successfully');
+            } catch (error) {
+              console.error('❌ Delete error:', error.message);
+              Alert.alert('❌ Error', error.response?.data?.error || 'Failed to delete');
+            } finally {
+              setLoading(false);
+              // setRefreshing(false);
+            }
+
+          },
         },
       ]
     );
   };
 
-  const handleSaveShift = (shiftData) => {
-    if (selectedShift) {
-      setShifts(
-        shifts.map(s =>
-          s.id === selectedShift.id ? { ...shiftData, id: s.id } : s
-        )
-      );
-      Alert.alert('Success', 'Shift updated successfully');
-    } else {
-      setShifts([...shifts, shiftData]);
-      Alert.alert('Success', 'Shift added successfully');
+  // ========== SAVE SHIFT (Create or Update) ==========
+  const handleSaveShift = async (shiftData) => {
+    // Transform to backend format
+    const payload = {
+      shift_name: shiftData.name,
+      shift_start: shiftData.startTime,
+      shift_end: shiftData.endTime,
+      breaks: shiftData.breaks.map((b) => ({
+        break_type: b.name,
+        break_start: b.startTime,
+        break_end: b.endTime,
+      })),
+    };
+
+    setLoading(true);
+    try {
+      if (selectedShift) {
+        // UPDATE
+        // console.log(`✏️ Updating shift ${selectedShift.id}...`);
+        await shiftApi.updateShift(selectedShift.id, payload);
+        setShifts(
+          shifts.map((s) =>
+            s.id === selectedShift.id
+              ? { ...shiftData, id: s.id }
+              : s
+          )
+        );
+        Alert.alert('✅ Success', 'Shift updated');
+      } else {
+        // CREATE
+        // console.log('➕ Creating new shift...');
+        const response = await shiftApi.createShift(payload);
+        setShifts([
+          ...shifts,
+          {
+            id: response.data.id,
+            ...shiftData,
+          },
+        ]);
+        Alert.alert('✅ Success', 'Shift created');
+      }
+      setModalVisible(false);
+      setSelectedShift(null);
+    } catch (error) {
+      console.error('❌ Save error:', error.message);
+      Alert.alert('❌ Error', error.response?.data?.error || 'Failed to save');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -497,6 +628,13 @@ export default function AdminShiftPage() {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchShifts}
+            colors={[COLORS.primary]}
+          />
+        }
       >
         {/* Add Shift Button */}
         <View style={styles.topSection}>
@@ -751,11 +889,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    height: height * 0.9,
+    height: height * 0.60,
+    width: getModalWidth(),
+    alignSelf: 'center',
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
+    flexDirection: 'column',
   },
   modalHeader: {
     flexDirection: 'row',

@@ -8,8 +8,7 @@
     "backgroundColor": "#ffffff",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-
-     "androidNavigationBar": {
+    "androidNavigationBar": {
       "visible": "sticky-immersive",
       "barStyle": "light-content",
       // "backgroundColor": "#0099FF"
@@ -21,8 +20,8 @@
     //  "androidNavigationBar": {
     //   "visible": "sticky-immersive"
     // },
-     "plugins": [
-    [
+    "plugins": [
+      [
         "expo-media-library",
         {
           "photosPermission": "Allow app to save exported files",
@@ -34,11 +33,18 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#0099FF",
-          "modes": ["productionTime"]
+          "modes": [
+            "productionTime"
+          ]
         }
-      ]
+      ],
+      // [
+      //   "expo-keyboard",
+      //   {
+      //     "softwareKeyboardLayoutMode": "pan"
+      //   }
+      // ],
     ],
-
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -48,23 +54,24 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
-       "android.permission.READ_EXTERNAL_STORAGE",
-       "android.permission.WRITE_EXTERNAL_STORAGE",
-       "android.permission.POST_NOTIFICATIONS",
-      //  "android.permission.CAMERA",
-      //  "android.permission.RECORD_AUDIO",
-      //  "android.permission.READ_PHONE_STATE",
-      //  "android.permission.READ_PHONE_NUMBERS",
-      //  "android.permission.READ_CALL_LOG",
-      //  "android.permission.READ_CONTACTS",
-      //  "android.permission.READ_CALENDAR",
-      //  "android.permission.WRITE_CALENDAR",
-      //  "android.permission.ACCESS_FINE_LOCATION",
-      //  "android.permission.ACCESS_COARSE_LOCATION",
-      //  "android.permission.ACCESS_BACKGROUND_LOCATION",
-      //  "android.permission.BODY_SENSORS",
-     ],
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS",
+        //  "android.permission.CAMERA",
+        //  "android.permission.RECORD_AUDIO",
+        //  "android.permission.READ_PHONE_STATE",
+        //  "android.permission.READ_PHONE_NUMBERS",
+        //  "android.permission.READ_CALL_LOG",
+        //  "android.permission.READ_CONTACTS",
+        //  "android.permission.READ_CALENDAR",
+        //  "android.permission.WRITE_CALENDAR",
+        //  "android.permission.ACCESS_FINE_LOCATION",
+        //  "android.permission.ACCESS_COARSE_LOCATION",
+        //  "android.permission.ACCESS_BACKGROUND_LOCATION",
+        //  "android.permission.BODY_SENSORS",
+      ],
       // "adaptiveIcon": {
       //   "foregroundImage": "./assets/app-icon.png",
       //   // "foregroundImage": "./assets/adaptive-icon.png",

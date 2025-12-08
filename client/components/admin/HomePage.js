@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   TextInput,
   Alert,
-  Platform,
+  Platform, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,10 @@ import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
 import * as MediaLibrary from 'expo-media-library';
 import XLSX from 'xlsx';
+import TaskService from './services/TaskService';
+import useTaskManagement from './hooks/useTaskManagement';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import jwtDecode from 'jwt-decode';
 
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
@@ -48,122 +52,122 @@ const STATUS_COLORS = {
   Paused: '#E74C3C',
 };
 
-const employeesData = [
-  {
-    id: 1,
-    name: "Rajesh Kumar",
-    tasks: [
-      {
-        id: 101,
-        name: "Complete UI Design for Dashboard",
-        status: "In Progress",
-        project: "Admin Portal",
-        description: "Design the admin dashboard UI with glassomorphic style components",
-        startDate: "2025-11-25T09:00:00",
-        endDate: "2025-11-29T17:00:00"
-      },
-      {
-        id: 102,
-        name: "API Integration Testing",
-        status: "Completed",
-        project: "Mobile App Backend",
-        description: "Test all API endpoints with Postman",
-        startDate: "2025-11-24T10:00:00",
-        endDate: "2025-11-28T16:00:00"
-      },
-      {
-        id: 103,
-        name: "Database Optimization",
-        status: "Pending",
-        project: "Performance Enhancement",
-        description: "Optimize database queries for faster response times",
-        startDate: "2025-11-30T09:00:00",
-        endDate: "2025-12-02T17:00:00"
-      }
-    ]
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    tasks: [
-      {
-        id: 201,
-        name: "Frontend Components Development",
-        status: "In Progress",
-        project: "Admin Portal",
-        description: "Develop reusable React components for dashboard",
-        startDate: "2025-11-26T08:30:00",
-        endDate: "2025-11-29T18:00:00"
-      },
-      {
-        id: 202,
-        name: "Bug Fixes - Mobile App",
-        status: "Incomplete",
-        project: "Mobile App",
-        description: "Fix reported bugs in iOS and Android versions",
-        startDate: "2025-11-28T09:00:00",
-        endDate: "2025-12-01T17:00:00"
-      }
-    ]
-  },
-  {
-    id: 3,
-    name: "Amit Patel",
-    tasks: [
-      {
-        id: 301,
-        name: "Server Setup and Configuration",
-        status: "Completed",
-        project: "Infrastructure",
-        description: "Setup production servers on AWS",
-        startDate: "2025-11-20T10:00:00",
-        endDate: "2025-11-27T16:00:00"
-      },
-      {
-        id: 302,
-        name: "Security Audit Report",
-        status: "Paused",
-        project: "Security",
-        description: "Conduct comprehensive security audit of the system",
-        startDate: "2025-11-25T09:00:00",
-        endDate: "2025-12-05T17:00:00"
-      },
-      {
-        id: 303,
-        name: "Documentation Update",
-        status: "Pending",
-        project: "Documentation",
-        description: "Update API documentation with new endpoints",
-        startDate: "2025-11-29T10:00:00",
-        endDate: "2025-12-03T17:00:00"
-      }
-    ]
-  },
-  {
-    id: 4,
-    name: "Neha Singh",
-    tasks: [
-      {
-        id: 401,
-        name: "User Experience Testing and Feedback Collection",
-        status: "In Progress",
-        project: "Admin Portal",
-        description: "Test user experience and collect feedback from stakeholders",
-        startDate: "2025-11-27T09:00:00",
-        endDate: "2025-11-29T17:00:00"
-      },
-      {
-        id: 402,
-        name: "Mobile App Testing",
-        status: "Completed",
-        project: "Mobile App",
-        description: "Perform QA testing on both iOS and Android",
-        startDate: "2025-11-23T08:00:00",
-        endDate: "2025-11-28T18:00:00"
-      }
-    ]
-  }
-];
+// const employeesData = [
+//   {
+//     id: 1,
+//     name: "Rajesh Kumar",
+//     tasks: [
+//       {
+//         id: 101,
+//         name: "Complete UI Design for Dashboard",
+//         status: "In Progress",
+//         project: "Admin Portal",
+//         description: "Design the admin dashboard UI with glassomorphic style components",
+//         startDate: "2025-11-25T09:00:00",
+//         endDate: "2025-11-29T17:00:00"
+//       },
+//       {
+//         id: 102,
+//         name: "API Integration Testing",
+//         status: "Completed",
+//         project: "Mobile App Backend",
+//         description: "Test all API endpoints with Postman",
+//         startDate: "2025-11-24T10:00:00",
+//         endDate: "2025-11-28T16:00:00"
+//       },
+//       {
+//         id: 103,
+//         name: "Database Optimization",
+//         status: "Pending",
+//         project: "Performance Enhancement",
+//         description: "Optimize database queries for faster response times",
+//         startDate: "2025-11-30T09:00:00",
+//         endDate: "2025-12-02T17:00:00"
+//       }
+//     ]
+//   },
+//   {
+//     id: 2,
+//     name: "Priya Sharma",
+//     tasks: [
+//       {
+//         id: 201,
+//         name: "Frontend Components Development",
+//         status: "In Progress",
+//         project: "Admin Portal",
+//         description: "Develop reusable React components for dashboard",
+//         startDate: "2025-11-26T08:30:00",
+//         endDate: "2025-11-29T18:00:00"
+//       },
+//       {
+//         id: 202,
+//         name: "Bug Fixes - Mobile App",
+//         status: "Incomplete",
+//         project: "Mobile App",
+//         description: "Fix reported bugs in iOS and Android versions",
+//         startDate: "2025-11-28T09:00:00",
+//         endDate: "2025-12-01T17:00:00"
+//       }
+//     ]
+//   },
+//   {
+//     id: 3,
+//     name: "Amit Patel",
+//     tasks: [
+//       {
+//         id: 301,
+//         name: "Server Setup and Configuration",
+//         status: "Completed",
+//         project: "Infrastructure",
+//         description: "Setup production servers on AWS",
+//         startDate: "2025-11-20T10:00:00",
+//         endDate: "2025-11-27T16:00:00"
+//       },
+//       {
+//         id: 302,
+//         name: "Security Audit Report",
+//         status: "Paused",
+//         project: "Security",
+//         description: "Conduct comprehensive security audit of the system",
+//         startDate: "2025-11-25T09:00:00",
+//         endDate: "2025-12-05T17:00:00"
+//       },
+//       {
+//         id: 303,
+//         name: "Documentation Update",
+//         status: "Pending",
+//         project: "Documentation",
+//         description: "Update API documentation with new endpoints",
+//         startDate: "2025-11-29T10:00:00",
+//         endDate: "2025-12-03T17:00:00"
+//       }
+//     ]
+//   },
+//   {
+//     id: 4,
+//     name: "Neha Singh",
+//     tasks: [
+//       {
+//         id: 401,
+//         name: "User Experience Testing and Feedback Collection",
+//         status: "In Progress",
+//         project: "Admin Portal",
+//         description: "Test user experience and collect feedback from stakeholders",
+//         startDate: "2025-11-27T09:00:00",
+//         endDate: "2025-11-29T17:00:00"
+//       },
+//       {
+//         id: 402,
+//         name: "Mobile App Testing",
+//         status: "Completed",
+//         project: "Mobile App",
+//         description: "Perform QA testing on both iOS and Android",
+//         startDate: "2025-11-23T08:00:00",
+//         endDate: "2025-11-28T18:00:00"
+//       }
+//     ]
+//   }
+// ];
 
 // ========== UTILITY FUNCTIONS ==========
 const truncateText = (text, maxLength = 20) => {
@@ -215,7 +219,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
   try {
     // Check if there are tasks
     if (!tasks || tasks.length === 0) {
-      alert('❌ No tasks to export for the selected date range');
+      alert('âŒ No tasks to export for the selected date range');
       return;
     }
 
@@ -224,7 +228,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show loading notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '📊 Exporting Tasks',
+        title: 'ðŸ“Š Exporting Tasks',
         body: `Preparing ${fileName}...`,
         sound: 'default',
       },
@@ -236,13 +240,13 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     if (status !== 'granted') {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '❌ Permission Denied',
+          title: 'âŒ Permission Denied',
           body: 'Storage permission is required to export files',
           sound: 'default',
         },
         trigger: null,
       });
-      alert('❌ Storage permission denied. Cannot save file.');
+      alert('âŒ Storage permission denied. Cannot save file.');
       return;
     }
 
@@ -289,7 +293,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show success notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '✅ Export Successful',
+        title: 'âœ… Export Successful',
         body: `${fileName}\nTotal Tasks: ${tasks.length}`,
         sound: 'default',
       },
@@ -308,14 +312,14 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show error notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '❌ Export Failed',
+        title: 'âŒ Export Failed',
         body: error.message || 'Something went wrong',
         sound: 'default',
       },
       trigger: null,
     });
 
-    alert('❌ Export Failed:\n' + error.message);
+    alert('âŒ Export Failed:\n' + error.message);
   }
 };
 
@@ -323,9 +327,9 @@ const exportTasksToExcel = async (tasks, dateRange) => {
 function Header() {
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning! 👋';
-    if (hour < 18) return 'Good Afternoon! 👋';
-    return 'Good Evening! 👋';
+    if (hour < 12) return 'Good Morning! ðŸ‘‹';
+    if (hour < 18) return 'Good Afternoon! ðŸ‘‹';
+    return 'Good Evening! ðŸ‘‹';
   };
 
   return (
@@ -473,23 +477,28 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
 }
 
 // ========== TASK CARD COMPONENT ==========
-function TaskCard({ task, onPress }) {
+// In TaskCard component
+function TaskCard({ task, onPress, showAssignedTo }) {
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.cardContent}>
         <View style={styles.employeeSection}>
-          <Text style={styles.employeeName}>{task.employeeName}</Text>
+          <Text style={styles.employeeName}>
+            {task.assigned_to_name || 'Unassigned'}
+          </Text>
         </View>
 
         <View style={styles.taskSection}>
-          <Text style={styles.taskName}>{truncateText(task.name, 25)}</Text>
+          <Text style={styles.taskName}>{truncateText(task.title, 25)}</Text>
         </View>
 
         <View style={styles.statusSection}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>{task.status}</Text>
+          <Text style={[styles.statusText, { color: statusColor }]}>
+            {task.status}
+          </Text>
         </View>
 
         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
@@ -594,18 +603,19 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
 }
 
 // ========== ASSIGN TASK MODAL ==========
-function AssignTaskModal({ visible, onClose, onSave }) {
+function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
   const [formData, setFormData] = useState({
     department: '',
     title: '',
     projectTitle: '',
     taskDescription: '',
     priority: '',
+    assgnUserId: '',
     assignUser: '',
     duration: '',
     startTime: '',
     endTime: ''
-  }); 
+  });
   const [loading, setLoading] = useState(false);
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
@@ -619,7 +629,8 @@ function AssignTaskModal({ visible, onClose, onSave }) {
   // Dummy data for dropdowns
   const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
-  const users = ['Madhaneeh J', 'Arun', 'Patel'];
+  // const users = ['Madhaneeh J', 'Arun', 'Patel'];
+  // const {allUsers} = useTaskManagement;
 
   useEffect(() => {
     if (!visible) {
@@ -629,6 +640,7 @@ function AssignTaskModal({ visible, onClose, onSave }) {
         projectTitle: '',
         taskDescription: '',
         priority: '',
+        assignUserId: '',
         assignUser: '',
         duration: '',
         startTime: '',
@@ -664,45 +676,52 @@ function AssignTaskModal({ visible, onClose, onSave }) {
       }
     }
   }, [formData.startTime, formData.endTime]);
+
   const handleSave = async () => {
-    if (
-      !formData.department.trim() ||
-      // !formData.title.trim() ||
-      !formData.priority.trim() ||
-      !formData.assignUser.trim()
-    ) {
-      Alert.alert('Error', 'Please fill all required fields');
+    console.log('ðŸ”µ [MODAL] handleSave called');
+    console.log('Form Data:', formData);
+
+    // âœ… Use projectTitle as title if title is empty
+    const finalTitle = formData.title?.trim() || formData.projectTitle?.trim();
+
+    if (!finalTitle) {
+      Alert.alert('Error', 'Project title is required');
+      console.log('âŒ Title/Project missing');
+      return;
+    }
+    if (!formData.assignUserId) {
+      Alert.alert('Error', 'User must be assigned');
+      console.log('âŒ User not assigned');
+      return;
+    }
+    if (!formData.startTime) {
+      Alert.alert('Error', 'Start time is required');
+      console.log('âŒ Start time missing');
+      return;
+    }
+    if (!formData.endTime) {
+      Alert.alert('Error', 'End time is required');
+      console.log('âŒ End time missing');
       return;
     }
 
+    console.log('âœ… All validations passed');
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const taskData = {
-        id: Date.now(),
-        name: formData.title,
-        status: 'Pending',
-        project: formData.projectTitle,
-        description: formData.taskDescription,
-        startDate: new Date().toISOString(),
-        endDate: new Date().toISOString(),
-        priority: formData.priority,
-        assignee: formData.assignUser,
-        department: formData.department,
-        duration: formData.duration,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+      // âœ… Pass corrected formData with title set
+      const correctedData = {
+        ...formData,
+        title: finalTitle, // âœ… Use projectTitle as fallback
       };
-
-      onSave(taskData);
-      onClose();
+      console.log('ðŸ“¤ Calling onSave with:', correctedData);
+      await onSave(correctedData);
     } catch (error) {
-      Alert.alert('Error', 'Failed to save task');
+      console.error('âŒ onSave error:', error);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleClose = () => {
     setDepartmentOpen(false);
@@ -788,7 +807,7 @@ function AssignTaskModal({ visible, onClose, onSave }) {
               >
                 <View style={styles.section}>
 
-                       {/* Assign User Dropdown (required) */}
+                  {/* Assign User Dropdown (required) */}
                   <Text style={styles.fieldLabel}>Assign User <Text style={{ color: COLORS.danger }}>*</Text></Text>
                   <View>
                     <TouchableOpacity
@@ -813,20 +832,34 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         color={COLORS.textLight}
                       />
                     </TouchableOpacity>
+
                     {userOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
-                        {users.map((user, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              handleInputChange('assignUser', user);
-                              setUserOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{user}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {allUsers && allUsers.length > 0 ? (
+                          // âœ… FILTER: Show only users with role === 'user'
+                          allUsers
+                            .filter(user => user.role === 'user')  // âœ… ONLY 'user' role
+                            .map((user) => (
+                              <TouchableOpacity
+                                key={user.id}
+                                style={styles.dropdownItem}
+                                onPress={() => {
+                                  handleInputChange('assignUserId', user.id);
+                                  handleInputChange('assignUser', user.username);
+                                  setUserOpen(false);
+                                }}
+                              >
+                                <Text style={styles.dropdownItemText}>
+                                  {user.first_name} {user.last_name} ({user.username})
+                                </Text>
+                                <Text style={{ fontSize: 10, color: COLORS.textLight }}>
+                                  {user.department}
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                        ) : (
+                          <Text style={styles.dropdownItemText}>Loading users...</Text>
+                        )}
                       </View>
                     )}
                   </View>
@@ -856,6 +889,20 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         color={COLORS.textLight}
                       />
                     </TouchableOpacity>
+
+                    {departmentOpen && (
+                      <View style={styles.customInputWrapper}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type custom department"
+                          placeholderTextColor={COLORS.textLight}
+                          value={formData.department}
+                          onChangeText={(value) => handleInputChange('department', value)}
+                          editable={!loading}
+                        />
+                      </View>
+                    )}
+
                     {departmentOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
                         {departments.map((dept, idx) => (
@@ -872,18 +919,8 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         ))}
                       </View>
                     )}
-                  </View>
 
-                  {/* Title (required) */}
-                  {/* <Text style={styles.fieldLabel}>Title <Text style={{ color: COLORS.danger }}>*</Text></Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter task title"
-                    placeholderTextColor={COLORS.textLight}
-                    value={formData.title}
-                    onChangeText={value => handleInputChange('title', value)}
-                    editable={!loading}
-                  /> */}
+                  </View>
 
                   {/* Project Title */}
                   <Text style={styles.fieldLabel}>Project Title</Text>
@@ -895,7 +932,7 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         setPriorityOpen(false);
                         setDepartmentOpen(false);
                         setUserOpen(false);
-                      }} 
+                      }}
                       disabled={loading}
                     >
                       <Text style={[
@@ -910,6 +947,20 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         color={COLORS.textLight}
                       />
                     </TouchableOpacity>
+
+                    {projectTitleOpen && (
+                      <View style={styles.customInputWrapper}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type custom project name"
+                          placeholderTextColor={COLORS.textLight}
+                          value={formData.projectTitle}
+                          onChangeText={(value) => handleInputChange('projectTitle', value)}
+                          editable={!loading}
+                        />
+                      </View>
+                    )}
+
                     {projectTitleOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
                         {['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'].map((proj, idx) => (
@@ -926,6 +977,7 @@ function AssignTaskModal({ visible, onClose, onSave }) {
                         ))}
                       </View>
                     )}
+
                   </View>
 
                   {/* Task Description */}
@@ -1065,25 +1117,88 @@ function AssignTaskModal({ visible, onClose, onSave }) {
     </Modal>
   );
 }
- 
+
 
 // ========== MAIN HOME SCREEN ==========
 export default function HomePage() {
+  const [userRole, setUserRole] = useState('user');
+  const [currentUserId, setCurrentUserId] = useState(null);
+
   const insets = useSafeAreaInsets();
+  const { allUsers = [], myTasks = [], loading, fetchMyTasks, createTask, fetchAllTasks, allTasks = [] } = useTaskManagement();
+
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [assignTaskModalVisible, setAssignTaskModalVisible] = useState(false);
-  const [todaysTasks, setTodaysTasks] = useState([]);
+
+  // const [todaysTasks, setTodaysTasks] = useState([]);
+  // const [filteredTasks, setFilteredTasks] = useState([]);
+
+  const tasksToDisplay = userRole === 'admin' ? allTasks : myTasks;
 
   const [selectedDateRange, setSelectedDateRange] = useState({
     start: new Date(),
     end: new Date(),
   });
 
+  const filteredTasks = useMemo(() => {
+    if (!Array.isArray(myTasks)) return [];
+
+    return myTasks.map(task => ({
+      ...task,
+      assigned_to_name: task.assigned_by_name || task.username || 'Unknown',
+    })).filter(task => {
+      const taskDate = new Date(task.start || task.startDate);
+      const startDate = new Date(selectedDateRange.start);
+      const endDate = new Date(selectedDateRange.end);
+
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      return taskDate >= startDate && taskDate <= endDate;
+    });
+  }, [myTasks, selectedDateRange.start, selectedDateRange.end]);
+
+
+  // âœ… FIXED: Fetch ONCE on mount only
+  useEffect(() => {
+    fetchMyTasks();
+  }, []); // âœ… Empty array = run once only not in Loooooooooooooooop âŒ
+
+  useEffect(() => {
+    const getUserFromToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        if (token) {
+          const decoded = jwtDecode(token);  // âœ… Using correct import
+          setCurrentUserId(decoded.id);
+          setUserRole(decoded.role || 'user');  // âœ… Default to 'user'
+          console.log('ðŸ‘¤ Current User:', decoded.id);
+          console.log('ðŸ” Role:', decoded.role);
+        }
+      } catch (err) {
+        console.error('Error decoding token:', err);
+        setUserRole('user');  // âœ… Fallback
+      }
+    };
+    getUserFromToken();
+  }, []);
+
+  // âœ… Update useEffect to call correct function based on role:
+  useEffect(() => {
+    if (userRole === 'admin') {
+      console.log('ðŸ“Š Loading ALL tasks (Admin)');
+      fetchAllTasks();  // âœ… Load all tasks for admin
+    } else {
+      console.log('ðŸ“‹ Loading MY tasks (User)');
+      fetchMyTasks();   // âœ… Load only assigned tasks for user
+    }
+  }, [userRole, fetchAllTasks, fetchMyTasks]);
+
+
   // ===== RESPONSIVE CALCULATIONS =====
   const bottomPadding = useMemo(() => {
     // Dock height is approximately 80-100px
-    // Add extra buffer based on the device type
     if (isTablet) {
       return insets.bottom + 150;
     }
@@ -1095,30 +1210,6 @@ export default function HomePage() {
     return height - reservedSpace;
   }, [insets.top, insets.bottom]);
 
-  const filteredTasks = useMemo(() => {
-    const allTasks = [];
-
-    employeesData.forEach(employee => {
-      employee.tasks.forEach(task => {
-        const taskDate = new Date(task.startDate);
-        const startDate = new Date(selectedDateRange.start);
-        const endDate = new Date(selectedDateRange.end);
-
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-
-        if (taskDate >= startDate && taskDate <= endDate) {
-          allTasks.push({
-            ...task,
-            employeeName: employee.name,
-            employeeId: employee.id,
-          });
-        }
-      });
-    });
-
-    return allTasks;
-  }, [selectedDateRange]);
 
   const handleTaskPress = (task) => {
     setSelectedTask(task);
@@ -1130,16 +1221,36 @@ export default function HomePage() {
   };
 
   // Add task to today's list
-  const handleSaveTask = (taskData) => {
-    setTodaysTasks([...todaysTasks, {
-      ...taskData,
-      employeeName: taskData.assignee,
-      employeeId: Date.now(),
-    }]);
+  // const handleSaveTask = (taskData) => {
+  //   setTodaysTasks([...todaysTasks, {
+  //     ...taskData,
+  //     employeeName: taskData.assignee,
+  //     employeeId: Date.now(),
+  //   }]);
 
-    Alert.alert('Success', 'Task assigned successfully!');
-    setAssignTaskModalVisible(false);
+  //   Alert.alert('Success', 'Task assigned successfully!');
+  //   setAssignTaskModalVisible(false);
+  // };
+
+  const handleSaveTask = async (taskData) => {
+    console.log('ðŸ”µ [HomePage] handleSaveTask called');
+    console.log('Task Data received:', taskData);
+
+    try {
+      console.log('ðŸ“¤ Calling createTask...');
+      const response = await createTask(taskData);
+      console.log('âœ… Task created:', response);
+
+      Alert.alert('Success', 'Task assigned successfully!');
+      setAssignTaskModalVisible(false);
+    } catch (error) {
+      console.error('âŒ createTask error:', error);
+      Alert.alert('Error', error.message || 'Failed to create task');
+    }
   };
+
+
+
 
   return (
     <View style={styles.container}>
@@ -1181,34 +1292,13 @@ export default function HomePage() {
             </View>
 
             {/* Show filtered tasks + today's new tasks */}
-            {(filteredTasks.length > 0 || todaysTasks.length > 0) ? (
-              <>
-                {filteredTasks.map((task, index) => (
-                  <TaskCard
-                    key={`${task.employeeId}-${task.id}`}
-                    task={task}
-                    onPress={() => handleTaskPress(task)}
-                  />
-                ))}
-                {todaysTasks.map((task) => (
-                  <TaskCard
-                    key={`today-${task.id}`}
-                    task={task}
-                    onPress={() => handleTaskPress(task)}
-                  />
-                ))}
-              </>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No tasks for today</Text>
-              </View>
-            )}
-
-            {/* {filteredTasks.length > 0 ? (
-              filteredTasks.map((task, index) => (
+            {loading ? (
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            ) : filteredTasks.length > 0 ? (
+              filteredTasks.map((task) => (
                 <TaskCard
-                  key={`${task.employeeId}-${task.id}`}
+                  // key={`${task.employeeId}-${task.id}`}
+                  key={task.id}
                   task={task}
                   onPress={() => handleTaskPress(task)}
                 />
@@ -1216,13 +1306,13 @@ export default function HomePage() {
             ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No tasks found for selected date range</Text>
+                <Text style={styles.emptyText}>No tasks for today</Text>
               </View>
-            )} */}
+            )}
+
           </View>
         </ScrollView>
       </View>
-
       <TaskModal
         visible={modalVisible}
         task={selectedTask}
@@ -1234,6 +1324,7 @@ export default function HomePage() {
         visible={assignTaskModalVisible}
         onClose={() => setAssignTaskModalVisible(false)}
         onSave={handleSaveTask}
+        allUsers={allUsers}
       />
 
     </View>
@@ -1412,7 +1503,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     alignItems: 'center',
-    justifyContent: 'space-between',  // Add this line
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 16,
   },
@@ -1424,7 +1515,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
-    marginLeft: 'auto',  // Push button to right
+    marginLeft: 'auto',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1497,6 +1588,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 16,
   },
+  roleIndicator: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1562,182 +1660,198 @@ const styles = StyleSheet.create({
   },
 
   // MODAL STYLES
-   modalRoot: {
-  flex: 1,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-},
+  modalRoot: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
 
-overlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  justifyContent: 'flex-end',
-},
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
 
-sheetWrapper: {
-  width: '100%',
-  flex: 1,
-  justifyContent: 'flex-end',
-},
+  sheetWrapper: {
+    width: '100%',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
 
-modalContent: {
-  backgroundColor: COLORS.background,
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  overflow: 'hidden',
-  maxHeight: '95%',
-  flex: 1,
-},
+  modalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    maxHeight: '95%',
+    flex: 1,
+  },
 
-modalHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingVertical: 18,
-},
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
 
-modalTitle: {
-  fontSize: 22,
-  fontWeight: '800',
-  color: '#fff',
-  textAlign: 'center',
-  flex: 1,
-},
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
 
-closeButton: {
-  width: 44,
-  height: 44,
-  justifyContent: 'center',
-  alignItems: 'center',
-  borderRadius: 22,
-},
+  closeButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 22,
+  },
 
-modalBody: {
-  flex: 1,
-  paddingHorizontal: 20,
-  paddingTop: 16,
-  backgroundColor: COLORS.background,
-},
+  modalBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: COLORS.background,
+  },
 
-scrollViewContent: {
-  paddingBottom: 60,
-  flexGrow: 1,
-},
+  scrollViewContent: {
+    paddingBottom: 60,
+    flexGrow: 1,
+  },
 
-// Form Styles
-section: {
-  backgroundColor: COLORS.cardBg,
-  borderRadius: 16,
-  padding: 16,
-},
+  // Form Styles
+  section: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    padding: 16,
+  },
 
-fieldLabel: {
-  fontSize: 12,
-  fontWeight: '700',
-  color: COLORS.text,
-  marginBottom: 8,
-  marginTop: 14,
-},
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+    marginTop: 14,
+  },
 
-input: {
-  backgroundColor: '#F5F7FA',
-  borderRadius: 12,
-  padding: 12,
-  fontSize: 14,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  color: COLORS.text,
-  marginBottom: 4,
-},
+  input: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    color: COLORS.text,
+    marginBottom: 4,
+  },
 
-// Dropdown Styles
-dropdown: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  backgroundColor: '#F5F7FA',
-  borderRadius: 12,
-  paddingHorizontal: 12,
-  paddingVertical: 12,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  marginTop: 6,
-  marginBottom: 8,
-},
+  // Dropdown Styles
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 6,
+    marginBottom: 8,
+  },
 
-dropdownText: {
-  fontSize: 14,
-  color: COLORS.text,
-  flex: 1,
-},
+  dropdownText: {
+    fontSize: 14,
+    color: COLORS.text,
+    flex: 1,
+  },
+  customInputWrapper: {
+    marginBottom: 12,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 8,
+    gap: 6,
+  },
 
-dropdownMenu: {
-  marginTop: 6,
-  marginBottom: 12,
-  backgroundColor: COLORS.cardBg,
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  overflow: 'hidden',
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.15,
-  shadowRadius: 8,
-  elevation: 8,
-},
+  customInputLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    fontWeight: '500',
+    paddingHorizontal: 4,
+  },
 
-dropdownItem: {
-  paddingVertical: 12,
-  paddingHorizontal: 12,
-  borderBottomWidth: 1,
-  borderBottomColor: COLORS.border,
-},
+  dropdownMenu: {
+    marginTop: 6,
+    marginBottom: 12,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
 
-dropdownItemText: {
-  fontSize: 14,
-  color: COLORS.text,
-  fontWeight: '500',
-},
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
 
-// Button Styles
-buttonGroup: {
-  flexDirection: 'row',
-  gap: 12,
-  marginTop: 24,
-  marginBottom: 16,
-},
+  dropdownItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
 
-saveButton: {
-  flex: 1,
-  backgroundColor: COLORS.primary,
-  borderRadius: 12,
-  paddingVertical: 14,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+  // Button Styles
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 16,
+  },
 
-saveButtonText: {
-  color: '#fff',
-  fontSize: 14,
-  fontWeight: '700',
-},
+  saveButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-cancelButton: {
-  flex: 1,
-  backgroundColor: COLORS.border,
-  borderRadius: 12,
-  paddingVertical: 14,
-  alignItems: 'center',
-  justifyContent: 'center',
-},
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 
-cancelButtonText: {
-  color: COLORS.text,
-  fontSize: 14,
-  fontWeight: '700',
-},
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-//======================
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  //======================
   employeeNameCenter: {
     fontSize: isTablet ? 28 : 24,
     fontWeight: '800',
@@ -1773,7 +1887,7 @@ cancelButtonText: {
   },
 
   // ========== ASSIGN TASK MODAL ==========
- modalRoot: {
+  modalRoot: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
@@ -2000,74 +2114,7 @@ cancelButtonText: {
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
-   backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -2201,7 +2248,7 @@ backgroundColor: COLORS.primary,
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
- backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -2268,7 +2315,7 @@ backgroundColor: COLORS.primary,
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
-  backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -2335,7 +2382,7 @@ backgroundColor: COLORS.primary,
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
-   backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -2402,7 +2449,7 @@ backgroundColor: COLORS.primary,
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
-  backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -2469,7 +2516,74 @@ backgroundColor: COLORS.primary,
     height: 1,
     backgroundColor: COLORS.border,
     marginVertical: 20,
- backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  cancelButtonText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // SECTION STYLE
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 16,
+    marginTop: 16,
+  },
+
+  //=============================================
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
