@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   TextInput,
   Alert,
-  Platform, ActivityIndicator,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,11 +23,8 @@ import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
 import * as MediaLibrary from 'expo-media-library';
 import XLSX from 'xlsx';
-import TaskService from './services/TaskService';
 import useTaskManagement from './hooks/useTaskManagement';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import jwtDecode from 'jwt-decode';
-
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
 
@@ -46,133 +44,12 @@ const COLORS = {
 
 const STATUS_COLORS = {
   Incomplete: '#95A5A6',
-  Pending: '#F39C12',
-  'In Progress': '#3498DB',
-  Completed: '#27AE60',
+  pending: '#F39C12',
+  'in progress': '#3498DB',
+  completed: '#27AE60',
   Paused: '#E74C3C',
 };
 
-// const employeesData = [
-//   {
-//     id: 1,
-//     name: "Rajesh Kumar",
-//     tasks: [
-//       {
-//         id: 101,
-//         name: "Complete UI Design for Dashboard",
-//         status: "In Progress",
-//         project: "Admin Portal",
-//         description: "Design the admin dashboard UI with glassomorphic style components",
-//         startDate: "2025-11-25T09:00:00",
-//         endDate: "2025-11-29T17:00:00"
-//       },
-//       {
-//         id: 102,
-//         name: "API Integration Testing",
-//         status: "Completed",
-//         project: "Mobile App Backend",
-//         description: "Test all API endpoints with Postman",
-//         startDate: "2025-11-24T10:00:00",
-//         endDate: "2025-11-28T16:00:00"
-//       },
-//       {
-//         id: 103,
-//         name: "Database Optimization",
-//         status: "Pending",
-//         project: "Performance Enhancement",
-//         description: "Optimize database queries for faster response times",
-//         startDate: "2025-11-30T09:00:00",
-//         endDate: "2025-12-02T17:00:00"
-//       }
-//     ]
-//   },
-//   {
-//     id: 2,
-//     name: "Priya Sharma",
-//     tasks: [
-//       {
-//         id: 201,
-//         name: "Frontend Components Development",
-//         status: "In Progress",
-//         project: "Admin Portal",
-//         description: "Develop reusable React components for dashboard",
-//         startDate: "2025-11-26T08:30:00",
-//         endDate: "2025-11-29T18:00:00"
-//       },
-//       {
-//         id: 202,
-//         name: "Bug Fixes - Mobile App",
-//         status: "Incomplete",
-//         project: "Mobile App",
-//         description: "Fix reported bugs in iOS and Android versions",
-//         startDate: "2025-11-28T09:00:00",
-//         endDate: "2025-12-01T17:00:00"
-//       }
-//     ]
-//   },
-//   {
-//     id: 3,
-//     name: "Amit Patel",
-//     tasks: [
-//       {
-//         id: 301,
-//         name: "Server Setup and Configuration",
-//         status: "Completed",
-//         project: "Infrastructure",
-//         description: "Setup production servers on AWS",
-//         startDate: "2025-11-20T10:00:00",
-//         endDate: "2025-11-27T16:00:00"
-//       },
-//       {
-//         id: 302,
-//         name: "Security Audit Report",
-//         status: "Paused",
-//         project: "Security",
-//         description: "Conduct comprehensive security audit of the system",
-//         startDate: "2025-11-25T09:00:00",
-//         endDate: "2025-12-05T17:00:00"
-//       },
-//       {
-//         id: 303,
-//         name: "Documentation Update",
-//         status: "Pending",
-//         project: "Documentation",
-//         description: "Update API documentation with new endpoints",
-//         startDate: "2025-11-29T10:00:00",
-//         endDate: "2025-12-03T17:00:00"
-//       }
-//     ]
-//   },
-//   {
-//     id: 4,
-//     name: "Neha Singh",
-//     tasks: [
-//       {
-//         id: 401,
-//         name: "User Experience Testing and Feedback Collection",
-//         status: "In Progress",
-//         project: "Admin Portal",
-//         description: "Test user experience and collect feedback from stakeholders",
-//         startDate: "2025-11-27T09:00:00",
-//         endDate: "2025-11-29T17:00:00"
-//       },
-//       {
-//         id: 402,
-//         name: "Mobile App Testing",
-//         status: "Completed",
-//         project: "Mobile App",
-//         description: "Perform QA testing on both iOS and Android",
-//         startDate: "2025-11-23T08:00:00",
-//         endDate: "2025-11-28T18:00:00"
-//       }
-//     ]
-//   }
-// ];
-
-// ========== UTILITY FUNCTIONS ==========
-const truncateText = (text, maxLength = 20) => {
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-};
 
 const formatDate = (date) => {
   return date.toLocaleDateString('en-US', {
@@ -186,9 +63,12 @@ const calculateDuration = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffMs = end - start;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  return `${diffDays} days, ${diffHours} hours`;
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  return `${days} days, ${hours} hours ${minutes} min`;
 };
 
 const formatDateTime = (dateString) => {
@@ -219,7 +99,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
   try {
     // Check if there are tasks
     if (!tasks || tasks.length === 0) {
-      alert('âŒ No tasks to export for the selected date range');
+      alert('No tasks to export for the selected date range');
       return;
     }
 
@@ -228,7 +108,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show loading notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'ðŸ“Š Exporting Tasks',
+        title: 'Exporting Tasks',
         body: `Preparing ${fileName}...`,
         sound: 'default',
       },
@@ -240,13 +120,13 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     if (status !== 'granted') {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'âŒ Permission Denied',
+          title: 'Permission Denied',
           body: 'Storage permission is required to export files',
           sound: 'default',
         },
         trigger: null,
       });
-      alert('âŒ Storage permission denied. Cannot save file.');
+      alert('Storage permission denied. Cannot save file.');
       return;
     }
 
@@ -293,7 +173,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show success notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'âœ… Export Successful',
+        title: 'Export Successful',
         body: `${fileName}\nTotal Tasks: ${tasks.length}`,
         sound: 'default',
       },
@@ -312,14 +192,14 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show error notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'âŒ Export Failed',
+        title: 'ðŸ”´ Export Failed',
         body: error.message || 'Something went wrong',
         sound: 'default',
       },
       trigger: null,
     });
 
-    alert('âŒ Export Failed:\n' + error.message);
+    alert('ðŸ”´ Export Failed:\n' + error.message);
   }
 };
 
@@ -327,9 +207,9 @@ const exportTasksToExcel = async (tasks, dateRange) => {
 function Header() {
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning! ðŸ‘‹';
-    if (hour < 18) return 'Good Afternoon! ðŸ‘‹';
-    return 'Good Evening! ðŸ‘‹';
+    if (hour < 12) return 'Good Morning! 👋🏻';
+    if (hour < 18) return 'Good Afternoon! 👋🏻';
+    return 'Good Evening! 👋🏻';
   };
 
   return (
@@ -362,7 +242,7 @@ function Header() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statsOverviewCard}>
+        {/* <View style={styles.statsOverviewCard}>
           <Text style={styles.statsTitle}>Today Stats</Text>
           <View style={styles.overviewRow}>
             <View style={styles.overviewItem}>
@@ -380,52 +260,31 @@ function Header() {
               <Text style={styles.overviewLabel}>Efficiency</Text>
             </View>
           </View>
-        </View>
+        </View> */}
       </View>
     </LinearGradient>
   );
 }
 
 // ========== FILTER BAR COMPONENT ==========
-function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleTodayPress = () => {
     const today = new Date();
-    setSelectedDateRange({
-      start: today,
-      end: today,
-    });
+    setSelectedDate(today);
   };
 
-  const handleStartDateChange = (event, date) => {
+  const handleDateChange = (event, date) => {
     if (Platform.OS === 'android') {
-      setShowStartPicker(false);
+      setShowDatePicker(false);
     }
     if (date) {
-      setSelectedDateRange(prev => ({
-        ...prev,
-        start: date,
-      }));
+      setSelectedDate(date);
     }
   };
 
-  const handleEndDateChange = (event, date) => {
-    if (Platform.OS === 'android') {
-      setShowEndPicker(false);
-    }
-    if (date) {
-      setSelectedDateRange(prev => ({
-        ...prev,
-        end: date,
-      }));
-    }
-  };
-
-  const dateRangeText = selectedDateRange.start.toDateString() === selectedDateRange.end.toDateString()
-    ? formatDate(selectedDateRange.start)
-    : `${formatDate(selectedDateRange.start)} - ${formatDate(selectedDateRange.end)}`;
+  const dateText = formatDate(selectedDate);
 
   return (
     <>
@@ -438,16 +297,16 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
 
           <TouchableOpacity
             style={styles.dateRangeButton}
-            onPress={() => setShowStartPicker(true)}
+            onPress={() => setShowDatePicker(true)}
           >
             <Ionicons name="calendar" size={16} color={COLORS.secondary} />
-            <Text style={styles.dateRangeText}>{dateRangeText}</Text>
+            <Text style={styles.dateRangeText}>{dateText}</Text>
             <Ionicons name="chevron-down" size={16} color={COLORS.textLight} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={() => exportTasksToExcel(filteredTasks, selectedDateRange)}
+            onPress={() => exportTasksToExcel(filteredTasks, selectedDate)}
           >
             <Ionicons name="download" size={16} color="#fff" />
             <Text style={styles.exportButtonText}>Export</Text>
@@ -455,21 +314,12 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
         </View>
       </View>
 
-      {showStartPicker && (
+      {showDatePicker && (
         <DateTimePicker
-          value={selectedDateRange.start}
+          value={selectedDate}
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleStartDateChange}
-        />
-      )}
-
-      {showEndPicker && (
-        <DateTimePicker
-          value={selectedDateRange.end}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleEndDateChange}
+          onChange={handleDateChange}
         />
       )}
     </>
@@ -477,8 +327,7 @@ function FilterBar({ selectedDateRange, setSelectedDateRange, filteredTasks }) {
 }
 
 // ========== TASK CARD COMPONENT ==========
-// In TaskCard component
-function TaskCard({ task, onPress, showAssignedTo }) {
+function TaskCard({ task, onPress }) {
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
 
   return (
@@ -486,18 +335,21 @@ function TaskCard({ task, onPress, showAssignedTo }) {
       <View style={styles.cardContent}>
         <View style={styles.employeeSection}>
           <Text style={styles.employeeName}>
-            {task.assigned_to_name || 'Unassigned'}
+            {task.employeeName || 'Unassigned'}
           </Text>
         </View>
 
         <View style={styles.taskSection}>
-          <Text style={styles.taskName}>{truncateText(task.title, 25)}</Text>
+          <Text style={styles.taskName}>
+            {task.name ? (task.name.length > 30 ? task.name.substring(0, 30) + '...' : task.name) : 'No Title'}
+          </Text>
+          <Text style={styles.projectText}>{task.Project_Title}</Text>
         </View>
 
         <View style={styles.statusSection}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {task.status}
+            {task.status || 'pending'}
           </Text>
         </View>
 
@@ -508,7 +360,7 @@ function TaskCard({ task, onPress, showAssignedTo }) {
 }
 
 // ========== TASK MODAL COMPONENT ==========
-function TaskModal({ visible, task, onClose, modalHeight }) {
+function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeletePress }) {
   if (!task) return null;
 
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
@@ -560,7 +412,7 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
 
               <View style={styles.detailRow}>
                 <Text style={styles.label}>Project:</Text>
-                <Text style={styles.value}>{task.project}</Text>
+                <Text style={styles.value}>{task.Project_Title}</Text>
               </View>
 
               <View style={styles.detailRow}>
@@ -587,7 +439,7 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
               </Text>
 
               <View style={[styles.detailRow, { marginTop: 16 }]}>
-                <Text style={styles.label}>Total Duration:</Text>
+                <Text style={styles.label}>Total Duration :</Text>
                 <Text style={[styles.value, { color: COLORS.primary, fontWeight: '700' }]}>
                   {calculateDuration(task.startDate, task.endDate)}
                 </Text>
@@ -596,6 +448,29 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
 
             <View style={{ height: 40 }} />
           </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.editBtn]}
+              onPress={() => {
+                onEditPress?.();  // Trigger edit
+              }}
+            >
+              <Ionicons name="pencil" size={18} color="#fff" />
+              <Text style={styles.modalButtonText}>Update Task</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.deleteBtn]}
+              onPress={() => {
+                onDeletePress?.();  // Trigger delete
+              }}
+            >
+              <Ionicons name="trash" size={18} color="#fff" />
+              <Text style={styles.modalButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+
         </View>
       </TouchableOpacity>
     </Modal>
@@ -604,17 +479,29 @@ function TaskModal({ visible, task, onClose, modalHeight }) {
 
 // ========== ASSIGN TASK MODAL ==========
 function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
+  // Helper to convert priority label to number
+  const getPriorityNumber = (label) => {
+    if (label === 'Critical') return 1;
+    if (label === 'High') return 1;
+    if (label === 'Medium') return 2;
+    if (label === 'Low') return 3;
+    return 2;
+  };
+
   const [formData, setFormData] = useState({
     department: '',
     title: '',
-    projectTitle: '',
+    Project_Title: '',
     taskDescription: '',
     priority: '',
-    assgnUserId: '',
+    assignUserId: '',
     assignUser: '',
     duration: '',
+    durationHours: '',
+    durationMinutes: '',
     startTime: '',
-    endTime: ''
+    endTime: '',
+    durationInputMode: 'auto',
   });
   const [loading, setLoading] = useState(false);
   const [departmentOpen, setDepartmentOpen] = useState(false);
@@ -637,14 +524,17 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
       setFormData({
         department: '',
         title: '',
-        projectTitle: '',
+        Project_Title: '',
         taskDescription: '',
         priority: '',
         assignUserId: '',
         assignUser: '',
         duration: '',
+        durationHours: '',
+        durationMinutes: '',
         startTime: '',
         endTime: '',
+        durationInputMode: 'auto',
       });
       setDepartmentOpen(false);
       setPriorityOpen(false);
@@ -671,57 +561,85 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
         const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
         const formattedDuration = `${diffHours}.${String(diffMinutes).padStart(2, '0')}`;
         handleInputChange('duration', formattedDuration);
+
+        // Only update if user manually changed times (not from manual duration)
+        if (formData.durationInputMode !== 'manual') {
+          handleInputChange('durationHours', String(diffHours));
+          handleInputChange('durationMinutes', String(diffMinutes));
+        }
       } else {
         handleInputChange('duration', '0.00');
       }
+      // reset modes
+      handleInputChange('durationInputMode', 'auto');
     }
   }, [formData.startTime, formData.endTime]);
 
-  const handleSave = async () => {
-    console.log('ðŸ”µ [MODAL] handleSave called');
-    console.log('Form Data:', formData);
+  // ========== MANUAL DURATION INPUT EFFECT ==========
+  useEffect(() => {
+    if (formData.durationHours || formData.durationMinutes) {
+      const hours = parseInt(formData.durationHours) || 0;
+      const minutes = parseInt(formData.durationMinutes) || 0;
 
-    // âœ… Use projectTitle as title if title is empty
-    const finalTitle = formData.title?.trim() || formData.projectTitle?.trim();
+      // Format for display (e.g., "5.30" for 5 hours 30 minutes)
+      const formattedDuration = `${hours}.${String(minutes).padStart(2, '0')}`;
+      handleInputChange('duration', formattedDuration);
 
-    if (!finalTitle) {
-      Alert.alert('Error', 'Project title is required');
-      console.log('âŒ Title/Project missing');
-      return;
-    }
-    if (!formData.assignUserId) {
-      Alert.alert('Error', 'User must be assigned');
-      console.log('âŒ User not assigned');
-      return;
-    }
-    if (!formData.startTime) {
-      Alert.alert('Error', 'Start time is required');
-      console.log('âŒ Start time missing');
-      return;
-    }
-    if (!formData.endTime) {
-      Alert.alert('Error', 'End time is required');
-      console.log('âŒ End time missing');
-      return;
-    }
+      // Auto-set start and end times based on manual duration
+      if (hours > 0 || minutes > 0) {
+        const now = new Date();
+        const endTime = new Date(now.getTime() + (hours * 60 + minutes) * 60 * 1000);
 
-    console.log('âœ… All validations passed');
-    setLoading(true);
-    try {
-      // âœ… Pass corrected formData with title set
-      const correctedData = {
-        ...formData,
-        title: finalTitle, // âœ… Use projectTitle as fallback
-      };
-      console.log('ðŸ“¤ Calling onSave with:', correctedData);
-      await onSave(correctedData);
-    } catch (error) {
-      console.error('âŒ onSave error:', error);
-    } finally {
-      setLoading(false);
+        handleInputChange('startTime', now.toISOString());
+        handleInputChange('endTime', endTime.toISOString());
+        handleInputChange('durationInputMode', 'manual');
+      }
     }
-  };
+  }, [formData.durationHours, formData.durationMinutes]);
+ 
+ const handleSave = async () => {
+  const finalTitle = formData.title?.trim() || formData.Project_Title?.trim();
 
+  if (!finalTitle) {
+    Alert.alert('Error', 'Project title is required');
+    return;
+  }
+  if (!formData.assignUserId && formData.assignUserId !== 0) {
+    Alert.alert('Error', 'User must be assigned');
+    return;
+  }
+  if (!formData.startTime) {
+    Alert.alert('Error', 'Start time is required');
+    return;
+  }
+  if (!formData.endTime) {
+    Alert.alert('Error', 'End time is required');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // ✅ EXACT MATCH for createTask expectations:
+    const taskPayload = {
+      department: formData.department || '',           // ← Used for title
+      projectTitle: formData.Project_Title || '',      // ← createTask expects camelCase!
+      taskDescription: formData.taskDescription || '',
+      priority: formData.priority,                     // ← String 'High', 'Medium', etc.
+      assignUserId: parseInt(formData.assignUserId),   // ← Integer
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      duration: formData.duration || '0.00'            // ← HH.MM format
+    };
+
+    console.log('✅ MATCHED createTask format:', JSON.stringify(taskPayload, null, 2));
+    await onSave(taskPayload);
+  } catch (error) {
+    console.error('❌ Save error:', error);
+    Alert.alert('Error', 'Failed to create task');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     setDepartmentOpen(false);
@@ -836,9 +754,9 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                     {userOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
                         {allUsers && allUsers.length > 0 ? (
-                          // âœ… FILTER: Show only users with role === 'user'
+                          // FILTER: Show only users with role === 'user'
                           allUsers
-                            .filter(user => user.role === 'user')  // âœ… ONLY 'user' role
+                            .filter(user => user.role === 'user')  // ONLY 'user' role
                             .map((user) => (
                               <TouchableOpacity
                                 key={user.id}
@@ -937,9 +855,9 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                     >
                       <Text style={[
                         styles.dropdownText,
-                        !formData.projectTitle && { color: COLORS.textLight },
+                        !formData.Project_Title && { color: COLORS.textLight },
                       ]}>
-                        {formData.projectTitle || 'Select project'}
+                        {formData.Project_Title || 'Select project'}
                       </Text>
                       <Ionicons
                         name={projectTitleOpen ? 'chevron-up' : 'chevron-down'}
@@ -954,8 +872,8 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                           style={styles.input}
                           placeholder="Type custom project name"
                           placeholderTextColor={COLORS.textLight}
-                          value={formData.projectTitle}
-                          onChangeText={(value) => handleInputChange('projectTitle', value)}
+                          value={formData.Project_Title}
+                          onChangeText={(value) => handleInputChange('Project_Title', value)}
                           editable={!loading}
                         />
                       </View>
@@ -968,7 +886,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                             key={idx}
                             style={styles.dropdownItem}
                             onPress={() => {
-                              handleInputChange('projectTitle', proj);
+                              handleInputChange('Project_Title', proj);
                               setProjectTitleOpen(false);
                             }}
                           >
@@ -1036,14 +954,62 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                   </View>
 
                   {/* Duration */}
-                  <Text style={styles.fieldLabel}>Calculated Duration (HH.mm)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="0.00"
-                    placeholderTextColor={COLORS.textLight}
-                    value={formData.duration}
-                    editable={false} // Duration is now calculated
-                  />
+                  <View style={styles.durationSection}>
+                    <Text style={styles.fieldLabel}>Duration <Text style={{ color: COLORS.danger }}>*</Text></Text>
+
+                    {/* Duration Display */}
+                    <View style={styles.durationDisplay}>
+                      <Text style={styles.durationDisplayText}>
+                        {formData.duration || '0.00'} hours
+                      </Text>
+                    </View>
+
+                    {/* Hours & Minutes Inputs */}
+                    <View style={styles.durationInputRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subLabel}>Hours</Text>
+                        <TextInput
+                          style={styles.durationInput}
+                          placeholder="0"
+                          placeholderTextColor={COLORS.textLight}
+                          keyboardType="number-pad"
+                          value={formData.durationHours}
+                          onChangeText={(value) => {
+                            handleInputChange('durationHours', value);
+                            handleInputChange('durationInputMode', 'manual');
+                          }}
+                          editable={!loading}
+                          maxLength={2}
+                        />
+                      </View>
+
+                      <Text style={styles.durationSeparator}>:</Text>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subLabel}>Minutes</Text>
+                        <TextInput
+                          style={styles.durationInput}
+                          placeholder="00"
+                          placeholderTextColor={COLORS.textLight}
+                          keyboardType="number-pad"
+                          value={formData.durationMinutes}
+                          onChangeText={(value) => {
+                            // Limit to 59 minutes
+                            const limited = value.length > 2 ? value.slice(0, 2) : value;
+                            handleInputChange('durationMinutes', limited);
+                            handleInputChange('durationInputMode', 'manual');
+                          }}
+                          editable={!loading}
+                          maxLength={2}
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={styles.durationHint}>
+                      💡 Enter duration or select start/end times 🕔
+                    </Text>
+                  </View>
+
 
                   {/* Start Time */}
                   <Text style={styles.fieldLabel}>Start Time</Text>
@@ -1119,82 +1085,595 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
 }
 
 
+// ========== COMPLETE EDIT TASK MODAL WITH ALL FEATURES ==========
+function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
+  const [editedTask, setEditedTask] = useState({
+    title: '',
+    description: '',
+    department: '',
+    Project_Title: '',
+    status: 'Pending',
+    priority: 'Medium',
+    durationHours: '',
+    durationMinutes: '',
+    duration: '',
+    startTime: '',
+    endTime: '',
+    durationInputMode: 'auto',
+  });
+
+  const [departmentOpen, setDepartmentOpen] = useState(false);
+  const [projectTitleOpen, setProjectTitleOpen] = useState(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [dateTimePickerMode, setDateTimePickerMode] = useState('date');
+  const [currentPicker, setCurrentPicker] = useState(null);
+
+  const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
+  const projectOptions = ['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'];
+
+  // ========== INITIALIZE FORM WITH ACTUAL VALUES ==========
+  useEffect(() => {
+    if (task && visible) {
+      console.log('📋 Task data:', {
+        id: task.id,
+        name: task.name,
+        startDate: task.startDate,
+        endDate: task.endDate,
+        duration_minutes: task.duration_minutes,
+      });
+
+      // Parse duration from minutes correctly
+      const totalMinutes = parseInt(task.duration_minutes) || 0;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      setEditedTask({
+        title: task.name || '',
+        description: task.description || '',
+        department: task.department || '',
+        Project_Title: task.Project_Title || '',
+        status: task.status === 'pending' ? 'Pending' : (task.status || 'Pending'),
+        priority: getPriorityLabel(task.priority),
+        durationHours: String(hours),
+        durationMinutes: String(minutes),
+        duration: `${hours}.${String(minutes).padStart(2, '0')}`,
+        startTime: task.startDate || '',
+        endTime: task.endDate || '',
+        durationInputMode: 'auto',
+      });
+
+      console.log('✅ Parsed duration:', { hours, minutes, totalMinutes });
+    }
+  }, [task, visible]);
+
+  // Helper to convert priority number to label
+  const getPriorityLabel = (priorityNum) => {
+    if (priorityNum === 1) return 'High';
+    if (priorityNum === 2) return 'Medium';
+    if (priorityNum === 3) return 'Low';
+    return 'Medium';
+  };
+
+  // Helper to convert priority label to number
+  const getPriorityNumber = (label) => {
+    if (label === 'High') return 1;
+    if (label === 'Medium') return 2;
+    if (label === 'Low') return 3;
+    return 2;
+  };
+
+  const handleInputChange = (field, value) => {
+    setEditedTask(prev => ({ ...prev, [field]: value }));
+  };
+
+  // ========== AUTO-CALCULATE DURATION FROM START/END TIME ==========
+  useEffect(() => {
+    if (editedTask.startTime && editedTask.endTime && editedTask.durationInputMode === 'auto') {
+      const start = new Date(editedTask.startTime);
+      const end = new Date(editedTask.endTime);
+
+      if (end > start) {
+        const diffMs = end - start;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        handleInputChange('durationHours', String(diffHours));
+        handleInputChange('durationMinutes', String(diffMinutes));
+        handleInputChange('duration', `${diffHours}.${String(diffMinutes).padStart(2, '0')}`);
+      }
+    }
+  }, [editedTask.startTime, editedTask.endTime, editedTask.durationInputMode]);
+
+  // ========== MANUAL DURATION INPUT ==========
+  useEffect(() => {
+    if ((editedTask.durationHours || editedTask.durationMinutes) && editedTask.durationInputMode === 'manual') {
+      const hours = parseInt(editedTask.durationHours) || 0;
+      const minutes = parseInt(editedTask.durationMinutes) || 0;
+
+      const formattedDuration = `${hours}.${String(minutes).padStart(2, '0')}`;
+      handleInputChange('duration', formattedDuration);
+
+      // Auto-set end time based on start time + duration
+      if (editedTask.startTime && (hours > 0 || minutes > 0)) {
+        const start = new Date(editedTask.startTime);
+        const end = new Date(start.getTime() + (hours * 60 + minutes) * 60 * 1000);
+        handleInputChange('endTime', end.toISOString());
+      }
+    }
+  }, [editedTask.durationHours, editedTask.durationMinutes, editedTask.durationInputMode]);
+
+  const handleSave = async () => {
+    if (!editedTask.title.trim()) {
+      Alert.alert('Error', 'Task title cannot be empty');
+      return;
+    }
+
+    if (!editedTask.startTime) {
+      Alert.alert('Error', 'Start time is required');
+      return;
+    }
+
+    if (!editedTask.endTime) {
+      Alert.alert('Error', 'End time is required');
+      return;
+    }
+
+    // Calculate total minutes correctly
+    const durationParts = (editedTask.duration || '0.00').split('.');
+    const hours = parseInt(durationParts[0]) || 0;
+    const minutes = parseInt(durationParts[1]) || 0;
+    const totalDurationMinutes = (hours * 60) + minutes;
+
+    const updateData = {
+      title: editedTask.title,
+      description: editedTask.description,
+      department: editedTask.department,
+      Project_Title: editedTask.Project_Title,
+      status: editedTask.status.toLowerCase(),
+      priority: getPriorityNumber(editedTask.priority),
+      duration_minutes: totalDurationMinutes,
+      start: editedTask.startTime,
+      end_time: editedTask.endTime,
+    };
+
+    console.log('💾 Saving update:', updateData);
+    await onSave(task.id, updateData);
+  };
+
+  const openDateTimePicker = (pickerType, mode) => {
+    setCurrentPicker(pickerType);
+    setDateTimePickerMode(mode);
+    setShowDateTimePicker(true);
+  };
+
+  const onDateTimeChange = (event, selectedDate) => {
+    setShowDateTimePicker(false);
+    if (selectedDate) {
+      const currentVal = editedTask[currentPicker]
+        ? new Date(editedTask[currentPicker])
+        : new Date();
+
+      if (dateTimePickerMode === 'date') {
+        currentVal.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        handleInputChange(currentPicker, currentVal.toISOString());
+        setTimeout(() => openDateTimePicker(currentPicker, 'time'), 200);
+      } else {
+        currentVal.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+        handleInputChange(currentPicker, currentVal.toISOString());
+        handleInputChange('durationInputMode', 'auto');
+      }
+    }
+  };
+
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  if (!task) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={styles.modalRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={onClose}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+            style={[styles.sheetWrapper, { maxHeight: height * 0.95 }]}
+          >
+            <View style={styles.modalContent}>
+              {/* Header */}
+              <LinearGradient
+                colors={['#00D4FF', '#0099FF', '#667EEA']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.modalHeader}
+              >
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <Ionicons name="close" size={28} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Update Task</Text>
+                <View style={{ width: 44 }} />
+              </LinearGradient>
+
+              {/* Body */}
+              <ScrollView
+                style={styles.modalBody}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.section}>
+
+                  {/* Task Title */}
+                  <Text style={styles.fieldLabel}>Task Title *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter task title"
+                    placeholderTextColor={COLORS.textLight}
+                    value={editedTask.title}
+                    onChangeText={(value) => handleInputChange('title', value)}
+                    editable={!loading}
+                  />
+
+                  {/* Description */}
+                  <Text style={styles.fieldLabel}>Description</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                    placeholder="Enter task description"
+                    placeholderTextColor={COLORS.textLight}
+                    value={editedTask.description}
+                    onChangeText={(value) => handleInputChange('description', value)}
+                    editable={!loading}
+                    multiline
+                  />
+
+                  {/* Department Dropdown
+                  <Text style={styles.fieldLabel}>Department</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => setDepartmentOpen(prev => !prev)}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !editedTask.department && { color: COLORS.textLight },
+                      ]}>
+                        {editedTask.department || 'Select department'}
+                      </Text>
+                      <Ionicons
+                        name={departmentOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+
+                    {departmentOpen && (
+                      <View style={styles.customInputWrapper}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type custom department"
+                          placeholderTextColor={COLORS.textLight}
+                          value={editedTask.department}
+                          onChangeText={(value) => handleInputChange('department', value)}
+                          editable={!loading}
+                        />
+                      </View>
+                    )}
+
+                    {departmentOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        {departments.map((dept, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('department', dept);
+                              setDepartmentOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{dept}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View> */}
+
+                  {/* Project Title */}
+
+                  <Text style={styles.fieldLabel}>Project Title</Text>
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => setProjectTitleOpen(prev => !prev)}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !editedTask.Project_Title && { color: COLORS.textLight },
+                      ]}>
+                        {editedTask.Project_Title || 'Select project'}
+                      </Text>
+                      <Ionicons
+                        name={projectTitleOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+
+                    {projectTitleOpen && (
+                      <View style={styles.customInputWrapper}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type custom project name"
+                          placeholderTextColor={COLORS.textLight}
+                          value={editedTask.Project_Title}
+                          onChangeText={(value) => handleInputChange('Project_Title', value)}
+                          editable={!loading}
+                        />
+                      </View>
+                    )}
+
+                    {projectTitleOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
+                        {projectOptions.map((proj, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('Project_Title', proj);
+                              setProjectTitleOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{proj}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+
+                  {/* Status */}
+                  <Text style={styles.fieldLabel}>Status</Text>
+                  <View style={styles.statusPicker}>
+                    {['pending', 'in progress', 'completed'].map((status) => (
+                      <TouchableOpacity
+                        key={status}
+                        style={[
+                          styles.statusOption,
+                          editedTask.status === status && styles.statusOptionActive
+                        ]}
+                        onPress={() => handleInputChange('status', status)}
+                      >
+                        <Text
+                          style={[
+                            styles.statusOptionText,
+                            editedTask.status === status && styles.statusOptionTextActive
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Priority */}
+                  <Text style={styles.fieldLabel}>Priority</Text>
+                  <View style={styles.priorityPicker}>
+                    {['High', 'Medium', 'Low'].map((pri) => (
+                      <TouchableOpacity
+                        key={pri}
+                        style={[
+                          styles.priorityOption,
+                          editedTask.priority === pri && styles.priorityOptionActive
+                        ]}
+                        onPress={() => handleInputChange('priority', pri)}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityOptionText,
+                            editedTask.priority === pri && styles.priorityOptionTextActive
+                          ]}
+                        >
+                          {pri}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Duration Display */}
+                  <View style={styles.durationSection}>
+                    <Text style={styles.fieldLabel}>Duration</Text>
+                    <View style={styles.durationDisplay}>
+                      <Text style={styles.durationDisplayText}>
+                        {editedTask.duration || '0.00'} hours
+                      </Text>
+                    </View>
+
+                    {/* Hours & Minutes */}
+                    <View style={styles.durationInputRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subLabel}>Hours</Text>
+                        <TextInput
+                          style={styles.durationInput}
+                          placeholder="0"
+                          placeholderTextColor={COLORS.textLight}
+                          keyboardType="number-pad"
+                          value={editedTask.durationHours}
+                          onChangeText={(value) => {
+                            handleInputChange('durationHours', value);
+                            handleInputChange('durationInputMode', 'manual');
+                          }}
+                          editable={!loading}
+                          maxLength={2}
+                        />
+                      </View>
+
+                      <Text style={styles.durationSeparator}>:</Text>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.subLabel}>Minutes</Text>
+                        <TextInput
+                          style={styles.durationInput}
+                          placeholder="00"
+                          placeholderTextColor={COLORS.textLight}
+                          keyboardType="number-pad"
+                          value={editedTask.durationMinutes}
+                          onChangeText={(value) => {
+                            const limited = value.length > 2 ? value.slice(0, 2) : value;
+                            handleInputChange('durationMinutes', limited);
+                            handleInputChange('durationInputMode', 'manual');
+                          }}
+                          editable={!loading}
+                          maxLength={2}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Start Time */}
+                  <Text style={styles.fieldLabel}>Start Time *</Text>
+                  <TouchableOpacity
+                    style={styles.dropdown}
+                    onPress={() => openDateTimePicker('startTime', 'date')}
+                    disabled={loading}
+                  >
+                    <Text style={[
+                      styles.dropdownText,
+                      !editedTask.startTime && { color: COLORS.textLight },
+                    ]}>
+                      {formatDisplayDate(editedTask.startTime) || 'Select start date & time'}
+                    </Text>
+                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                  </TouchableOpacity>
+
+                  {/* End Time */}
+                  <Text style={styles.fieldLabel}>End Time *</Text>
+                  <TouchableOpacity
+                    style={styles.dropdown}
+                    onPress={() => openDateTimePicker('endTime', 'date')}
+                    disabled={loading}
+                  >
+                    <Text style={[
+                      styles.dropdownText,
+                      !editedTask.endTime && { color: COLORS.textLight },
+                    ]}>
+                      {formatDisplayDate(editedTask.endTime) || 'Select end date & time'}
+                    </Text>
+                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                  </TouchableOpacity>
+
+                  {/* DateTimePicker */}
+                  {showDateTimePicker && (
+                    <DateTimePicker
+                      value={editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date()}
+                      mode={dateTimePickerMode}
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={onDateTimeChange}
+                    />
+                  )}
+
+                  {/* Action Buttons */}
+                  <View style={styles.buttonGroup}>
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={onClose}
+                      disabled={loading}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                      onPress={handleSave}
+                      disabled={loading}
+                    >
+                      <Text style={styles.saveButtonText}>
+                        {loading ? 'Saving...' : 'Save Changes'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                </View>
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ========== MAIN HOME SCREEN ==========
+
 export default function HomePage() {
-  const [userRole, setUserRole] = useState('user');
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const {
+    allUsers = [],
+    allTasks = [],
+    myTasks = [],
+    loading,
+    fetchMyTasks,
+    createTask,
+    fetchAllTasks,
+    fetchAllUsers,
+    updateTask,
+    deleteTask
+  } = useTaskManagement();
 
   const insets = useSafeAreaInsets();
-  const { allUsers = [], myTasks = [], loading, fetchMyTasks, createTask, fetchAllTasks, allTasks = [] } = useTaskManagement();
-
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [isDetailVisible, setIsDetailVisible] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [assignTaskModalVisible, setAssignTaskModalVisible] = useState(false);
 
-  // const [todaysTasks, setTodaysTasks] = useState([]);
-  // const [filteredTasks, setFilteredTasks] = useState([]);
-
-  const tasksToDisplay = userRole === 'admin' ? allTasks : myTasks;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
   const [selectedDateRange, setSelectedDateRange] = useState({
     start: new Date(),
     end: new Date(),
   });
 
-  const filteredTasks = useMemo(() => {
-    if (!Array.isArray(myTasks)) return [];
-
-    return myTasks.map(task => ({
-      ...task,
-      assigned_to_name: task.assigned_by_name || task.username || 'Unknown',
-    })).filter(task => {
-      const taskDate = new Date(task.start || task.startDate);
-      const startDate = new Date(selectedDateRange.start);
-      const endDate = new Date(selectedDateRange.end);
-
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-
-      return taskDate >= startDate && taskDate <= endDate;
-    });
-  }, [myTasks, selectedDateRange.start, selectedDateRange.end]);
-
-
-  // âœ… FIXED: Fetch ONCE on mount only
   useEffect(() => {
-    fetchMyTasks();
-  }, []); // âœ… Empty array = run once only not in Loooooooooooooooop âŒ
-
-  useEffect(() => {
-    const getUserFromToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-        if (token) {
-          const decoded = jwtDecode(token);  // âœ… Using correct import
-          setCurrentUserId(decoded.id);
-          setUserRole(decoded.role || 'user');  // âœ… Default to 'user'
-          console.log('ðŸ‘¤ Current User:', decoded.id);
-          console.log('ðŸ” Role:', decoded.role);
+    const checkToken = async () => {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        try {
+          const decoded = JSON.parse(atob(token.split('.')[1]));
+          const now = Math.floor(Date.now() / 1000);
+          const timeLeft = decoded.exp - now;
+          console.log(`â° Token expires in: ${Math.floor(timeLeft / 60)} minutes`);
+          if (timeLeft < 0) {
+            console.log('âŒ Token EXPIRED - need to log in again');
+            await AsyncStorage.removeItem('authToken');
+          }
+        } catch (err) {
+          console.error('Error decoding token:', err);
         }
-      } catch (err) {
-        console.error('Error decoding token:', err);
-        setUserRole('user');  // âœ… Fallback
       }
     };
-    getUserFromToken();
+    checkToken();
   }, []);
-
-  // âœ… Update useEffect to call correct function based on role:
-  useEffect(() => {
-    if (userRole === 'admin') {
-      console.log('ðŸ“Š Loading ALL tasks (Admin)');
-      fetchAllTasks();  // âœ… Load all tasks for admin
-    } else {
-      console.log('ðŸ“‹ Loading MY tasks (User)');
-      fetchMyTasks();   // âœ… Load only assigned tasks for user
-    }
-  }, [userRole, fetchAllTasks, fetchMyTasks]);
-
 
   // ===== RESPONSIVE CALCULATIONS =====
   const bottomPadding = useMemo(() => {
@@ -1210,67 +1689,116 @@ export default function HomePage() {
     return height - reservedSpace;
   }, [insets.top, insets.bottom]);
 
+  const handleSaveTask = async (taskData) => {
+    console.log('[HomePage] handleSaveTask called');
+    console.log('Task Data received:', taskData);
+
+    try {
+      console.log(' Calling createTask...');
+      const response = await createTask(taskData);
+      console.log(' Task created:', response);
+
+      Alert.alert('Success', 'Task assigned successfully!');
+      setAssignTaskModalVisible(false);
+    } catch (error) {
+      console.error(' createTask error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create task';
+      Alert.alert('Error', errorMessage);
+    }
+  };
+
+  // convert backend tasks UI tasks for TaskCard
+  const uiTasks = useMemo(() => {
+    if (!Array.isArray(allTasks)) return [];
+
+    return allTasks.map(t => ({
+      id: t.id,
+      employeeName: t.assigned_to_name || `User #${t.assigned_to}`,
+      name: t.title,
+      status: t.status === 'pending' ? 'pending' : t.status,
+      // Handle backend (project_title) vs frontend (Project_Title) mismatch
+      Project_Title: t.project_title || t.Project_Title,
+      description: t.description,
+      startDate: t.start,
+      endDate: t.end_time,
+    }));
+  }, [allTasks]);
+
+  //  Filter tasks by date
+  const filteredTasks = useMemo(() => {
+    const targetDateStart = new Date(selectedDate);
+    const targetDateEnd = new Date(selectedDate);
+    // Set the time boundaries for the entire day (from 00:00:00 to 23:59:59)
+    targetDateStart.setHours(0, 0, 0, 0);
+    targetDateEnd.setHours(23, 59, 59, 999);
+
+    const filtered = uiTasks.filter(task => {
+      if (!task.startDate) return false;
+      const taskDate = new Date(task.startDate);
+
+      // Check if the task's date is >= start of the day AND <= end of the day
+      return taskDate >= targetDateStart && taskDate <= targetDateEnd;
+    });
+    return filtered;
+  }, [uiTasks, selectedDate]);
+
+  //  In useEffect
+  useEffect(() => {
+    fetchAllTasks();
+  }, [fetchAllTasks]);
 
   const handleTaskPress = (task) => {
     setSelectedTask(task);
-    setModalVisible(true);
+    setIsDetailVisible(true);
   };
 
   const handleAddTask = () => {
     setAssignTaskModalVisible(true);
   };
 
-  // Add task to today's list
-  // const handleSaveTask = (taskData) => {
-  //   setTodaysTasks([...todaysTasks, {
-  //     ...taskData,
-  //     employeeName: taskData.assignee,
-  //     employeeId: Date.now(),
-  //   }]);
+  const handleOpenEditModal = (taskId) => {
+    setIsEditModalVisible(true);
+  };
 
-  //   Alert.alert('Success', 'Task assigned successfully!');
-  //   setAssignTaskModalVisible(false);
-  // };
-
-  const handleSaveTask = async (taskData) => {
-    console.log('ðŸ”µ [HomePage] handleSaveTask called');
-    console.log('Task Data received:', taskData);
-
+  const handleUpdateTask = async (id, data) => {
     try {
-      console.log('ðŸ“¤ Calling createTask...');
-      const response = await createTask(taskData);
-      console.log('âœ… Task created:', response);
-
-      Alert.alert('Success', 'Task assigned successfully!');
-      setAssignTaskModalVisible(false);
-    } catch (error) {
-      console.error('âŒ createTask error:', error);
-      Alert.alert('Error', error.message || 'Failed to create task');
+      await updateTask(id, data);
+      // Close edit modal after save
+      setIsEditModalVisible(false);
+      // Keep detail sheet open to show updated data
+      await fetchAllTasks();
+      setSelectedTask(null); // Close detail sheet too
+      setIsDetailVisible(false);
+    } catch (err) {
+      console.error('Update failed:', err);
     }
   };
 
-
-
+  const handleDeleteTask = async (id) => {
+    try {
+      await deleteTask(id);
+      setIsDetailVisible(false);
+      await fetchAllTasks();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Header />
+      <View style={styles.headerSpacer} />
       <FilterBar
-        selectedDateRange={selectedDateRange}
-        setSelectedDateRange={setSelectedDateRange}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
         filteredTasks={filteredTasks}
       />
 
-      {/* Background with opacity when modal is open */}
-      <View style={{
-        flex: 1,
-        opacity: modalVisible ? 0.4 : 1,
-        backgroundColor: COLORS.background
-      }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
         <ScrollView
           style={styles.content}
-          scrollEnabled={!modalVisible}
-          pointerEvents={modalVisible ? 'none' : 'auto'}
+          scrollEnabled={!isDetailVisible}
+          pointerEvents={isDetailVisible ? 'none' : 'auto'}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scrollContent,
@@ -1279,25 +1807,21 @@ export default function HomePage() {
         >
           <View style={styles.tasksSection}>
             <View style={styles.filterContainer}>
-
-              <Text style={styles.sectionTitle}>Employee Tasks</Text>
+              <Text style={styles.sectionTitle}>Employee Tasks ({filteredTasks.length})</Text>
               <TouchableOpacity
                 style={styles.assignButton}
                 onPress={handleAddTask}
-              //  style={styles.addButton} onPress={handleAddTask} 
               >
                 <Octicons name="tasklist" size={16} color="#fff" />
                 <Text style={styles.assignButtonText}>Assign a Task</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Show filtered tasks + today's new tasks */}
             {loading ? (
               <ActivityIndicator size="large" color={COLORS.primary} />
-            ) : filteredTasks.length > 0 ? (
+            ) : Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
               filteredTasks.map((task) => (
                 <TaskCard
-                  // key={`${task.employeeId}-${task.id}`}
                   key={task.id}
                   task={task}
                   onPress={() => handleTaskPress(task)}
@@ -1306,20 +1830,16 @@ export default function HomePage() {
             ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>No tasks for today</Text>
+                <Text style={styles.emptyText}>
+                  {loading ? 'Loading tasks...' : 'No tasks for today'}
+                </Text>
               </View>
             )}
-
           </View>
         </ScrollView>
       </View>
-      <TaskModal
-        visible={modalVisible}
-        task={selectedTask}
-        onClose={() => setModalVisible(false)}
-        modalHeight={getModalHeight}
-      />
 
+      {/* ONLY THESE THREE MODALS */}
       <AssignTaskModal
         visible={assignTaskModalVisible}
         onClose={() => setAssignTaskModalVisible(false)}
@@ -1327,18 +1847,42 @@ export default function HomePage() {
         allUsers={allUsers}
       />
 
+      <TaskModal
+        visible={isDetailVisible}
+        task={selectedTask}
+        onClose={() => setIsDetailVisible(false)}
+        modalHeight={getModalHeight}
+        onEditPress={() => {
+          setIsDetailVisible(false); // Close preview modal
+          setIsEditModalVisible(true); // Open edit modal
+        }}
+        onDeletePress={() => {
+          setIsDetailVisible(false); // Close preview modal
+          handleDeleteTask(selectedTask.id); // Delete
+        }}
+      />
+
+      <EditTaskModal
+        visible={isEditModalVisible}
+        task={selectedTask}
+        onClose={() => setIsEditModalVisible(false)}
+        onSave={handleUpdateTask}
+        loading={loading}
+        allUsers={allUsers}
+      />
     </View>
   );
 }
 
 // ========== STYLES ==========
 const styles = StyleSheet.create({
+  // ========== CONTAINER ==========
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
 
-  // HEADER STYLES
+  // ========== HEADER STYLES ==========
   headerGradient: {
     paddingTop: isTablet ? 60 : 50,
     paddingBottom: isTablet ? 50 : 40,
@@ -1369,7 +1913,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 8,
   },
+  employeeNameCenter: {
+    fontSize: isTablet ? 28 : 24,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    flex: 1,
+  },
 
+  // ========== STATUS STYLES ==========
   statusBadgenf: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1377,20 +1929,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    gap: 6,
     alignSelf: 'flex-start',
   },
   statusDotnf: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.success,
     marginRight: 6,
   },
   statusTextnf: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
   },
+
+
 
   statusBadge: {
     flexDirection: 'row',
@@ -1400,6 +1955,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     alignSelf: 'flex-start',
+    gap: 6,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   statusDot: {
     width: 8,
@@ -1413,9 +1973,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  notificationBtn: {
-    position: 'relative',
-  },
+
+  // ========== AVATAR & NOTIFICATION ==========
   avatar: {
     width: isTablet ? 64 : 56,
     height: isTablet ? 64 : 56,
@@ -1429,6 +1988,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
+  },
+  notificationBtn: {
+    position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
@@ -1448,6 +2010,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+
+  // ========== STATS OVERVIEW ==========
   statsOverviewCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
@@ -1464,6 +2028,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     textAlign: 'center',
     marginBottom: 5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   overviewRow: {
     flexDirection: 'row',
@@ -1491,7 +2060,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
 
-  // FILTER BAR STYLES
+  // ========== FILTER BAR ==========
   filterBarContainer: {
     backgroundColor: COLORS.cardBg,
     paddingHorizontal: isTablet ? 20 : 16,
@@ -1506,26 +2075,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 16,
-  },
-  exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-    marginLeft: 'auto',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  exportButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
   },
   filterButton: {
     flexDirection: 'row',
@@ -1557,6 +2106,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
   },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+    marginLeft: 'auto',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  exportButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   assignButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1572,7 +2141,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // CONTENT STYLES
+  // ========== CONTENT ==========
   content: {
     flex: 1,
   },
@@ -1586,7 +2155,8 @@ const styles = StyleSheet.create({
     fontSize: isTablet ? 24 : 22,
     fontWeight: '800',
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: 8,
+    // marginTop: 2,
   },
   roleIndicator: {
     fontSize: 12,
@@ -1595,6 +2165,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
+  // ========== EMPTY STATE ==========
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1607,7 +2178,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // TASK CARD STYLES
+  // ========== CARD STYLES ==========
   card: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 12,
@@ -1649,34 +2220,22 @@ const styles = StyleSheet.create({
     gap: 6,
     minWidth: 90,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
 
-  // MODAL STYLES
+  // ========== MODAL STYLES ==========
   modalRoot: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-
   sheetWrapper: {
     width: '100%',
     flex: 1,
     justifyContent: 'flex-end',
   },
-
   modalContent: {
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 24,
@@ -1685,7 +2244,6 @@ const styles = StyleSheet.create({
     maxHeight: '95%',
     flex: 1,
   },
-
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1693,7 +2251,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 18,
   },
-
   modalTitle: {
     fontSize: 22,
     fontWeight: '800',
@@ -1701,7 +2258,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-
   closeButton: {
     width: 44,
     height: 44,
@@ -1709,26 +2265,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 22,
   },
-
   modalBody: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
     backgroundColor: COLORS.background,
   },
-
   scrollViewContent: {
     paddingBottom: 60,
     flexGrow: 1,
   },
+  modalScrollContent: {
+    flex: 1,
+    paddingHorizontal: isTablet ? 24 : 20,
+    paddingTop: 20,
+  },
 
-  // Form Styles
+  // ========== FORM STYLES ==========
   section: {
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
-    padding: 16,
+    padding: isTablet ? 20 : 16,
+    marginBottom: 16,
   },
-
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -1737,6 +2296,99 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
 
+  priorityPicker: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  priorityOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.cardBg,
+    alignItems: 'center',
+  },
+  priorityOptionActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  priorityOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  priorityOptionTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+
+  //=======
+  durationSection: {
+    marginVertical: 12,
+  },
+  durationDisplay: {
+    backgroundColor: `${COLORS.primary}15`,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  durationDisplayText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  durationInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginBottom: 12,
+  },
+  durationInput: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  durationSeparator: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textLight,
+    marginBottom: 8,
+  },
+  subLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    marginBottom: 4,
+  },
+  durationHint: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+
+  //=======
+
+  label: {
+    fontSize: isTablet ? 15 : 14,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    marginBottom: 8,
+    marginTop: 12,
+  },
   input: {
     backgroundColor: '#F5F7FA',
     borderRadius: 12,
@@ -1747,8 +2399,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 4,
   },
+  editInput: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: 12,
+  },
 
-  // Dropdown Styles
+  // ========== DROPDOWN STYLES ==========
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1762,11 +2423,35 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 8,
   },
-
   dropdownText: {
     fontSize: 14,
     color: COLORS.text,
     flex: 1,
+  },
+  dropdownMenu: {
+    marginTop: 6,
+    marginBottom: 12,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '500',
   },
   customInputWrapper: {
     marginBottom: 12,
@@ -1777,7 +2462,6 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
-
   customInputLabel: {
     fontSize: 11,
     color: COLORS.textLight,
@@ -1785,960 +2469,226 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
 
-  dropdownMenu: {
-    marginTop: 6,
-    marginBottom: 12,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-
-  dropdownItemText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-
-  // Button Styles
+  // ========== BUTTON STYLES ==========
   buttonGroup: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 24,
     marginBottom: 16,
   },
-
   saveButton: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: COLORS.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   saveButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
-
   cancelButton: {
     flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
+    flexDirection: 'row',
+    backgroundColor: COLORS.danger,
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   cancelButtonText: {
     color: COLORS.text,
     fontSize: 14,
     fontWeight: '700',
   },
-
-  //======================
-  employeeNameCenter: {
-    fontSize: isTablet ? 28 : 24,
-    fontWeight: '800',
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.danger,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  buttonLabel: {
     color: '#fff',
-    textAlign: 'center',
-    flex: 1,
+    fontWeight: '600',
+    fontSize: 14,
   },
-  modalScrollContent: {
-    flex: 1,
-    paddingHorizontal: isTablet ? 24 : 20,
-    paddingTop: 20,
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
-  section: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 16,
-    padding: isTablet ? 20 : 16,
-  },
-  detailRow: {
+
+  // ========== STATUS PICKER ==========
+  statusPicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 8,
+  },
+  statusOption: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  statusOptionActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  statusOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  statusOptionTextActive: {
+    color: '#fff',
+  },
+
+  // ========== DETAIL STYLES ==========
+  detailRow: {
+    marginBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  label: {
-    fontSize: isTablet ? 15 : 14,
-    fontWeight: '600',
-    color: COLORS.textLight,
   },
   value: {
     fontSize: isTablet ? 15 : 14,
     fontWeight: '600',
     color: COLORS.text,
   },
-
-  // ========== ASSIGN TASK MODAL ==========
-  modalRoot: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  descriptionText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  dateTimeText: {
+    fontSize: isTablet ? 15 : 14,
+    color: COLORS.primary,
+    fontWeight: '500',
+    marginBottom: 12,
   },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+  // ========== DIVIDER & SEPARATOR ==========
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 20,
   },
 
-  sheetWrapper: {
-    width: '100%',
+  // ========== BOTTOM SHEET STYLES ==========
+  overlayTouch: {
     flex: 1,
-    justifyContent: 'flex-end',
   },
-
-  // ========== MODAL CONTENT STYLES ==========
-  // UPDATE IF EXISTING, ADD IF NOT
-  modalContent: {
-    backgroundColor: COLORS.background,
+  bottomSheet: {
+    backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    overflow: 'hidden',
-    maxHeight: '95%',
-    flex: 1,
-    // REMOVE: height: modalHeight (this was causing issues)
-    // REMOVE: width: '100%' (not needed with flex layout)
+    height: height * 0.65,
+    paddingHorizontal: 20,
   },
-
-  // ========== MODAL HEADER STYLES ==========
-  // UPDATE IF EXISTING
-  modalHeader: {
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    // REMOVE: elevation or extra shadows
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: 16,
   },
-
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  sheetBody: {
     flex: 1,
+    paddingBottom: 20,
   },
-
-  closeButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-  },
-
-  // ========== MODAL BODY STYLES ==========
-  // ADD THESE IF NOT PRESENT
-  modalBody: {
-    flex: 1,
+  sheetFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    marginHorizontal: -20,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    backgroundColor: '#fff',
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: '600',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  detailValue: {
+    fontSize: 16,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  row: {
+    flexDirection: 'row',
+  },
+
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 20,
     backgroundColor: COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
-
-  scrollViewContent: {
-    paddingBottom: 60,
-    flexGrow: 1,
-  },
-
-  // ========== FORM SECTION STYLES ==========
-  // ADD THESE IF NOT PRESENT
-  section: {
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 16,
-    padding: 16,
-  },
-
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 8,
-    marginTop: 14,
-  },
-
-  input: {
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-
-  // ========== DROPDOWN STYLES ==========
-  // ADD THESE IF NOT PRESENT
-  dropdown: {
+  modalButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    justifyContent: 'center',
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginTop: 6,
-    marginBottom: 8,
+    borderRadius: 10,
+    gap: 8,
   },
-
-  dropdownText: {
-    fontSize: 14,
-    color: COLORS.text,
-    flex: 1,
-  },
-
-  dropdownMenu: {
-    marginTop: 6,
-    marginBottom: 12,
-    backgroundColor: COLORS.cardBg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    // NEW: Added proper shadow properties for Android
-  },
-
-  dropdownItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-
-  dropdownItemText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-
-  // ========== BUTTON STYLES ==========
-  // ADD THESE IF NOT PRESENT
-  buttonGroup: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-    marginBottom: 16,
-  },
-
-  saveButton: {
-    flex: 1,
+  editBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-
-  saveButtonText: {
+  deleteBtn: {
+    backgroundColor: COLORS.danger,
+  },
+  modalButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
 
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-
-  dropdownItemText: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-
-  // ========== BUTTON STYLES ==========
-  // ADD THESE IF NOT PRESENT
-  buttonGroup: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-    marginBottom: 16,
-  },
-
-  saveButton: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  cancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  cancelButtonText: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // SECTION STYLE
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 16,
-    marginTop: 16,
-  },
-
-  //=============================================
-
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  descriptionText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.text,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  dateTimeText: {
-    fontSize: isTablet ? 15 : 14,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginBottom: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 20,
-  },
 });

@@ -72,7 +72,7 @@ function ProfileStat({ label, value }) {
 }
 
 // ========== MAIN ADMIN PROFILE PAGE ==========
-export default function AdminProfilePage({ onLogout , user }) {
+export default function AdminProfilePage({ onLogout, user }) {
   // const [adminData] = useState({
   //   id: 'ADMIN-001',
   //   name: 'madhan',
@@ -87,14 +87,14 @@ export default function AdminProfilePage({ onLogout , user }) {
 
   const adminData = {
     id: user?.id || 'N/A',
-   name: user?.username  || 'Unknown',
+    name: user?.username || 'Unknown',
     email: user?.email || 'N/A',
     role: user?.role || 'User',
     profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'U',
     department: 'Management',
     joinDate: 'Jan 2024',
     permissions: 'Full Access',
-    status: 'Active', 
+    status: 'Active',
     Company: user?.company_id || 'N/A',
   }
 
@@ -129,7 +129,7 @@ export default function AdminProfilePage({ onLogout , user }) {
       'Logout',
       'Are you sure you want to logout?',
       [
-        { text: 'Cancel', onPress: () => {} },
+        { text: 'Cancel', onPress: () => { } },
         {
           text: 'Logout',
           onPress: () => {

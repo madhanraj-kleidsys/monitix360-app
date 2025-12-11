@@ -13,7 +13,7 @@ export const useTaskManagement = () => {
   // Fetch all users for assign dropdown
   const fetchAllUsers = useCallback(async () => {
     try {
-      console.log('fatchgggg users.......!!!!');
+      // console.log('fatchgggg users.......!!!!');
 
       const response = await TaskService.getAllUsers();
       // console.log('fetched uersds:::::',response);
@@ -47,13 +47,26 @@ export const useTaskManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await TaskService.getAllTasks();
-      setAllTasks(Array.isArray(data) ? data : []);
-      return data;
+      // console.log('🔵 [FETCH ALL TASKS] Starting...');
+      const response = await TaskService.getAllTasks();
+      // Handle different response formats
+      let tasksData = [];
+      if (Array.isArray(response)) {
+        tasksData = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        tasksData = response.data;
+      } else if (response && typeof response === 'object') {
+        console.warn('⚠️ Response is object, not array:', response);
+        tasksData = [];
+      }
+
+      setAllTasks(Array.isArray(tasksData) ? tasksData : []);
+      return tasksData;
     } catch (err) {
+      console.error('❌ Error fetching all tasks:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch all tasks';
       setError(errorMsg);
-      console.error('Error fetching all tasks:', err);
+      setAllTasks([]);  //  Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -77,53 +90,50 @@ export const useTaskManagement = () => {
   }, []);
 
   // Create new task
-const createTask = useCallback(async (formData) => {
-  setLoading(true);
-  setError(null);
-  try {
-    const taskData = {
-      // ✅ Required fields (from backend validation)
-      title: formData.department || formData.projectTitle,
-      description: formData.taskDescription || 'No description',
-      priority: formData.priority === 'High' ? 1 : 
-               (formData.priority === 'Medium' ? 2 : 3),
-      assigned_to: formData.assignUserId,
-      status: 'pending',  // ✅ lowercase 'pending'
-      duration_minutes: (parseFloat(formData.duration) || 1) * 60,
-      start: formData.startTime,
-      end_time: formData.endTime,
-      Project_Title: formData.projectTitle,  // ✅ CAPITAL P and T
-    };
+  const createTask = useCallback(async (formData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const durationParts = (formData.duration || '0.00').split('.');
+      const hours = parseInt(durationParts[0]) || 0;
+      const minutes = parseInt(durationParts[1]) || 0;
+      const totalDurationMinutes = (hours * 60) + minutes;
 
-    console.log('📤 [CREATING TASK]');
-    console.log('Final Payload:', taskData);
-    
-    const newTask = await TaskService.createTask(taskData);
-    
-    console.log('✅ [SUCCESS] Task created:', newTask);
-    
-    // Refresh tasks
-    await fetchMyTasks();
-    
-    Alert.alert('Success', 'Task created successfully!');
-    return newTask;
-  } catch (err) {
-    console.error('❌ [ERROR]', err);
-    console.error('Response:', err.response?.data);
-    console.error('Message:', err.message);
-    
-    const errorMsg = err.response?.data?.message || 
-                     err.response?.data?.error ||
-                     err.message || 
-                     'Failed to create task';
-    
-    Alert.alert('Error', errorMsg);
-    setError(errorMsg);
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-}, [fetchMyTasks]);
+      const taskData = {
+        title: formData.department || formData.projectTitle,
+        description: formData.taskDescription || 'No description',
+        priority: formData.priority === 'High' ? 1 :
+          (formData.priority === 'Medium' ? 2 : 3),
+        assigned_to: formData.assignUserId,
+        status: 'pending',
+        duration_minutes:totalDurationMinutes,
+        start: formData.startTime,
+        end_time: formData.endTime,
+        Project_Title: formData.projectTitle,
+      };
+
+      const newTask = await TaskService.createTask(taskData);
+      await fetchAllTasks();
+
+      Alert.alert('Success', 'Task created successfully!');
+      return newTask;
+    } catch (err) {
+      console.error('❌ [ERROR]', err);
+      console.error('Response:', err.response?.data);
+      console.error('Message:', err.message);
+
+      const errorMsg = err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to create task';
+
+      Alert.alert('Error', errorMsg);
+      setError(errorMsg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchAllTasks]);
 
 
   // Update task status
@@ -162,17 +172,49 @@ const createTask = useCallback(async (formData) => {
     }
   }, []);
 
+
+  const updateTask = useCallback(async (taskId, taskData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('📝 Updating task:', taskId, taskData);
+      const updated = await TaskService.updateTask(taskId, taskData);
+
+      // Update local state immediately
+      setAllTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+      setMyTasks(prev => prev.map(t => t.id === taskId ? updated : t));
+
+      Alert.alert('Success', 'Task updated successfully');
+      return updated;
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to update task';
+      setError(errorMsg);
+      Alert.alert('Error', errorMsg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Delete task
   const deleteTask = useCallback(async (taskId) => {
     setLoading(true);
     setError(null);
     try {
+      console.log('🗑️ Deleting task:', taskId);
       await TaskService.deleteTask(taskId);
+
+      // Remove from both states
+      setAllTasks(prev => prev.filter(t => t.id !== taskId));
       setMyTasks(prev => prev.filter(t => t.id !== taskId));
+
+      console.log('✅ Task deleted successfully');
+      Alert.alert('Success', 'Task deleted successfully');
     } catch (err) {
       const errorMsg = err.response?.data?.message || err.message || 'Failed to delete task';
       setError(errorMsg);
-      console.error('Error deleting task:', err);
+      console.error('❌ Error deleting task:', err);
+      Alert.alert('Error', errorMsg);
       throw err;
     } finally {
       setLoading(false);
@@ -265,39 +307,38 @@ const createTask = useCallback(async (formData) => {
   }, []);
 
   const approveTask = useCallback(async (taskId) => {
-  try {
-    const response = await TaskService.updateTask(taskId, {
-      approval_status: 'approved',
-    });
-    setMyTasks(prev => prev.map(t => t.id === taskId ? response : t));
-    Alert.alert('Success', 'Task approved!');
-  } catch (err) {
-    Alert.alert('Error', 'Failed to approve task');
-  }
-}, []);
+    try {
+      const response = await TaskService.updateTask(taskId, {
+        approval_status: 'approved',
+      });
+      setMyTasks(prev => prev.map(t => t.id === taskId ? response : t));
+      Alert.alert('Success', 'Task approved!');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to approve task');
+    }
+  }, []);
 
-const rejectTask = useCallback(async (taskId, reason) => {
-  try {
-    const response = await TaskService.updateTask(taskId, {
-      approval_status: 'rejected',
-      reason: reason,
-    });
-    setMyTasks(prev => prev.map(t => t.id === taskId ? response : t));
-    Alert.alert('Success', 'Task rejected!');
-  } catch (err) {
-    Alert.alert('Error', 'Failed to reject task');
-  }
-}, []);
-
+  const rejectTask = useCallback(async (taskId, reason) => {
+    try {
+      const response = await TaskService.updateTask(taskId, {
+        approval_status: 'rejected',
+        reason: reason,
+      });
+      setMyTasks(prev => prev.map(t => t.id === taskId ? response : t));
+      Alert.alert('Success', 'Task rejected!');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to reject task');
+    }
+  }, []);
 
 
 
   // Load initial data
   useEffect(() => {
-    fetchMyTasks();
+    fetchAllTasks();
     fetchAllUsers();
-  }, [fetchMyTasks, fetchAllUsers]);
-  // fetchMyTasks, fetchAllUsers
+  }, [fetchAllTasks, fetchAllUsers]);
+
   return {
     // State
     myTasks,
@@ -309,10 +350,13 @@ const rejectTask = useCallback(async (taskId, reason) => {
     // Methods
     fetchMyTasks,
     fetchAllTasks,
+    fetchAllUsers,
     fetchUnplannedTasks,
     createTask,
     updateStatus,
     updateOwnTask,
+
+    updateTask,
     deleteTask,
     createUnplannedTask,
     deleteUnplannedTask,
@@ -322,7 +366,6 @@ const rejectTask = useCallback(async (taskId, reason) => {
     addStopReason,
     approveTask,
     rejectTask,
-
   };
 };
 

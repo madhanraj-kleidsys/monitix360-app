@@ -1,12 +1,12 @@
-import api from '../../../api/client'; 
+import api from '../../../api/client';
 
 const TaskService = {
   // ===== PLANNED TASKS =====
   // in TaskService
-getAllUsers: async () => {
-  const response = await api.get('/users');
-  return Array.isArray(response.data) ? response.data : response.data.data || [];
-},
+  getAllUsers: async () => {
+    const response = await api.get('/users');
+    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  },
 
   getMyTasks: async () => {
     const response = await api.get('/tasks/my');
@@ -14,8 +14,14 @@ getAllUsers: async () => {
   },
 
   getAllTasks: async () => {
-    const response = await api.get('/tasks/all');
-    return response.data;
+    try {
+      const response = await api.get('/tasks/all');
+      // RETURN response.data (which is the array), NOT response object
+      return response.data;
+    } catch (err) {
+      console.error('❌ TaskService.getAllTasks error:', err);
+      throw err;
+    }
   },
 
   getBasicUserTasks: async (userId) => {

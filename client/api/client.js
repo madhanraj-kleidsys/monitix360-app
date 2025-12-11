@@ -14,9 +14,9 @@ api.interceptors.request.use(async (config) => {
   config.headers['Content-Type'] = 'application/json';
   
   // ✅ ADD DEBUGGING
-  console.log('🔵 [REQUEST]', config.method?.toUpperCase(), config.url);
-  console.log('📦 Data:', config.data);
-  console.log('🔐 Token:', token ? 'Present' : 'Missing');
+  // console.log('🔵 [REQUEST]', config.method?.toUpperCase(), config.url);
+  // console.log('📦 Data:', config.data);
+  // console.log('🔐 Token:', token ? 'Present' : 'Missing');
   
   return config;
 }, (error) => {
