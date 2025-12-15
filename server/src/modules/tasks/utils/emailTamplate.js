@@ -24,7 +24,4 @@ async function sendTaskEmail(to, subject, htmlContent) {
     console.error("Failed to send email:", err);
   }
 }
-
-
-
 module.exports = { sendTaskEmail };

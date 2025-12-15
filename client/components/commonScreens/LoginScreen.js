@@ -11,6 +11,7 @@ import {
   Image,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -48,39 +49,51 @@ export default function LoginScreen({ navigation, onLogin }) {
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [showPassword,setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [anyInputFocused, setAnyInputFocused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // New loading state
 
   const handleLogin = async () => {
     console.log('Login:', { email, password });
     // if (onLogin) {
     //   onLogin();
     // }
-    if(!email.trim() || !password.trim()) {
-      Alert.alert('Validation Error:',"Please enter both email and password.");
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Validation Error:', "Please enter both email and password.");
       return;
     }
 
-    try{
+    setIsLoading(true); // Start loading
+
+    try {
       const res = await axios.post(`${API_URL}/api/auth/login`, {
         email: email.trim(),
         password: password.trim(),
       });
-      const {user,token} = res.data;
-      // console.log(res.data);
-      //saving token
-      await AsyncStorage.setItem('authToken', token);
+      // const { user, token } = res.data;
+
+      // // Saving token
+      // await AsyncStorage.setItem('authToken', token);
+      // await AsyncStorage.setItem('userData', JSON.stringify(user));
+
+      // Passing to parent
+      // if (onLogin) {
+      //   onLogin(user, token);
+      // }
+
+      const { user, accessToken, refreshToken } = res.data;
+
+      await AsyncStorage.setItem('accessToken', accessToken);
+      await AsyncStorage.setItem('refreshToken', refreshToken);
       await AsyncStorage.setItem('userData', JSON.stringify(user));
 
-      //passing to parents ========
-      if(onLogin){
-        onLogin(user,token);
-      }
-    }catch(err){
-      // const message = err.response?.data?.mesage || 'unable to connect to server';
-      // Alert.alert('Login Failed:',message);
-      Alert.alert('Login Failed', err.response?.data?.message || 'Unable to connect');
+      if (onLogin) onLogin(user, accessToken);   // pass user+token up to App
+      
+    } catch (err) {
+      Alert.alert('Login Failed', err.response?.data?.message || 'Unable to connect to server');
       console.log(err);
+    } finally {
+      setIsLoading(false); // Stop loading whether success or error
     }
   };
 
@@ -101,13 +114,10 @@ export default function LoginScreen({ navigation, onLogin }) {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#00D4FF" />
 
-        {/* 🎨 BACKGROUND OPTIONS - Choose one */}
-
-        {/* OPTION 1: Blue Ocean (Current) */}
+        {/* Background Gradient */}
         <LinearGradient
           colors={['#00D4FF', '#0099FF', '#0066CC', '#004999']}
           style={styles.gradient}
@@ -149,7 +159,7 @@ export default function LoginScreen({ navigation, onLogin }) {
               keyboardShouldPersistTaps="handled"
               bounces={false}
             >
-              {/* Logo and Title at Top */}
+              {/* Logo and Title */}
               <Animated.View style={[styles.headerContainer, logoAnimatedStyle]}>
                 <View style={styles.logoBackground}>
                   <Image
@@ -164,11 +174,9 @@ export default function LoginScreen({ navigation, onLogin }) {
 
               {/* Main Login Area */}
               <View style={styles.loginArea}>
-
-                {/* Character Image - Enhanced & Repositionable */}
+                {/* Character Image */}
                 <Animated.View style={[styles.characterOverlay, characterAnimatedStyle]}>
                   <Image
-                    // source={require('../../assets/loginimg.png')}
                     source={require('../../assets/login-girl.png')}
                     style={styles.characterImage}
                     resizeMode="contain"
@@ -182,7 +190,7 @@ export default function LoginScreen({ navigation, onLogin }) {
                       <Text style={styles.heading}>Welcome Back</Text>
                       <View style={styles.divider} />
 
-                      {/* Email Input - No White Flash */}
+                      {/* Email Input */}
                       <View style={styles.inputContainer}>
                         <Text style={styles.label}>EMAIL</Text>
                         <View style={[
@@ -196,68 +204,77 @@ export default function LoginScreen({ navigation, onLogin }) {
                             value={email}
                             onChangeText={setEmail}
                             onFocus={() => {
-                              setEmailFocused(true)
-                              setAnyInputFocused(true)
+                              setEmailFocused(true);
+                              setAnyInputFocused(true);
                             }}
                             onBlur={() => {
-                              setEmailFocused(false)
-                              setAnyInputFocused(false)
+                              setEmailFocused(false);
+                              setAnyInputFocused(false);
                             }}
                             autoCapitalize="none"
                             keyboardType="email-address"
                             selectionColor="rgba(255, 255, 255, 0.8)"
+                            editable={!isLoading}
                           />
                         </View>
                       </View>
 
-                      {/* Password Input - No White Flash */}
+                      {/* Password Input */}
                       <View style={styles.inputContainer}>
                         <Text style={styles.label}>PASSWORD</Text>
                         <View style={[
                           styles.inputWrapper,
                           passwordFocused && styles.inputWrapperFocused
                         ]}>
-                          <View style={styles.passwordRow} >
-
-                          <TextInput
-                            style={styles.input}
-                            placeholder="Enter your password"
-                            placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                            value={password}
-                            onChangeText={setPassword}
-                            onFocus={() =>{ setPasswordFocused(true)
-                              setAnyInputFocused(true)
-                            }}
-                            onBlur={() =>{ setPasswordFocused(false)
-                              setAnyInputFocused(false)
-                            }}
-                            // secureTextEntry
-                            selectionColor="rgba(255, 255, 255, 0.8)"
-                            secureTextEntry={!showPassword}
+                          <View style={styles.passwordRow}>
+                            <TextInput
+                              style={styles.input}
+                              placeholder="Enter your password"
+                              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                              value={password}
+                              onChangeText={setPassword}
+                              onFocus={() => {
+                                setPasswordFocused(true);
+                                setAnyInputFocused(true);
+                              }}
+                              onBlur={() => {
+                                setPasswordFocused(false);
+                                setAnyInputFocused(false);
+                              }}
+                              selectionColor="rgba(255, 255, 255, 0.8)"
+                              secureTextEntry={!showPassword}
+                              editable={!isLoading}
                             />
-                          <TouchableOpacity
-                          style={styles.passwordEye}
-                          onPress={()=> setShowPassword(prev => !prev)}>
-                            <Ionicons
-                            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                            size={20}
-                            color='#ffffffff'
-                            />
-                          </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity
+                              style={styles.passwordEye}
+                              onPress={() => setShowPassword(prev => !prev)}
+                              disabled={isLoading}
+                            >
+                              <Ionicons
+                                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                size={20}
+                                color='#ffffffff'
+                              />
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       </View>
 
                       {/* Forgot Password */}
-                      <TouchableOpacity style={styles.forgotPassword} activeOpacity={0.7}>
+                      <TouchableOpacity
+                        style={styles.forgotPassword}
+                        activeOpacity={0.7}
+                        disabled={isLoading}
+                      >
                         <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                       </TouchableOpacity>
 
                       {/* Login Button */}
                       <TouchableOpacity
-                        style={styles.buttonWrapper}
+                        style={[styles.buttonWrapper, isLoading && styles.buttonDisabled]}
                         onPress={handleLogin}
                         activeOpacity={0.85}
+                        disabled={isLoading}
                       >
                         <LinearGradient
                           colors={['#FFFFFF', 'rgba(255, 255, 255, 0.95)']}
@@ -265,7 +282,11 @@ export default function LoginScreen({ navigation, onLogin }) {
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                         >
-                          <Text style={styles.buttonText}>LOGIN</Text>
+                          {isLoading ? (
+                            <ActivityIndicator size="small" color="#0099FF" />
+                          ) : (
+                            <Text style={styles.buttonText}>LOGIN</Text>
+                          )}
                         </LinearGradient>
                       </TouchableOpacity>
 
@@ -275,6 +296,7 @@ export default function LoginScreen({ navigation, onLogin }) {
                         <TouchableOpacity
                           onPress={() => navigation.navigate('Register')}
                           activeOpacity={0.7}
+                          disabled={isLoading}
                         >
                           <Text style={styles.registerLink}>Create Account</Text>
                         </TouchableOpacity>
@@ -282,8 +304,6 @@ export default function LoginScreen({ navigation, onLogin }) {
                     </View>
                   </BlurView>
                 </Animated.View>
-                {/* ☝️ Fixed: Changed </View> to </Animated.View> */}
-
               </View>
 
               {/* Copyright Footer */}
@@ -303,8 +323,6 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
-
-  // Enhanced Background Circles - More Visible with White Borders
   circle1: {
     position: 'absolute',
     width: SCREEN_WIDTH * 0.75,
@@ -369,10 +387,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: responsiveSize(SCREEN_HEIGHT * 0.025, SCREEN_HEIGHT * 0.03, SCREEN_HEIGHT * 0.04),
     paddingHorizontal: SCREEN_WIDTH * 0.05,
-    // minHeight: SCREEN_HEIGHT,
   },
 
-  // Header - Fully Responsive
+  // Header
   headerContainer: {
     alignItems: 'center',
     marginTop: responsiveSize(10, 15, 25),
@@ -393,8 +410,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   logoImage: {
-    // width: responsiveSize(65, 75, 90),
-    // height: responsiveSize(65, 75, 90),
     width: isSmallDevice ? 70 : 70,
     height: isSmallDevice ? 70 : 85,
   },
@@ -406,7 +421,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
-    // marginBottom: 4,
   },
   companySubtitle: {
     fontSize: responsiveSize(SCREEN_WIDTH * 0.038, SCREEN_WIDTH * 0.04, SCREEN_WIDTH * 0.042),
@@ -418,23 +432,20 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
 
-  // Login Area - Responsive
+  // Login Area
   loginArea: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    // marginVertical: responsiveSize(10, 15, 20),
   },
 
-  // Character Image - Enhanced & Adjustable
+  // Character Image
   characterOverlay: {
     position: 'absolute',
-    // left: -SCREEN_WIDTH * 0.08,
     right: -SCREEN_WIDTH * 0.08,
     top: responsiveSize('10%', '12%', '15%'),
     zIndex: 1,
-    // zIndex: -10,
     shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.6,
@@ -442,19 +453,16 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   characterImage: {
-    // width: responsiveSize(SCREEN_WIDTH * 0.42, SCREEN_WIDTH * 0.48, SCREEN_WIDTH * 0.52),
-    // height: responsiveSize(SCREEN_HEIGHT * 0.22, SCREEN_HEIGHT * 0.26, SCREEN_HEIGHT * 0.3),
     maxWidth: 230,
     maxHeight: 280,
     transform: [
-      // { rotate: '-8deg' },
       { scale: 1.80 },
       { translateX: 0 },
       { scaleX: -1 }
     ],
   },
 
-  // Glass Card - No White Flash Fix
+  // Glass Card
   cardWrapper: {
     width: '100%',
     maxWidth: 420,
@@ -504,7 +512,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
   },
 
-  // Input Fields - No White Flash
+  // Input Fields
   inputContainer: {
     marginBottom: responsiveSize(SCREEN_HEIGHT * 0.015, SCREEN_HEIGHT * 0.018, SCREEN_HEIGHT * 0.022),
   },
@@ -544,7 +552,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     padding: 12,
-    marginRight: 35, // space for eye icon
+    marginRight: 35,
   },
   passwordRow: {
     position: 'relative',
@@ -556,7 +564,34 @@ const styles = StyleSheet.create({
     right: 12,
   },
 
-  // Other Elements - Responsive
+  // Button Styles
+  buttonWrapper: {
+    marginTop: responsiveSize(SCREEN_HEIGHT * 0.008, SCREEN_HEIGHT * 0.01, SCREEN_HEIGHT * 0.012),
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonGradient: {
+    paddingVertical: responsiveSize(14, 15, 16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  buttonText: {
+    color: '#0099FF',
+    fontSize: responsiveSize(SCREEN_WIDTH * 0.042, SCREEN_WIDTH * 0.044, SCREEN_WIDTH * 0.046),
+    fontWeight: '800',
+    letterSpacing: 2.5,
+  },
+
+  // Other Elements
   forgotPassword: {
     alignSelf: 'flex-end',
     marginBottom: responsiveSize(SCREEN_HEIGHT * 0.016, SCREEN_HEIGHT * 0.02, SCREEN_HEIGHT * 0.024),
@@ -570,28 +605,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  buttonWrapper: {
-    marginTop: responsiveSize(SCREEN_HEIGHT * 0.008, SCREEN_HEIGHT * 0.01, SCREEN_HEIGHT * 0.012),
-    borderRadius: 18,
-    overflow: 'hidden',
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  buttonGradient: {
-    paddingVertical: responsiveSize(14, 15, 16),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-  },
-  buttonText: {
-    color: '#0099FF',
-    fontSize: responsiveSize(SCREEN_WIDTH * 0.042, SCREEN_WIDTH * 0.044, SCREEN_WIDTH * 0.046),
-    fontWeight: '800',
-    letterSpacing: 2.5,
   },
   registerRow: {
     flexDirection: 'row',
@@ -618,8 +631,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.75)',
     fontSize: responsiveSize(SCREEN_WIDTH * 0.029, SCREEN_WIDTH * 0.031, SCREEN_WIDTH * 0.033),
     fontWeight: '500',
-    marginTop:10,
-    // marginTop: responsiveSize(15, 20, 25),
-    // marginBottom: 10,
+    marginTop: 10,
   },
 });

@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 import SplashScreen from './components/loader/SplashScreen';
 
 // common screens 
@@ -38,13 +39,15 @@ function AdminMainTabs({ onLogout , user }) {
     setActiveScreen(id);
   };
   return (
-    <Tab.Navigator
+    <>
+     <Tab.Navigator
       tabBar={(props) => <AdminDockNavigation {...props} onLogout={onLogout}
         activeScreen={activeScreen}
-        onTabPress={handleTabPress}
-      />}
+         onTabPress={handleTabPress}
+       />}
       screenOptions={{ headerShown: false }}
     >
+
       <Tab.Screen name="AdminHome" component={AdminHomePage} />
       <Tab.Screen name="AdminProjects" component={AdminProjectPage} />
       <Tab.Screen name="AdminEmployees" component={AdminEmployeePage} />
@@ -55,6 +58,9 @@ function AdminMainTabs({ onLogout , user }) {
         user={user}/>}
       </Tab.Screen>
     </Tab.Navigator>
+
+    </>
+
   );
 }
 
@@ -110,6 +116,15 @@ export default function App() {
     };
     initializeApp();
   }, []);
+
+  useEffect(()=>{
+  const sub = DeviceEventEmitter.addListener('logout',()=>{
+    setUser(null);      // your existing state
+    setToken(null);
+    Alert.alert('Logged out','Your session has expired. Please log in again.');
+  });
+  return ()=>sub.remove();
+},[]);
 
   if (isLoading) {
     return <SplashScreen />;
@@ -170,31 +185,4 @@ export default function App() {
       </Stack.Navigator>
     </NavigationContainer>
   );
-    // <NavigationContainer>
-    //   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    //     {!hasSeenLanding ? (
-    //       <Stack.Screen name="Landing">
-    //         {(props) => (
-    //           <LandingScreen
-    //             {...props}
-    //             onContinue={() => setHasSeenLanding(true)}
-    //           />
-    //         )}
-    //       </Stack.Screen>
-    //     ) : !isLoggedIn ? (
-    //       // Show Auth Screens after landing
-    //       <>
-    //         <Stack.Screen name="Login">
-    //           {(props) => <LoginScreen {...props} onLogin={() => setIsLoggedIn(true)} />}
-    //         </Stack.Screen>
-    //         <Stack.Screen name="Register" component={RegisterScreen} />
-    //       </>
-    //     ) : (
-    //       // Show Main App after login
-    //       <Stack.Screen name="Main">
-    //         {(props) => <AdminMainTabs {...props} onLogout={() => setIsLoggedIn(false)} />}
-    //       </Stack.Screen>
-    //     )}
-    //   </Stack.Navigator>
-    // </NavigationContainer>
 }

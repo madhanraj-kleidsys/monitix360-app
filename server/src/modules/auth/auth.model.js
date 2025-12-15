@@ -24,9 +24,15 @@ const createUser = async (data) => {
   return await User.create(data);
 };
 
+// save refresh token
+const saveRefreshToken = async (token, userId) =>{
+    await User.update({ refresh_token: token }, { where: { id: userId } });
+}
+
 module.exports = {
   findUserByEmail,
   findCompanyByCode,
   createCompany,
   createUser,
+  saveRefreshToken
 };

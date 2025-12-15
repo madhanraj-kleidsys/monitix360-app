@@ -43,7 +43,7 @@ exports.createNewTask = async (req, res) => {
         !priority || !duration_minutes || !Project_Title) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
+console.log('📝 Creating task:', { title, Project_Title, priority });
     const task = await createTask({
       title,
       description,
@@ -57,7 +57,7 @@ exports.createNewTask = async (req, res) => {
       project_title: Project_Title,
       company_id: req.user.company_id,
     });
-
+console.log('✅ Task created:', task.id, task.title);
     const assignedUser = await findUserById(assigned_to, req.user.company_id);
 
     if (assignedUser?.email) {

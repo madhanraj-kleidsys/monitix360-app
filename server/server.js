@@ -5,7 +5,7 @@ const app = require("./src/app");
 const { sequelize,initializeTables } = require("./src/config/db"); 
 
 const port = process.env.PORT || 5000;
-const HOST = process.env.HOST || "localhost";
+const HOST = process.env.HOST || "0.0.0.0"; // Listen on all available network interfaces
 // ------------------------------------------------------
 // 🚀 START SERVER WITH SEQUELIZE + MSSQL
 // ------------------------------------------------------
@@ -16,7 +16,7 @@ const HOST = process.env.HOST || "localhost";
 
     await initializeTables();          // ⬅️ Sync all models to MSSQL
 
-    app.listen(port, () => {
+    app.listen(port, HOST, () => {
       console.log(`🚀 Server running on http://${HOST}:${port}`);
     });
   } catch (err) {

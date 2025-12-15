@@ -31,6 +31,7 @@ const COLORS = {
   text: '#0F172A',
   textLight: '#64748B',
   border: '#E2E8F0',
+  info: '#0099FF',
 };
 
 const MONTHS = [
@@ -1034,7 +1035,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     lineHeight: 16,
   },
-  info: COLORS.primary,
+
 
   // ACTIONS
   actionsContainer: {
@@ -1085,76 +1086,76 @@ const styles = StyleSheet.create({
   },
 
   // YEAR PICKER MODAL STYLES
-pickerOverlay: {
-  flex: 1,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  padding: 16,
-},
-pickerContainer: {
-  backgroundColor: COLORS.cardBg,
-  borderRadius: 20,
-  overflow: 'hidden',
-  maxHeight: '80%',
-  width: '100%',
-  maxWidth: 320,
-},
-pickerHeader: {
-  paddingVertical: 16,
-  alignItems: 'center',
-},
-pickerTitle: {
-  fontSize: 18,
-  fontWeight: '700',
-  color: '#fff',
-},
-yearGrid: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  padding: 16,
-  gap: 10,
-  justifyContent: 'center',
-},
-yearButton: {
-  width: '22%',
-  aspectRatio: 1,
-  borderRadius: 12,
-  borderWidth: 2,
-  borderColor: COLORS.border,
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: COLORS.background,
-},
-yearButtonActive: {
-  backgroundColor: COLORS.primary,
-  borderColor: COLORS.primary,
-},
-yearButtonText: {
-  fontSize: 14,
-  fontWeight: '700',
-  color: COLORS.text,
-},
-yearButtonTextActive: {
-  color: '#fff',
-},
-pickerCloseButton: {
-  paddingVertical: 12,
-  paddingHorizontal: 16,
-  borderTopWidth: 1,
-  borderTopColor: COLORS.border,
-  alignItems: 'center',
-},
-pickerCloseButtonText: {
-  fontSize: 14,
-  fontWeight: '600',
-  color: COLORS.textLight,
-},
-yearTextClickable: {
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  backgroundColor: `${COLORS.primary}15`,
-  borderRadius: 6,
-},
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  pickerContainer: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 20,
+    overflow: 'hidden',
+    maxHeight: '80%',
+    width: '100%',
+    maxWidth: 320,
+  },
+  pickerHeader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  pickerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  yearGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    gap: 10,
+    justifyContent: 'center',
+  },
+  yearButton: {
+    width: '22%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  yearButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  yearButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  yearButtonTextActive: {
+    color: '#fff',
+  },
+  pickerCloseButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    alignItems: 'center',
+  },
+  pickerCloseButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textLight,
+  },
+  yearTextClickable: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: `${COLORS.primary}15`,
+    borderRadius: 6,
+  },
 
 });

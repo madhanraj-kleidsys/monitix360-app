@@ -11,7 +11,7 @@ import {
   TextInput,
   Alert,
   Platform,
-  ActivityIndicator,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +25,9 @@ import * as MediaLibrary from 'expo-media-library';
 import XLSX from 'xlsx';
 import useTaskManagement from './hooks/useTaskManagement';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { useWebSocket } from './hooks/useWebSocket';
+import useProjects from './hooks/useProjects';
+
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
 
@@ -326,44 +329,448 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
   );
 }
 
+//  UserSelector component
+// const UserSelector = ({ users, selectedUser, onSelectUser }) => {
+//   const [showDropdown, setShowDropdown] = useState(false);
+
+//   return (
+//     <View style={styles.userSelectorContainer}>
+//       <TouchableOpacity
+//         style={styles.userSelectorButton}
+//         onPress={() => setShowDropdown(!showDropdown)}
+//       >
+//         <Text style={styles.userSelectorText}>
+//           {selectedUser ? selectedUser.username : 'All Users'}
+//         </Text>
+//         <Ionicons
+//           name={showDropdown ? 'chevron-up' : 'chevron-down'}
+//           size={18}
+//           color={COLORS.primary}
+//         />
+//       </TouchableOpacity>
+
+//       {showDropdown && (
+//         <ScrollView style={styles.userDropdown} nestedScrollEnabled>
+//           <TouchableOpacity
+//             onPress={() => {
+//               onSelectUser(null);
+//               setShowDropdown(false);
+//             }}
+//             style={styles.userOption}
+//           >
+//             <Text style={styles.userOptionText}>All Users</Text>
+//           </TouchableOpacity>
+
+//           {users.map(user => (
+//             <TouchableOpacity
+//               key={user.id}
+//               onPress={() => {
+//                 onSelectUser(user);
+//                 setShowDropdown(false);
+//               }}
+//               style={[
+//                 styles.userOption,
+//                 selectedUser?.id === user.id && styles.userOptionActive
+//               ]}
+//             >
+//               <View style={styles.userOptionContent}>
+//                 <View style={styles.avatar}>
+//                   <Text style={styles.avatarText}>
+//                     {user.username.charAt(0).toUpperCase()}
+//                   </Text>
+//                 </View>
+//                 <View>
+//                   <Text style={styles.userOptionText}>
+//                     {user.firstname} {user.lastname}
+//                   </Text>
+//                   <Text style={styles.userOptionUsername}>@{user.username}</Text>
+//                 </View>
+//               </View>
+//             </TouchableOpacity>
+//           ))}
+//         </ScrollView>
+//       )}
+//     </View>
+//   );
+// };
+
+// const TabSwitcher = ({ tabValue, onTabChange }) => {
+//   const tabs = ['All Tasks', 'My Tasks', 'Unplanned'];
+
+//   return (
+//     <View style={styles.tabContainer}>
+//       {tabs.map((tab, index) => (
+//         <TouchableOpacity
+//           key={index}
+//           onPress={() => onTabChange(index)}
+//           style={[
+//             styles.tab,
+//             tabValue === index && styles.tabActive
+//           ]}
+//         >
+//           <Text style={[
+//             styles.tabText,
+//             tabValue === index && styles.tabTextActive
+//           ]}>
+//             {tab}
+//           </Text>
+//         </TouchableOpacity>
+//       ))}
+//     </View>
+//   );
+// };
+
 // ========== TASK CARD COMPONENT ==========
+// function TaskCard({ task, onPress }) {
+//   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
+//   const PRIORITY_COLORS = {
+//     1: '#FF6B6B', // High - Red
+//     2: '#FFA726', // Medium - Orange  
+//     3: '#4CAF50', // Low - Green
+//     'High': '#FF6B6B',
+//     'Medium': '#FFA726',
+//     'Low': '#4CAF50',
+//     'high': '#FF6B6B',
+//     'medium': '#FFA726',
+//     'low': '#4CAF50',
+//   };
+
+//   const getPriorityColor = (priority) => {
+//     const priorityLabel = getPriorityLabel(priority);
+//     return PRIORITY_COLORS[priorityLabel] || '#FFA726'; // Default to Medium orange
+//   };
+//   if (!task) return null;
+
+//   const getPriorityLabel = (priorityNum) => {
+//     if (priorityNum === null || priorityNum === undefined) return 'Medium';
+
+//     // Handle numeric values (1, 2, 3)
+//     if (typeof priorityNum === 'number') {
+//       if (priorityNum === 1) return 'High';
+//       if (priorityNum === 2) return 'Medium';
+//       if (priorityNum === 3) return 'Low';
+//     }
+
+//     // Handle string numbers ("1", "2", "3")
+//     if (typeof priorityNum === 'string') {
+//       const num = parseInt(priorityNum);
+//       if (!isNaN(num)) {
+//         if (num === 1) return 'High';
+//         if (num === 2) return 'Medium';
+//         if (num === 3) return 'Low';
+//       }
+
+//       // Handle string labels directly
+//       const lower = priorityNum.trim().toLowerCase();
+//       if (lower === 'high') return 'High';
+//       if (lower === 'medium') return 'Medium';
+//       if (lower === 'low') return 'Low';
+//     }
+
+//     console.warn('Unknown priority value:', priorityNum);
+//     return 'Medium'; // Default fallback
+//   };
+
+//   const priorityDisplay = getPriorityLabel(task.priority);
+//   const priorityColor = getPriorityColor(task.priority);
+
+//   return (
+//     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+//       <View style={styles.cardContent}>
+//         <View style={styles.employeeSection}>
+//           <Text style={styles.employeeName}>
+//             {task.employeeName || 'Unassigned'}
+//           </Text>
+//         </View>
+
+//         <View style={styles.taskSection}>
+//           <Text style={styles.taskName}>
+//             {task.name ? (task.name.length > 30 ? task.name.substring(0, 30) + '...' : task.name) : 'No Title'}
+//           </Text>
+//           <Text style={styles.projectText}>{task.Project_Title}</Text>
+//         </View>
+//         {/* <View style={[
+//           styles.priorityIndicator,
+//           { backgroundColor: PRIORITY_COLORS[task.priority] || '#64748B' }
+//         ]} /> */}
+//         <View style={styles.detailRow}>
+//           <View style={[
+//             styles.priorityBadge,
+//             {
+//               backgroundColor: `${priorityColor}15`,
+//               borderWidth: 1,
+//               borderColor: `${priorityColor}30`,
+//             }
+//           ]}>
+//             <Ionicons
+//               name={priorityDisplay === 'High' ? 'alert-circle' :
+//                 priorityDisplay === 'Medium' ? 'time' : 'checkmark-circle'}
+//               size={14}
+//               color={priorityColor}
+//               style={{ marginRight: 6 }}
+//             />
+//             <Text style={[
+//               styles.priorityBadgeText,
+//               {
+//                 color: priorityColor,
+//                 fontWeight: '800',
+//               }
+//             ]}>
+//               {priorityDisplay}
+//             </Text>
+//           </View>
+//         </View>
+
+//         <View style={styles.statusSection}>
+//           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+//           <Text style={[styles.statusText, { color: statusColor }]}>
+//             {task.status || 'pending'}
+//           </Text>
+//         </View>
+
+//         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+//       </View>
+//     </TouchableOpacity>
+//   );
+// }
+
 function TaskCard({ task, onPress }) {
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
 
+  // priority colors with gradients
+  const PRIORITY_COLORS = {
+    1: ['#fd0022ff', '#fd0022ff'], // High
+    2: ['#FFC46B', '#FFD93D'], // Medium 
+    3: ['#08a745ff', '#08a745ff'], // Low
+    'High': ['#fd0022ff', '#fd0022ff'],
+    'Medium': ['#FFC46B', '#FFD93D'],
+    'Low': ['#00ff33ff', '#08a745ff'],
+    'high': ['#fd0022ff', '#fd0022ff'],
+    'medium': ['#FFC46B', '#FFD93D'],
+    'low': ['#00ff33ff', '#08a745ff'],
+  };
+
+  // 🎨 Status colors makeover
+  const STATUS_COLORS_CUTE = {
+    pending: '#FFB347',
+    'in progress': '#74B9FF',
+    completed: '#55A3FF',
+    Paused: '#FF7675',
+  };
+
+  const getPriorityColor = (priority) => {
+    const priorityLabel = getPriorityLabel(priority);
+    return PRIORITY_COLORS[priorityLabel] || ['#A8E6CF', '#88D8C0'];
+  };
+
+  // 🌟 Enhanced priority label function
+  const getPriorityLabel = (priorityNum) => {
+    if (priorityNum === null || priorityNum === undefined) return 'Low';
+
+    if (typeof priorityNum === 'number') {
+      if (priorityNum === 1) return 'High';
+      if (priorityNum === 2) return 'Medium';
+      if (priorityNum === 3) return 'Low';
+    }
+
+    if (typeof priorityNum === 'string') {
+      const num = parseInt(priorityNum);
+      if (!isNaN(num)) {
+        if (num === 1) return 'High';
+        if (num === 2) return 'Medium';
+        if (num === 3) return 'Low';
+      }
+
+      const lower = priorityNum.trim().toLowerCase();
+      if (lower === 'high') return 'High';
+      if (lower === 'medium') return 'Medium';
+      if (lower === 'low') return 'Low';
+    }
+
+    return 'Low';
+  };
+
+  // 🎭 Cute icon mapping
+  const getCuteIcon = (priority) => {
+    const labels = {
+      'High': 'High',
+      'Medium': 'Mid',
+      'Low': 'Low',
+    };
+    return labels[getPriorityLabel(priority)] || 'Low';
+  };
+
+
+  // 🌈 Status emoji mapping
+  const getStatusEmoji = (status) => {
+    const emojis = {
+      pending: '⏳',
+      'in progress': '🚀',
+      completed: '✅',
+      Paused: '⏸️',
+    };
+    return emojis[status] || '📋';
+  };
+
+  const priorityDisplay = getPriorityLabel(task.priority);
+  const priorityColors = getPriorityColor(task.priority);
+  const statusEmoji = getStatusEmoji(task.status);
+
+  if (!task) return null;
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, styles.cuteCard]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      {/* 🌟 Gradient background overlay */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.9)', 'rgba(248,250,252,0.7)']}
+        style={styles.cardGradient}
+      />
+
       <View style={styles.cardContent}>
-        <View style={styles.employeeSection}>
-          <Text style={styles.employeeName}>
-            {task.employeeName || 'Unassigned'}
-          </Text>
+
+        {/* 🎨 Left side - Cute priority indicator */}
+        <View style={styles.leftSection}>
+          {/* <LinearGradient
+            colors={priorityColors}
+            style={styles.priorityCircle}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.priorityEmoji}>{getCuteIcon(task.priority)}</Text>
+          </LinearGradient>
+
+          {/* 🌸 Priority label */}
+          {/* <Text style={[styles.priorityLabel, { color: priorityColors[0] }]}>
+            {priorityDisplay}
+          </Text>  */}
+          <Image
+            source={require('../../assets/men1.jpg')}
+            resizeMode="cover"
+            style={styles.priorityCircle}
+          />
         </View>
 
-        <View style={styles.taskSection}>
-          <Text style={styles.taskName}>
-            {task.name ? (task.name.length > 30 ? task.name.substring(0, 30) + '...' : task.name) : 'No Title'}
-          </Text>
-          <Text style={styles.projectText}>{task.Project_Title}</Text>
+        {/* 📋 Middle section - Task info */}
+        <View style={styles.middleSection}>
+          {/* 🖼️ Task name + priority inline */}
+          <View style={styles.taskHeader}>
+             {/* 👤 Employee */}
+          <View style={styles.employeeRow}>
+            <Text style={styles.employeeEmoji}>👤</Text>
+            <Text >
+              {task.employeeName || 'Unassigned'}
+            </Text>
+          </View>
+
+            {/* 🌸 Priority badge - RIGHT AFTER NAME */}
+            <LinearGradient
+              colors={priorityColors}
+              style={styles.miniPriorityBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.miniPriorityText}>
+                {getCuteIcon(task.priority)}
+              </Text>
+            </LinearGradient>
+          </View>
+
+          {/* 🎯 Project */}
+          <Text style={styles.projectText}>🎯 {task.Project_Title}</Text>
+
+         
+          <Text style={styles.employeeName} numberOfLines={2}>
+              {task.name || 'No Title'}
+            </Text>
         </View>
 
-        <View style={styles.statusSection}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {task.status || 'pending'}
-          </Text>
-        </View>
+        {/* ✅ Right side - Status */}
+        <View style={styles.rightSection}>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+            <Text style={styles.statusEmoji}>{statusEmoji}</Text>
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {task.status || 'pending'}
+            </Text>
+          </View>
 
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+          {/* ➡️ Forward arrow with cute styling */}
+          <View style={styles.forwardArrow}>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+          </View>
+        </View>
+      </View>
+
+      {/* ✨ Cute decorative elements */}
+      <View style={styles.decorativeDots}>
+        <View style={[styles.dot, { backgroundColor: priorityColors[0] }]} />
+        <View style={[styles.dot, { backgroundColor: priorityColors[1] }]} />
+        <View style={[styles.dot, { backgroundColor: priorityColors[0] }]} />
       </View>
     </TouchableOpacity>
   );
 }
 
+
 // ========== TASK MODAL COMPONENT ==========
 function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeletePress }) {
+
+  // Add this with your other constants at the top
+  // Replace your PRIORITY_COLORS and getPriorityColor function with:
+  const PRIORITY_COLORS = {
+    1: '#FF6B6B', // High - Red
+    2: '#FFA726', // Medium - Orange  
+    3: '#4CAF50', // Low - Green
+    'High': '#FF6B6B',
+    'Medium': '#FFA726',
+    'Low': '#4CAF50',
+    'high': '#FF6B6B',
+    'medium': '#FFA726',
+    'low': '#4CAF50',
+  };
+
+  const getPriorityColor = (priority) => {
+    const priorityLabel = getPriorityLabel(priority);
+    return PRIORITY_COLORS[priorityLabel] || '#FFA726'; // Default to Medium orange
+  };
   if (!task) return null;
 
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
+  const getPriorityLabel = (priorityNum) => {
+    if (priorityNum === null || priorityNum === undefined) return 'Medium';
+
+    // Handle numeric values (1, 2, 3)
+    if (typeof priorityNum === 'number') {
+      if (priorityNum === 1) return 'High';
+      if (priorityNum === 2) return 'Medium';
+      if (priorityNum === 3) return 'Low';
+    }
+
+    // Handle string numbers ("1", "2", "3")
+    if (typeof priorityNum === 'string') {
+      const num = parseInt(priorityNum);
+      if (!isNaN(num)) {
+        if (num === 1) return 'High';
+        if (num === 2) return 'Medium';
+        if (num === 3) return 'Low';
+      }
+
+      // Handle string labels directly
+      const lower = priorityNum.trim().toLowerCase();
+      if (lower === 'high') return 'High';
+      if (lower === 'medium') return 'Medium';
+      if (lower === 'low') return 'Low';
+    }
+
+    console.warn('Unknown priority value:', priorityNum);
+    return 'Medium'; // Default fallback
+  };
+
+  const priorityDisplay = getPriorityLabel(task.priority);
+  const priorityColor = getPriorityColor(task.priority);
 
   return (
     <Modal
@@ -408,6 +815,50 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
                     {task.status}
                   </Text>
                 </View>
+              </View>
+
+              {/* <View style={styles.detailRow}>
+                <Text style={styles.label}>Priority:</Text>
+                <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
+                  <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+                  <Text style={[styles.priorityBadgeText, { color: priorityColor }]}>
+                    {priorityDisplay}
+                  </Text>
+                </View>
+              </View> */}
+
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Priority:</Text>
+                <View style={[
+                  styles.priorityBadge,
+                  {
+                    backgroundColor: `${priorityColor}15`,
+                    borderWidth: 1,
+                    borderColor: `${priorityColor}30`,
+                  }
+                ]}>
+                  <Ionicons
+                    name={priorityDisplay === 'High' ? 'alert-circle' :
+                      priorityDisplay === 'Medium' ? 'time' : 'checkmark-circle'}
+                    size={14}
+                    color={priorityColor}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={[
+                    styles.priorityBadgeText,
+                    {
+                      color: priorityColor,
+                      fontWeight: '800',
+                    }
+                  ]}>
+                    {priorityDisplay}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Department:</Text>
+                <Text style={styles.value}>{task.name}</Text>
               </View>
 
               <View style={styles.detailRow}>
@@ -478,16 +929,7 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
 }
 
 // ========== ASSIGN TASK MODAL ==========
-function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
-  // Helper to convert priority label to number
-  const getPriorityNumber = (label) => {
-    if (label === 'Critical') return 1;
-    if (label === 'High') return 1;
-    if (label === 'Medium') return 2;
-    if (label === 'Low') return 3;
-    return 2;
-  };
-
+function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
   const [formData, setFormData] = useState({
     department: '',
     title: '',
@@ -515,7 +957,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
 
   // Dummy data for dropdowns
   const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
-  const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  const priorities = ['Low', 'Medium', 'High'];
   // const users = ['Madhaneeh J', 'Arun', 'Patel'];
   // const {allUsers} = useTaskManagement;
 
@@ -596,50 +1038,59 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
       }
     }
   }, [formData.durationHours, formData.durationMinutes]);
- 
- const handleSave = async () => {
-  const finalTitle = formData.title?.trim() || formData.Project_Title?.trim();
 
-  if (!finalTitle) {
-    Alert.alert('Error', 'Project title is required');
-    return;
-  }
-  if (!formData.assignUserId && formData.assignUserId !== 0) {
-    Alert.alert('Error', 'User must be assigned');
-    return;
-  }
-  if (!formData.startTime) {
-    Alert.alert('Error', 'Start time is required');
-    return;
-  }
-  if (!formData.endTime) {
-    Alert.alert('Error', 'End time is required');
-    return;
-  }
+  const handleSave = async () => {
+    const finalTitle = formData.title?.trim() || formData.Project_Title?.trim();
 
-  setLoading(true);
-  try {
-    // ✅ EXACT MATCH for createTask expectations:
-    const taskPayload = {
-      department: formData.department || '',           // ← Used for title
-      projectTitle: formData.Project_Title || '',      // ← createTask expects camelCase!
-      taskDescription: formData.taskDescription || '',
-      priority: formData.priority,                     // ← String 'High', 'Medium', etc.
-      assignUserId: parseInt(formData.assignUserId),   // ← Integer
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      duration: formData.duration || '0.00'            // ← HH.MM format
-    };
+    if (!finalTitle) {
+      Alert.alert('Error', 'Project title is required');
+      return;
+    }
+    if (!formData.assignUserId && formData.assignUserId !== 0) {
+      Alert.alert('Error', 'User must be assigned');
+      return;
+    }
+    if (!formData.startTime) {
+      Alert.alert('Error', 'Start time is required');
+      return;
+    }
+    if (!formData.endTime) {
+      Alert.alert('Error', 'End time is required');
+      return;
+    }
 
-    console.log('✅ MATCHED createTask format:', JSON.stringify(taskPayload, null, 2));
-    await onSave(taskPayload);
-  } catch (error) {
-    console.error('❌ Save error:', error);
-    Alert.alert('Error', 'Failed to create task');
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      // Helper to convert priority label to number
+      const getPriorNumber = (label) => {
+        if (label === 'High') return 1;
+        if (label === 'Medium') return 2;
+        if (label === 'Low') return 3;
+        return 2;
+      };
+
+      // ✅ EXACT MATCH for createTask expectations:
+      const taskPayload = {
+        department: formData.department || '',           // ← Used for title
+        projectTitle: formData.Project_Title || '',      // ← createTask expects camelCase!
+        taskDescription: formData.taskDescription || '',
+        // priority: formData.priority,                     // ← String 'High', 'Medium', etc.
+        priority: getPriorNumber(formData.priority),     // ← Convert to Integer
+        assignUserId: parseInt(formData.assignUserId),   // ← Integer
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        duration: formData.duration || '0.00'            // ← HH.MM format
+      };
+
+      // console.log('✅ MATCHED createTask format:', JSON.stringify(taskPayload, null, 2));
+      await onSave(taskPayload);
+    } catch (error) {
+      console.error('❌ Save error:', error);
+      Alert.alert('Error', 'Failed to create task');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleClose = () => {
     setDepartmentOpen(false);
@@ -879,7 +1330,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                       </View>
                     )}
 
-                    {projectTitleOpen && (
+                    {/* {projectTitleOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
                         {['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'].map((proj, idx) => (
                           <TouchableOpacity
@@ -894,7 +1345,26 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
                           </TouchableOpacity>
                         ))}
                       </View>
+                    )} */}
+
+                    {projectTitleOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
+                        {(projects || []).map((proj) => (
+                          <TouchableOpacity
+                            key={proj.id}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              // only store/display name
+                              handleInputChange('Project_Title', proj.name);
+                              setProjectTitleOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     )}
+
 
                   </View>
 
@@ -1084,9 +1554,8 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers }) {
   );
 }
 
-
 // ========== COMPLETE EDIT TASK MODAL WITH ALL FEATURES ==========
-function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
+function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, projects }) {
   const [editedTask, setEditedTask] = useState({
     title: '',
     description: '',
@@ -1112,6 +1581,39 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
   const projectOptions = ['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'];
 
   // ========== INITIALIZE FORM WITH ACTUAL VALUES ==========
+
+  // AddED sync state when task prop changes
+  useEffect(() => {
+    if (task && visible) {
+      console.log('Task prop changed in EditTaskModal:', task);
+
+      // Parse priority correctly
+      const priorityLabel = getPriorityLabel(task.priority);
+      console.log('Parsed priority:', priorityLabel, 'from:', task.priority);
+
+      // Parse duration from minutes
+      const totalMinutes = parseInt(task.duration_minutes) || 0;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      setEditedTask({
+        title: task.name || task.title || '',
+        description: task.description || '',
+        department: task.department || '',
+        Project_Title: task.project_title || task.Project_Title || '',
+        status: task.status === 'pending' ? 'Pending' : (task.status || 'Pending'),
+        priority: priorityLabel,
+        durationHours: String(hours),
+        durationMinutes: String(minutes),
+        duration: `${hours}.${String(minutes).padStart(2, '0')}`,
+        startTime: task.startDate || task.start || '',
+        endTime: task.endDate || task.end_time || '',
+        durationInputMode: 'auto',
+      });
+    }
+  }, [task, visible]); // Re-run when task or visible changes
+
+
   useEffect(() => {
     if (task && visible) {
       console.log('📋 Task data:', {
@@ -1148,9 +1650,19 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
 
   // Helper to convert priority number to label
   const getPriorityLabel = (priorityNum) => {
-    if (priorityNum === 1) return 'High';
-    if (priorityNum === 2) return 'Medium';
-    if (priorityNum === 3) return 'Low';
+    if (!priorityNum) return 'Medium';
+    if (priorityNum === 1 || priorityNum === '1') return 'High';
+    if (priorityNum === 2 || priorityNum === '2') return 'Medium';
+    if (priorityNum === 3 || priorityNum === '3') return 'Low';
+
+    // String handling
+    if (typeof priorityNum === 'string') {
+      const lower = priorityNum.trim().toLowerCase();
+      if (lower === 'high') return 'High';
+      if (lower === 'medium') return 'Medium';
+      if (lower === 'low') return 'Low';
+    }
+
     return 'Medium';
   };
 
@@ -1325,14 +1837,64 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
 
                   {/* Task Title */}
                   <Text style={styles.fieldLabel}>Task Title *</Text>
-                  <TextInput
+                  {/* <TextInput
                     style={styles.input}
                     placeholder="Enter task title"
                     placeholderTextColor={COLORS.textLight}
                     value={editedTask.title}
                     onChangeText={(value) => handleInputChange('title', value)}
                     editable={!loading}
-                  />
+                  /> */}
+
+                  <View>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => setDepartmentOpen(prev => !prev)}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !editedTask.title && { color: COLORS.textLight },
+                      ]}>
+                        {editedTask.title || 'Select Task Title'}
+                      </Text>
+                      <Ionicons
+                        name={departmentOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={COLORS.textLight}
+                      />
+                    </TouchableOpacity>
+
+                    {departmentOpen && (
+                      <View style={styles.customInputWrapper}>
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Type custom department"
+                          placeholderTextColor={COLORS.textLight}
+                          value={editedTask.title}
+                          onChangeText={(value) => handleInputChange('title', value)}
+                          editable={!loading}
+                        />
+                      </View>
+                    )}
+
+                    {departmentOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        {departments.map((dept, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              handleInputChange('title', dept);
+                              setDepartmentOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{dept}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
 
                   {/* Description */}
                   <Text style={styles.fieldLabel}>Description</Text>
@@ -1346,8 +1908,8 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
                     multiline
                   />
 
-                  {/* Department Dropdown
-                  <Text style={styles.fieldLabel}>Department</Text>
+                  {/* Department Dropdown */}
+                  {/* <Text style={styles.fieldLabel}>Department</Text>
                   <View>
                     <TouchableOpacity
                       style={styles.dropdown}
@@ -1433,7 +1995,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
                       </View>
                     )}
 
-                    {projectTitleOpen && (
+                    {/* {projectTitleOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
                         {projectOptions.map((proj, idx) => (
                           <TouchableOpacity
@@ -1448,7 +2010,26 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers }) {
                           </TouchableOpacity>
                         ))}
                       </View>
+                    )} */}
+
+                    {projectTitleOpen && (
+                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
+                        {(projects || []).map((proj) => (
+                          <TouchableOpacity
+                            key={proj.id}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              // only store/display name
+                              handleInputChange('Project_Title', proj.name);
+                              setProjectTitleOpen(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     )}
+
                   </View>
 
 
@@ -1636,8 +2217,15 @@ export default function HomePage() {
     fetchAllTasks,
     fetchAllUsers,
     updateTask,
-    deleteTask
+    deleteTask,
+
+    // emit,
+    // on,
+    // off,
+    // isConnected,
   } = useTaskManagement();
+  const tasks = allTasks || [];
+  const { projects, projectsLoading } = useProjects();
 
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -1645,14 +2233,18 @@ export default function HomePage() {
   const [isDetailVisible, setIsDetailVisible] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [assignTaskModalVisible, setAssignTaskModalVisible] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
 
-  const [selectedDateRange, setSelectedDateRange] = useState({
-    start: new Date(),
-    end: new Date(),
-  });
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [filterPriority, setFilterPriority] = useState('');
+  const [unplannedTasks, setUnplannedTasks] = useState([]);
+  const [tabValue, setTabValue] = useState(0); // 0: All, 1: My Tasks, 2: Unplanned
+  const [showChart, setShowChart] = useState(false);
+  const [deletedTask, setDeletedTask] = useState(null);
+
+  const [undoTimeoutId, setUndoTimeoutId] = useState(null);
+
 
   useEffect(() => {
     const checkToken = async () => {
@@ -1662,9 +2254,9 @@ export default function HomePage() {
           const decoded = JSON.parse(atob(token.split('.')[1]));
           const now = Math.floor(Date.now() / 1000);
           const timeLeft = decoded.exp - now;
-          console.log(`â° Token expires in: ${Math.floor(timeLeft / 60)} minutes`);
+          console.log(`Token expires in: ${Math.floor(timeLeft / 60)} minutes`);
           if (timeLeft < 0) {
-            console.log('âŒ Token EXPIRED - need to log in again');
+            console.log('Token EXPIRED - need to log in again');
             await AsyncStorage.removeItem('authToken');
           }
         } catch (err) {
@@ -1674,6 +2266,22 @@ export default function HomePage() {
     };
     checkToken();
   }, []);
+
+  // Fetch unplanned tasks
+  // useEffect(() => {
+  //   const loadUnplannedTasks = async () => {
+  //     try {
+  //       const data = await TaskService.getUnplannedTasks();
+  //       setUnplannedTasks(data);
+  //     } catch (error) {
+  //       console.error('Error loading unplanned tasks:', error);
+  //     }
+  //   };
+
+  //   loadUnplannedTasks();
+  // }, []);
+
+  // const tasksToDisplay = tabValue === 2 ? unplannedTasks : filteredTasks;
 
   // ===== RESPONSIVE CALCULATIONS =====
   const bottomPadding = useMemo(() => {
@@ -1690,14 +2298,14 @@ export default function HomePage() {
   }, [insets.top, insets.bottom]);
 
   const handleSaveTask = async (taskData) => {
-    console.log('[HomePage] handleSaveTask called');
-    console.log('Task Data received:', taskData);
+    // console.log('[HomePage] handleSaveTask called');
+    // console.log('Task Data received:', taskData);
 
     try {
-      console.log(' Calling createTask...');
+      // console.log(' Calling createTask...');
       const response = await createTask(taskData);
+      // if (isConnected) emit('task:created', response)
       console.log(' Task created:', response);
-
       Alert.alert('Success', 'Task assigned successfully!');
       setAssignTaskModalVisible(false);
     } catch (error) {
@@ -1718,6 +2326,10 @@ export default function HomePage() {
       status: t.status === 'pending' ? 'pending' : t.status,
       // Handle backend (project_title) vs frontend (Project_Title) mismatch
       Project_Title: t.project_title || t.Project_Title,
+      // priority: getPriorityLabel(t.priority),
+      priority: t.priority, // This was missing!
+      duration_minutes: t.duration_minutes, // This was missing!
+      department: t.department,
       description: t.description,
       startDate: t.start,
       endDate: t.end_time,
@@ -1742,16 +2354,24 @@ export default function HomePage() {
     return filtered;
   }, [uiTasks, selectedDate]);
 
+
+
+
+
   //  In useEffect
   useEffect(() => {
     fetchAllTasks();
   }, [fetchAllTasks]);
 
+  // const handleTaskPress = (task) => {
+  //   setSelectedTask(task);
+  //   setIsDetailVisible(true);
+  // };
   const handleTaskPress = (task) => {
+    console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
     setSelectedTask(task);
     setIsDetailVisible(true);
   };
-
   const handleAddTask = () => {
     setAssignTaskModalVisible(true);
   };
@@ -1766,6 +2386,8 @@ export default function HomePage() {
       // Close edit modal after save
       setIsEditModalVisible(false);
       // Keep detail sheet open to show updated data
+      // if (isConnected) emit
+      // console.log('task:updated', { id, ...data });
       await fetchAllTasks();
       setSelectedTask(null); // Close detail sheet too
       setIsDetailVisible(false);
@@ -1774,16 +2396,32 @@ export default function HomePage() {
     }
   };
 
-  const handleDeleteTask = async (id) => {
-    try {
-      await deleteTask(id);
-      setIsDetailVisible(false);
-      await fetchAllTasks();
-    } catch (err) {
-      console.error('Delete failed:', err);
-    }
+  // if (isConnected) emit('task:deleted', id);
+  const handleDeleteTask = (id) => {
+    Alert.alert(
+      "Delete Task",
+      "Are you sure you want to delete this task?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTask(id);
+              setIsDetailVisible(false);
+              await fetchAllTasks();
+            } catch (err) {
+              console.error("Delete failed:", err);
+            }
+          }
+        }
+      ]
+    );
   };
-
   return (
     <View style={styles.container}>
       <Header />
@@ -1845,6 +2483,7 @@ export default function HomePage() {
         onClose={() => setAssignTaskModalVisible(false)}
         onSave={handleSaveTask}
         allUsers={allUsers}
+        projects={projects}
       />
 
       <TaskModal
@@ -1869,7 +2508,17 @@ export default function HomePage() {
         onSave={handleUpdateTask}
         loading={loading}
         allUsers={allUsers}
+        projects={projects}
       />
+
+      {/* <UserSelector
+        users={allUsers}
+        selectedUser={selectedUser}
+        onSelectUser={setSelectedUser}
+      /> */}
+
+      {/* <TabSwitcher tabValue={tabValue} onTabChange={setTabValue} /> */}
+
     </View>
   );
 }
@@ -2278,7 +2927,7 @@ const styles = StyleSheet.create({
   modalScrollContent: {
     flex: 1,
     paddingHorizontal: isTablet ? 24 : 20,
-    paddingTop: 20,
+    paddingTop: 2,
   },
 
   // ========== FORM STYLES ==========
@@ -2388,6 +3037,26 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     marginBottom: 8,
     marginTop: 12,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  priorityBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
     backgroundColor: '#F5F7FA',
@@ -2691,4 +3360,191 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+
+
+  // ========== CUTE CARD STYLES ==========
+  cuteCard: {
+    borderRadius: 20,
+    marginBottom: 16,
+    borderWidth: 0,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+
+  // 🌸 Left section with priority
+  leftSection: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  priorityEmoji: {
+    fontSize: 24,
+  },
+  priorityLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // 📋 Middle section with task info
+  middleSection: {
+    flex: 1,
+    gap: 6,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  cuteImagePlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#14f500ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#18f818ff',
+  },
+  cuteImageEmoji: {
+    fontSize: 16,
+  },
+  taskName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    flex: 1,
+    lineHeight: 20,
+  },
+  projectText: {
+    fontSize: 13,
+    color: COLORS.textLight,
+    fontWeight: '500',
+  },
+  employeeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  employeeEmoji: {
+    fontSize: 14,
+  },
+  employeeName: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: '600',
+  },
+
+  // ✅ Right section with status
+  rightSection: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  statusEmoji: {
+    fontSize: 12,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  forwardArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+
+  // ✨ Decorative elements
+  decorativeDots: {
+    position: 'absolute',
+    bottom: 8,
+    right: 16,
+    flexDirection: 'row',
+    gap: 3,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.6,
+  },
+
+  taskImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FFB6C1',
+  },
+
+  // Mini priority badge - cute & compact
+  miniPriorityBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8, // space after name
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  miniPriorityEmoji: {
+    fontSize: 14,
+  },
+  miniPriorityText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 });

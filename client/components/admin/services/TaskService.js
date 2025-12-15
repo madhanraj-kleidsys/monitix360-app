@@ -16,6 +16,7 @@ const TaskService = {
   getAllTasks: async () => {
     try {
       const response = await api.get('/tasks/all');
+      // console.log('🔍 TaskService getAllTasks raw response:', response.data);
       // RETURN response.data (which is the array), NOT response object
       return response.data;
     } catch (err) {
