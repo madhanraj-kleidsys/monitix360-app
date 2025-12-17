@@ -113,7 +113,7 @@ exports.login = async (req, res) => {
       company_id: user.company_id,
     };
 
-    const accessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: "1m" });
+    const accessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: "15m" });
     const refreshToken = jwt.sign({ id: user.id }, REFRESH_SECRET, { expiresIn: "7d" });
 
     // Save refresh token to DB
@@ -140,16 +140,22 @@ exports.refresh = async (req, res) => {
     // 1. Verify token signature
     let decoded;
     try {
+      if (!REFRESH_SECRET) console.error('❌ REFRESH_SECRET is undefined!');
       decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+      console.log('✅ Token signature verified. User ID:', decoded.id);
     } catch (e) {
+      console.error('❌ Token verification failed:', e.message);
       return res.status(403).json({ error: 'Invalid or expired refresh token' });
     }
 
     // 2. Check if token exists in DB (revocation check)
+    console.log('🔍 Looking up token in DB...');
     const user = await findUserByRefreshToken(refreshToken);
     if (!user) {
+      console.error('❌ Token not found in DB.');
       return res.status(403).json({ error: 'Refresh token not found in database (revoked or invalid)' });
     }
+    console.log('✅ Token found in DB for user:', user.username);
 
     // 3. Generate new access token
     const payload = {
@@ -160,7 +166,7 @@ exports.refresh = async (req, res) => {
       company_id: user.company_id,
     };
 
-    const newAccessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: '1m' });
+    const newAccessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: '15m' });
 
     res.json({ accessToken: newAccessToken });
 

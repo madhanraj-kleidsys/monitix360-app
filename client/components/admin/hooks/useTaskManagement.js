@@ -177,6 +177,7 @@ export const useTaskManagement = () => {
     }
   }, [fetchAllTasks]);
 
+
   // Update task status
   const updateStatus = useCallback(async (taskId, status) => {
     setLoading(true);

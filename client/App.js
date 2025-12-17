@@ -1,9 +1,9 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Alert } from 'react-native';
 import SplashScreen from './components/loader/SplashScreen';
 
 // common screens 
@@ -13,7 +13,7 @@ import RegisterScreen from './components/commonScreens/RegisterScreen';
 
 //admin pages
 import AdminDockNavigation from './components/admin/DockNavigation';
-import AdminHomePage from './components/admin/HomePage';
+import AdminHomePage from './components/admin/home/HomePage';
 import AdminProjectPage from './components/admin/ProjectPage';
 import AdminEmployeePage from './components/admin/EmployeePage';
 import AdminHolidayPage from './components/admin/HolidayPage';
@@ -32,7 +32,7 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // ========== ADMIN MAIN TABS ==========
-function AdminMainTabs({ onLogout , user }) {
+function AdminMainTabs({ onLogout, user }) {
   const [activeScreen, setActiveScreen] = useState('home');
 
   const handleTabPress = (id) => {
@@ -40,24 +40,24 @@ function AdminMainTabs({ onLogout , user }) {
   };
   return (
     <>
-     <Tab.Navigator
-      tabBar={(props) => <AdminDockNavigation {...props} onLogout={onLogout}
-        activeScreen={activeScreen}
-         onTabPress={handleTabPress}
-       />}
-      screenOptions={{ headerShown: false }}
-    >
+      <Tab.Navigator
+        tabBar={(props) => <AdminDockNavigation {...props} onLogout={onLogout}
+          activeScreen={activeScreen}
+          onTabPress={handleTabPress}
+        />}
+        screenOptions={{ headerShown: false }}
+      >
 
-      <Tab.Screen name="AdminHome" component={AdminHomePage} />
-      <Tab.Screen name="AdminProjects" component={AdminProjectPage} />
-      <Tab.Screen name="AdminEmployees" component={AdminEmployeePage} />
-      <Tab.Screen name="AdminHolidays" component={AdminHolidayPage} />
-      <Tab.Screen name="AdminShift" component={AdminShiftPage} />
-      <Tab.Screen name="AdminProfile">
-        {(props) => <AdminProfilePage {...props} onLogout={onLogout} 
-        user={user}/>}
-      </Tab.Screen>
-    </Tab.Navigator>
+        <Tab.Screen name="AdminHome" component={AdminHomePage} />
+        <Tab.Screen name="AdminProjects" component={AdminProjectPage} />
+        <Tab.Screen name="AdminEmployees" component={AdminEmployeePage} />
+        <Tab.Screen name="AdminHolidays" component={AdminHolidayPage} />
+        <Tab.Screen name="AdminShift" component={AdminShiftPage} />
+        <Tab.Screen name="AdminProfile">
+          {(props) => <AdminProfilePage {...props} onLogout={onLogout}
+            user={user} />}
+        </Tab.Screen>
+      </Tab.Navigator>
 
     </>
 
@@ -88,9 +88,9 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-   const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
- // Check for saved token + user on app start
+  // Check for saved token + user on app start
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -103,7 +103,7 @@ export default function App() {
         // Check for saved token AND user data
         const savedToken = await AsyncStorage.getItem('authToken');
         const savedUser = await AsyncStorage.getItem('userData');
-        
+
         if (savedToken && savedUser) {
           setToken(savedToken);
           setUser(JSON.parse(savedUser)); // Restore user object
@@ -117,14 +117,14 @@ export default function App() {
     initializeApp();
   }, []);
 
-  useEffect(()=>{
-  const sub = DeviceEventEmitter.addListener('logout',()=>{
-    setUser(null);      // your existing state
-    setToken(null);
-    Alert.alert('Logged out','Your session has expired. Please log in again.');
-  });
-  return ()=>sub.remove();
-},[]);
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('logout', () => {
+      setUser(null);      // existing state
+      setToken(null);
+      Alert.alert('Logged out', 'Your session has expired. Please log in again.');
+    });
+    return () => sub.remove();
+  }, []);
 
   if (isLoading) {
     return <SplashScreen />;
@@ -155,7 +155,7 @@ export default function App() {
                     // Save BOTH token AND user data
                     await AsyncStorage.setItem('authToken', jwt);
                     await AsyncStorage.setItem('userData', JSON.stringify(userData));
-                    
+
                     setUser(userData);
                     setToken(jwt);
                   }}
@@ -169,16 +169,16 @@ export default function App() {
             {props =>
               user.role === 'admin'
                 ? <AdminMainTabs {...props} onLogout={async () => {
-                    await AsyncStorage.multiRemove(['authToken', 'userData']);
-                    setUser(null);
-                    setToken(null);
-                  }}
+                  await AsyncStorage.multiRemove(['authToken', 'userData']);
+                  setUser(null);
+                  setToken(null);
+                }}
                   user={user} />
                 : <EmployeeMainTabs {...props} onLogout={async () => {
-                    await AsyncStorage.multiRemove(['authToken', 'userData']);
-                    setUser(null);
-                    setToken(null);
-                  }} />
+                  await AsyncStorage.multiRemove(['authToken', 'userData']);
+                  setUser(null);
+                  setToken(null);
+                }} />
             }
           </Stack.Screen>
         )}

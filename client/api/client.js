@@ -1,51 +1,3 @@
-// import axios from 'axios';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// const api = axios.create({
-//   baseURL: 'http://192.168.0.216:3000/api',
-//   timeout: 10000,
-// });
-
-// api.interceptors.request.use(async (config) => {
-//   const token = await AsyncStorage.getItem('authToken');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   config.headers['Content-Type'] = 'application/json';
-
-//   // ✅ ADD DEBUGGING
-//   // console.log('🔵 [REQUEST]', config.method?.toUpperCase(), config.url);
-//   // console.log('📦 Data:', config.data);
-//   // console.log('🔐 Token:', token ? 'Present' : 'Missing');
-
-//   return config;
-// }, (error) => {
-//   console.error('❌ [REQUEST ERROR]', error.message);
-//   return Promise.reject(error);
-// });
-
-// api.interceptors.response.use(
-//   (response) => {
-//     // ✅ ADD DEBUGGING
-//     // console.log('🟢 [RESPONSE]', response.status, response.config.url);
-//     // console.log('📦 Response Data:', response.data);
-//     return response;
-//   },
-//   (error) => {
-//     // ✅ ADD DEBUGGING
-//     console.error('🔴 [RESPONSE ERROR]', error.response?.status || error.message);
-//     console.error('Error Details:', error.response?.data);
-
-//     if (error.response?.status === 401) {
-//       AsyncStorage.removeItem('authToken');
-//     }
-//     return Promise.reject(error);
-//   }
-// );
-
-// export default api;
-
-
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, Alert, Platform } from 'react-native';
@@ -72,7 +24,7 @@ axiosInstance.interceptors.request.use(async (config) => {
 
 axiosInstance.interceptors.response.use(
   res => res,
-  async (err) => {  // ✅ Removed extra 'async' - was causing syntax error
+  async (err) => {
     const originalRequest = err.config;
     if (err.response?.status === 403 && !originalRequest._retry) {
       originalRequest._retry = true;
@@ -86,20 +38,27 @@ axiosInstance.interceptors.response.use(
         }).catch(e => Promise.reject(e));
       }
 
+      console.log('🔄 Access token expired. Attempting refresh...');
       isRefreshing = true;
       const refreshToken = await AsyncStorage.getItem('refreshToken');
+
       if (!refreshToken) {
+        console.log('❌ No refresh token found in storage. Logging out.');
         isRefreshing = false;
         await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userData']);
         DeviceEventEmitter.emit('logout');
-        setTimeout(() => {
-          Alert.alert('Session expired', 'Please log in again.');
-        }, 100);
+
         return Promise.reject(err);
       }
 
       try {
-        const { data } = await axios.post(`${BASE_URL}/refresh`, { refreshToken });
+        console.log('📤 Sending refresh request...');
+        // ✅ FIX: Endpoint must match server route (/api/auth/refresh)
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+        console.log('✅ Refresh successful. New access token received.');
+        console.log(data.accessToken);
+        console.log(data);
+
         await AsyncStorage.setItem('accessToken', data.accessToken);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
         processQueue(null, data.accessToken);
@@ -108,13 +67,16 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshErr) {
+        // console.error('❌ Refresh failed:', refreshErr.message);
         processQueue(refreshErr, null);
         await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userData']);
         DeviceEventEmitter.emit('logout');
-        setTimeout(() => {
-          Alert.alert('Session expired', 'Please log in again.');
-        }, 100);
-        return Promise.reject(refreshErr);
+
+        // Show alert only once
+
+
+        // Return a specific error object or suppress further error handling if possible
+        return Promise.reject(new Error('SESSION_EXPIRED'));
       } finally {
         isRefreshing = false;
       }
