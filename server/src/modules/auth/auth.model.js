@@ -25,14 +25,22 @@ const createUser = async (data) => {
 };
 
 // save refresh token
-const saveRefreshToken = async (token, userId) =>{
-    await User.update({ refresh_token: token }, { where: { id: userId } });
+const saveRefreshToken = async (token, userId) => {
+  await User.update({ refresh_token: token }, { where: { id: userId } });
 }
+
+const findUserByRefreshToken = async (refreshToken) => {
+  return await User.findOne({ where: { refresh_token: refreshToken } });
+};
 
 module.exports = {
   findUserByEmail,
   findCompanyByCode,
   createCompany,
   createUser,
-  saveRefreshToken
+  createCompany,
+  createUser,
+  saveRefreshToken,
+  findUserByRefreshToken
 };
+

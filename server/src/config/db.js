@@ -113,34 +113,40 @@ const Company = sequelize.define("companies", {
 
 
 const User = sequelize.define("users", {
-  id: { 
-    type: DataTypes.INTEGER, 
-    autoIncrement: true, 
-    primaryKey: true 
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
   },
 
   first_name: DataTypes.STRING,
   last_name: DataTypes.STRING,
 
-  user_code: { 
+  user_code: {
     type: DataTypes.STRING,
   },
 
-  username: { 
-    type: DataTypes.STRING, 
-    unique: "UQ_users_username" 
+  username: {
+    type: DataTypes.STRING,
+    unique: "UQ_users_username"
   },
 
-  email: { 
-    type: DataTypes.STRING, 
+  email: {
+    type: DataTypes.STRING,
     unique: "UQ_users_email",
     allowNull: false
   },
 
-  password: { 
-    type: DataTypes.STRING, 
-    allowNull: false 
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
   },
+
+  refresh_token: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+
 
   contact_no: {
     type: DataTypes.STRING,
@@ -157,15 +163,15 @@ const User = sequelize.define("users", {
 
   division: DataTypes.TEXT,
 
-  role: { 
-    type: DataTypes.STRING, 
-    defaultValue: "user" 
+  role: {
+    type: DataTypes.STRING,
+    defaultValue: "user"
   },
 
   // ⭐ Store array as JSON string in MSSQL
-  selected_employees: { 
+  selected_employees: {
     type: DataTypes.TEXT,
-    defaultValue: "[]",   
+    defaultValue: "[]",
     get() {
       const raw = this.getDataValue("selected_employees");
       return raw ? JSON.parse(raw) : [];
@@ -175,9 +181,9 @@ const User = sequelize.define("users", {
     }
   },
 
-  created_at: { 
-    type: DataTypes.DATE, 
-    defaultValue: DataTypes.NOW 
+  created_at: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   }
 });
 
@@ -211,14 +217,14 @@ const Task = sequelize.define("tasks", {
   stop_reason: DataTypes.TEXT,
 
   // ⬇ NEW COLUMNS YOU ASKED
-  added_by_user: { 
-    type: DataTypes.BOOLEAN, 
-    defaultValue: false 
+  added_by_user: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
 
-  approval_status: { 
-    type: DataTypes.STRING, 
-    defaultValue: "pending" 
+  approval_status: {
+    type: DataTypes.STRING,
+    defaultValue: "pending"
   }
 });
 
@@ -253,7 +259,7 @@ const Shift = sequelize.define("shifts", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   shift_name: DataTypes.STRING,
   shift_start: { type: DataTypes.STRING },
-shift_end: { type: DataTypes.STRING },
+  shift_end: { type: DataTypes.STRING },
 
 
   company_id: {
@@ -267,12 +273,12 @@ shift_end: { type: DataTypes.STRING },
 const ShiftBreak = sequelize.define("shift_breaks", {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   break_type: DataTypes.STRING,
-break_start: { type: DataTypes.STRING },
-break_end: { type: DataTypes.STRING },
+  break_start: { type: DataTypes.STRING },
+  break_end: { type: DataTypes.STRING },
 
 
   // ⬇ ADD THIS — REQUIRED
-  shift_id: {       
+  shift_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
   },

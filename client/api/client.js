@@ -48,7 +48,7 @@
 
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter, Alert,Platform } from 'react-native';
+import { DeviceEventEmitter, Alert, Platform } from 'react-native';
 
 const BASE_URL = 'http://192.168.0.216:3000/api';
 
@@ -94,7 +94,7 @@ axiosInstance.interceptors.response.use(
         DeviceEventEmitter.emit('logout');
         setTimeout(() => {
           Alert.alert('Session expired', 'Please log in again.');
-        },100);
+        }, 100);
         return Promise.reject(err);
       }
 
@@ -103,6 +103,9 @@ axiosInstance.interceptors.response.use(
         await AsyncStorage.setItem('accessToken', data.accessToken);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
         processQueue(null, data.accessToken);
+
+        // 🔁 Update the header for the *original* failed request before retrying
+        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
@@ -110,7 +113,7 @@ axiosInstance.interceptors.response.use(
         DeviceEventEmitter.emit('logout');
         setTimeout(() => {
           Alert.alert('Session expired', 'Please log in again.');
-        },100);
+        }, 100);
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

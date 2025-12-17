@@ -95,11 +95,6 @@ exports.login = async (req, res) => {
     // First try email login
     let user = await findUserByEmail(email);
 
-    // If not found → try username login
-    // if (!user) {
-    //   user = await findUserByUsername(email);
-    // }
-
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
@@ -110,8 +105,6 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // console.log("Received:", req.body);
-    // console.log("Email to find:", email);
     const payload = {
       id: user.id,
       email: user.email,
@@ -120,18 +113,10 @@ exports.login = async (req, res) => {
       company_id: user.company_id,
     };
 
-    const accessToken = jwt.sign(
-      payload,
-      ACCESS_SECRET,
-      // JWT_SECRET,
-      { expiresIn: "1m" }
-    );
+    const accessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: "1m" });
+    const refreshToken = jwt.sign({ id: user.id }, REFRESH_SECRET, { expiresIn: "7d" });
 
-    const refreshToken = uuid();
-    // await db.request()
-    //   .input('id', user.id)
-    //   .input('rt', refreshToken)
-    //   .query`UPDATE users SET refresh_token = @rt WHERE id = @id`;
+    // Save refresh token to DB
     await saveRefreshToken(refreshToken, user.id);
 
     res.json({ message: "Login successful", accessToken, refreshToken, user });
@@ -143,29 +128,44 @@ exports.login = async (req, res) => {
 };
 
 // ----------------------- REFRESH -----------------------
+const { findUserByRefreshToken } = require("../auth/auth.model");
+
 exports.refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-      return res.status(401).json({
-        error: 'missing refresh token'
-      });
+      return res.status(401).json({ error: 'Missing refresh token' });
     }
 
-    const user = await db.request()
-      .input('rt', refreshToken)
-      .query`SELECT id,email,username,role,company_id FROM users WHERE refresh_token = @rt`;
-    if (!user.recordset.length) return res.status(401).json({ error: 'Invalid refresh token' });
+    // 1. Verify token signature
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, REFRESH_SECRET);
+    } catch (e) {
+      return res.status(403).json({ error: 'Invalid or expired refresh token' });
+    }
 
-    const u = user.recordset[0];
-    const newAccess = jwt.sign(
-      { id: u.id, email: u.email, username: u.username, role: u.role, company_id: u.company_id },
-      ACCESS_SECRET,
-      { expiresIn: '1m' }
-    );
-    res.json({ accessToken: newAccess });
+    // 2. Check if token exists in DB (revocation check)
+    const user = await findUserByRefreshToken(refreshToken);
+    if (!user) {
+      return res.status(403).json({ error: 'Refresh token not found in database (revoked or invalid)' });
+    }
+
+    // 3. Generate new access token
+    const payload = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      company_id: user.company_id,
+    };
+
+    const newAccessToken = jwt.sign(payload, ACCESS_SECRET, { expiresIn: '1m' });
+
+    res.json({ accessToken: newAccessToken });
+
   } catch (err) {
-    console.error(err);
+    console.error('Refresh error:', err);
     res.status(500).json({ message: 'Server error' });
   }
-}
+};
