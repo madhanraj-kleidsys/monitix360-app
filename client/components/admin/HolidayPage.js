@@ -463,6 +463,7 @@ export default function AdminHolidayPage() {
       setHolidays(yearFiltered);
       // console.log('✅ Holidays loaded:', yearFiltered.length);
     } catch (e) {
+      if (e.message === 'SESSION_EXPIRED') return;
       console.log('❌ Error fetching holidays', e);
       Alert.alert('Error', 'Failed to fetch holidays');
     } finally {
@@ -502,6 +503,7 @@ export default function AdminHolidayPage() {
       setModalVisible(false);
       Alert.alert('✅ Success', holidayId ? 'Holiday updated' : 'Holiday created');
     } catch (e) {
+      if (e.message === 'SESSION_EXPIRED') return;
       console.log('❌ Error saving holiday', e);
       Alert.alert('Error', 'Failed to save holiday');
     } finally {
@@ -521,6 +523,7 @@ export default function AdminHolidayPage() {
       setModalVisible(false);
       Alert.alert('✅ Success', 'Holiday deleted');
     } catch (e) {
+      if (e.message === 'SESSION_EXPIRED') return;
       console.log('❌ Error deleting holiday', e);
       Alert.alert('Error', 'Failed to delete holiday');
     } finally {

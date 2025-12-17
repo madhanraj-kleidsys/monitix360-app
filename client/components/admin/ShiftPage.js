@@ -504,6 +504,7 @@ export default function AdminShiftPage() {
       setShifts(formatted);
 
     } catch (error) {
+      if (error.message === 'SESSION_EXPIRED') return;
       console.error('❌ [ERROR] Fetch failed:', error.message);
       console.error('📍 [ERROR DETAILS]:', error.response?.data);
       const msg = error.response?.data?.error || error.message || 'Failed to fetch';
@@ -543,6 +544,7 @@ export default function AdminShiftPage() {
               setShifts(shifts.filter((s) => s.id !== shiftId));
               Alert.alert('✅ Success', 'Shift deleted successfully');
             } catch (error) {
+              if (error.message === 'SESSION_EXPIRED') return;
               console.error('❌ Delete error:', error.message);
               Alert.alert('❌ Error', error.response?.data?.error || 'Failed to delete');
             } finally {
@@ -600,6 +602,7 @@ export default function AdminShiftPage() {
       setModalVisible(false);
       setSelectedShift(null);
     } catch (error) {
+      if (error.message === 'SESSION_EXPIRED') return;
       console.error('❌ Save error:', error.message);
       Alert.alert('❌ Error', error.response?.data?.error || 'Failed to save');
     } finally {

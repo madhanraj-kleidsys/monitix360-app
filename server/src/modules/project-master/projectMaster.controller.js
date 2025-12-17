@@ -83,6 +83,9 @@ exports.updateProject = async (req, res) => {
 
     res.json(project);
   } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ error: 'Duplicate entry - Project code already exists' });
+    }
     console.error("Error updating project:", err);
     res.status(500).json({ error: "Internal server error" });
   }

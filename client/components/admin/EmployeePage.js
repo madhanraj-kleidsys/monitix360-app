@@ -56,6 +56,9 @@ const COLORS = {
 
 
 // ========== VALIDATION SCHEMA ==========
+
+const DEPARTMENTS = ['Development', 'Marketing', 'Sales', 'HR', 'Finance', 'Production'];
+
 const validationSchema = Yup.object({
   first_name: Yup.string()
     .min(2, 'First name must be at least 2 characters')
@@ -111,6 +114,7 @@ const getErrorMessage = (error) => {
     return statusMessages[error.response.status] || 'Error occurred';
   }
 
+  if (error.message === 'SESSION_EXPIRED') return null;
   return error.message || 'Failed to save employee';
 };
 
@@ -369,7 +373,7 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
         handleClose();
       } catch (error) {
         const errorMsg = getErrorMessage(error);
-        Alert.alert('❌ Error', errorMsg);
+        if (errorMsg) Alert.alert('❌ Error', errorMsg);
       } finally {
         setLoading(false);
       }
@@ -579,72 +583,20 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
 
                       {departmentDropdownOpen && (
                         <View style={styles.dropdownMenu}>
-                          {/* Predefined Departments - ALL 6 */}
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: Development');
-                              formik.setFieldValue('department', 'Development');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>Development</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: Marketing');
-                              formik.setFieldValue('department', 'Marketing');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>Marketing</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: Sales');
-                              formik.setFieldValue('department', 'Sales');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>Sales</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: HR');
-                              formik.setFieldValue('department', 'HR');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>HR</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: Finance');
-                              formik.setFieldValue('department', 'Finance');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>Finance</Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              console.log('✅ Selected dept: Production');
-                              formik.setFieldValue('department', 'Production');
-                              setDepartmentDropdownOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>Production</Text>
-                          </TouchableOpacity>
+                          {/* Predefined Departments */}
+                          {DEPARTMENTS.map((dept) => (
+                            <TouchableOpacity
+                              key={dept}
+                              style={styles.dropdownItem}
+                              onPress={() => {
+                                console.log(`✅ Selected dept: ${dept}`);
+                                formik.setFieldValue('department', dept);
+                                setDepartmentDropdownOpen(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownItemText}>{dept}</Text>
+                            </TouchableOpacity>
+                          ))}
 
                           {/* Divider */}
                           <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 4 }} />
@@ -784,6 +736,35 @@ export default function AdminEmployeePage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+  // Filter & Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [filterVisible, setFilterVisible] = useState(false);
+
+  // Filtered Employees
+  const filteredEmployees = React.useMemo(() => {
+    return employees.filter(emp => {
+      // Search (Name, Code, Email)
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        !q ||
+        (emp.first_name && emp.first_name.toLowerCase().includes(q)) ||
+        (emp.last_name && emp.last_name.toLowerCase().includes(q)) ||
+        (emp.user_code && emp.user_code.toLowerCase().includes(q)) ||
+        (emp.email && emp.email.toLowerCase().includes(q)) ||
+        (emp.username && emp.username.toLowerCase().includes(q));
+
+      // Filter Dept
+      const matchesDept = !selectedDept || emp.department === selectedDept;
+
+      // Filter Role
+      const matchesRole = !selectedRole || emp.role === selectedRole;
+
+      return matchesSearch && matchesDept && matchesRole;
+    });
+  }, [employees, searchQuery, selectedDept, selectedRole]);
+
   // fetching epmloyeeeees frm server !!
   const fetchEmployees = async () => {
     try {
@@ -792,6 +773,7 @@ export default function AdminEmployeePage() {
       setEmployees(res.data);
     }
     catch (err) {
+      if (err.message === 'SESSION_EXPIRED') return;
       console.error('Error fetching employees', err);
       Alert.alert('Error', 'failed to fetch employees');
     }
@@ -923,10 +905,80 @@ export default function AdminEmployeePage() {
         </View>
 
         <View style={styles.employeesSection}>
-          <Text style={styles.sectionTitle}>All Employees ({employees.length})</Text>
+          <Text style={styles.sectionTitle}>All Employees ({filteredEmployees.length})</Text>
 
-          {employees.length > 0 ? (
-            employees.map(employee => (
+          {/* FILTER & SEARCH BAR */}
+          <View style={styles.filterSearchContainer}>
+            {/* Filter Row */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+              {/* Department Filter */}
+              <TouchableOpacity
+                style={[styles.filterChip, selectedDept && styles.filterChipActive]}
+                onPress={() => setFilterVisible(!filterVisible)} // Simple toggle for now, or custom modal
+              >
+                {/* For simplicity relying on a custom picker UI below or just cycling? 
+                     User asked for "filter bar". Let's make a horizontal ScrollView of properties? 
+                     Better: Dropdown style. But to keep it simple inline:
+                 */}
+                <Text style={[styles.filterChipText, selectedDept && styles.filterChipTextActive]}>
+                  {selectedDept || 'All Departments'}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={selectedDept ? '#fff' : COLORS.textLight} />
+              </TouchableOpacity>
+
+              {/* Role Filter */}
+              <TouchableOpacity
+                style={[styles.filterChip, selectedRole && styles.filterChipActive]}
+                onPress={() => setSelectedRole(prev => (prev === 'admin' ? 'user' : prev === 'user' ? '' : 'admin'))}
+              >
+                <Text style={[styles.filterChipText, selectedRole && styles.filterChipTextActive]}>
+                  {selectedRole === 'admin' ? 'Admin' : selectedRole === 'user' ? 'Employee' : 'All Roles'}
+                </Text>
+                <Ionicons name="funnel" size={12} color={selectedRole ? '#fff' : COLORS.textLight} />
+              </TouchableOpacity>
+
+              {/* Clear Filter */}
+              {(selectedDept || selectedRole) && (
+                <TouchableOpacity onPress={() => { setSelectedDept(''); setSelectedRole(''); }}>
+                  <Text style={styles.clearFilterText}>Clear</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
+            {/* Department Selection Modal/View (Inline for now if visible) */}
+            {filterVisible && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.deptFilterRow}>
+                <TouchableOpacity onPress={() => { setSelectedDept(''); setFilterVisible(false); }} style={styles.deptChip}>
+                  <Text style={styles.deptChipText}>All</Text>
+                </TouchableOpacity>
+                {DEPARTMENTS.map(d => (
+                  <TouchableOpacity key={d} onPress={() => { setSelectedDept(d); setFilterVisible(false); }} style={[styles.deptChip, selectedDept === d && styles.deptChipActive]}>
+                    <Text style={[styles.deptChipText, selectedDept === d && styles.deptChipTextActive]}>{d}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={18} color={COLORS.textLight} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name, code, email..."
+                placeholderTextColor={COLORS.textLight}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={16} color={COLORS.textLight} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {filteredEmployees.length > 0 ? (
+            filteredEmployees.map(employee => (
               <EmployeeCard
                 key={employee.id}
                 employee={employee}
@@ -1441,4 +1493,92 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+
+  // FILTER & SEARCH STYLES
+  filterSearchContainer: {
+    marginBottom: 16,
+  },
+  filterRow: {
+    flexGrow: 0,
+    marginBottom: 12,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    gap: 6,
+  },
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  clearFilterText: {
+    fontSize: 12,
+    color: COLORS.danger,
+    fontWeight: '600',
+    marginLeft: 4,
+    alignSelf: 'center',
+    paddingVertical: 8,
+  },
+
+  // DEPT FILTER ROW
+  deptFilterRow: {
+    flexGrow: 0,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  deptChip: {
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  deptChipActive: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+  },
+  deptChipText: {
+    fontSize: 11,
+    color: COLORS.text,
+  },
+  deptChipTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  // SEARCH BAR
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+
 });

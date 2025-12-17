@@ -20,7 +20,9 @@ const TaskService = {
       // RETURN response.data (which is the array), NOT response object
       return response.data;
     } catch (err) {
-      console.error('❌ TaskService.getAllTasks error:', err);
+      if (err.message !== 'SESSION_EXPIRED') {
+        console.error('❌ TaskService.getAllTasks error:', err.message);
+      }
       throw err;
     }
   },

@@ -8,7 +8,7 @@ import {
   Dimensions,
   Modal,
   TextInput,
-  Alert,ActivityIndicator,
+  Alert, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,12 +45,12 @@ const getErrorMessage = (error) => {
   if (error.response?.data?.error) {
     return error.response.data.error;
   }
-  
+
   if (error.response?.data?.errors) {
     const errors = error.response.data.errors;
     return Object.values(errors)[0] || 'Validation error';
   }
-  
+
   if (error.response?.status) {
     const statusMessages = {
       400: 'Bad request - Please fill all required fields',
@@ -62,6 +62,7 @@ const getErrorMessage = (error) => {
     };
     return statusMessages[error.response.status] || 'Unknown error';
   }
+  if (error.message === 'SESSION_EXPIRED') return null;
   return error.message || 'Failed to save project';
 };
 
@@ -99,7 +100,7 @@ function ProjectCard({ project, onEdit, onDelete }) {
 }
 
 // ========== ADD/EDIT PROJECT MODAL ==========
- function ProjectModal({ visible, project, onClose, onSave }) {
+function ProjectModal({ visible, project, onClose, onSave }) {
   const [projectName, setProjectName] = useState(project?.name || '');
   const [projectCode, setProjectCode] = useState(project?.code || '');
   const [loading, setLoading] = useState(false);
@@ -155,7 +156,7 @@ function ProjectCard({ project, onEdit, onDelete }) {
       >
         <TouchableWithoutFeedback onPress={handleClose}>
           <View style={styles.overlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View style={styles.sheetWrapper}>
                 <View style={styles.modalContent}>
                   <LinearGradient
@@ -233,6 +234,17 @@ export default function AdminProjectPage() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery) return projects;
+    const lower = searchQuery.toLowerCase();
+    return projects.filter(
+      (p) =>
+        (p.name && p.name.toLowerCase().includes(lower)) ||
+        (p.code && p.code.toLowerCase().includes(lower))
+    );
+  }, [projects, searchQuery]);
 
   const fetchProjects = async () => {
     try {
@@ -248,7 +260,7 @@ export default function AdminProjectPage() {
     } catch (err) {
       console.error('Error fetching projects:', err);
       const errorMsg = getErrorMessage(err);
-      Alert.alert('❌ Error', errorMsg);
+      if (errorMsg) Alert.alert('❌ Error', errorMsg);
     } finally {
       setLoading(false);
     }
@@ -285,7 +297,7 @@ export default function AdminProjectPage() {
             } catch (err) {
               console.error('Error deleting project:', err);
               const errorMsg = getErrorMessage(err);
-              Alert.alert('❌ Error', errorMsg);
+              if (errorMsg) Alert.alert('❌ Error', errorMsg);
             }
           },
         },
@@ -316,7 +328,7 @@ export default function AdminProjectPage() {
     } catch (err) {
       console.error('Error saving project:', err);
       const errorMsg = getErrorMessage(err);
-      Alert.alert('❌ Error', errorMsg);
+      if (errorMsg) Alert.alert('❌ Error', errorMsg);
     }
   };
 
@@ -355,10 +367,22 @@ export default function AdminProjectPage() {
           </View>
 
           <View style={styles.projectsSection}>
-            <Text style={styles.sectionTitle}>All Projects ({projects.length})</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>All Projects ({filteredProjects.length})</Text>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={16} color={COLORS.textLight} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Project Code / Name"
+                  placeholderTextColor={COLORS.textLight}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+              </View>
+            </View>
 
-            {projects.length > 0 ? (
-              projects.map((project) => (
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
@@ -366,6 +390,7 @@ export default function AdminProjectPage() {
                   onDelete={handleDeleteProject}
                 />
               ))
+
             ) : (
               <View style={styles.emptyState}>
                 <Ionicons name="folder-outline" size={48} color={COLORS.textLight} />
@@ -388,11 +413,11 @@ export default function AdminProjectPage() {
     </View>
   );
 }
-  // { id: 1, name: 'Admin Portal', code: 'AP-001' },
-  // { id: 2, name: 'Mobile App Backend', code: 'MAB-002' },
-  // { id: 3, name: 'Performance Enhancement', code: 'PE-003' },
- 
-   
+// { id: 1, name: 'Admin Portal', code: 'AP-001' },
+// { id: 2, name: 'Mobile App Backend', code: 'MAB-002' },
+// { id: 3, name: 'Performance Enhancement', code: 'PE-003' },
+
+
 
 // ========== STYLES ==========
 const styles = StyleSheet.create({
@@ -661,6 +686,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // SEARCH STYLES
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    width: 220,
+    height: 36,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    padding: 0,
   },
 
 });

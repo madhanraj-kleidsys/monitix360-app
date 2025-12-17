@@ -21,7 +21,7 @@ async function sendTaskEmail(to, subject, htmlContent) {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Email sent to ${to}`);
   } catch (err) {
-    console.error("Failed to send email:", err);
+    console.error(`Failed to send email to : ${to} ::::: `, err);
   }
 }
 module.exports = { sendTaskEmail };
