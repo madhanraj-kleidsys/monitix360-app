@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import TaskService from '../services/TaskService';
 import { Alert } from 'react-native';
-// import { useWebSocket } from './useWebSocket';
+import { useWebSocket } from './useWebSocket';
 
 export const useTaskManagement = () => {
   const [myTasks, setMyTasks] = useState([]);
@@ -10,7 +10,7 @@ export const useTaskManagement = () => {
   const [unplannedTasks, setUnplannedTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  // const { emit, on, off,isConnected } = useWebSocket();
+  const { emit, on, off, isConnected } = useWebSocket();
 
 
   // Fetch all users for assign dropdown
@@ -75,44 +75,44 @@ export const useTaskManagement = () => {
     }
   }, []);
 
-//   const fetchAllTasks = useCallback(async () => {
-//   setLoading(true);
-//   setError(null);
-//   try {
-//     const response = await TaskService.getAllTasks();
-    
-//     // DEBUG: Log the response structure
-//     console.log('🔍 API Response:', response);
-    
-//     // Handle different response formats
-//     let tasksData = [];
-//     if (Array.isArray(response)) {
-//       tasksData = response;
-//     } else if (response && response.data && Array.isArray(response.data)) {
-//       tasksData = response.data;
-//     } else if (response && typeof response === 'object') {
-//       console.warn('⚠️ Response is object, not array:', response);
-//       tasksData = [];
-//     }
+  //   const fetchAllTasks = useCallback(async () => {
+  //   setLoading(true);
+  //   setError(null);
+  //   try {
+  //     const response = await TaskService.getAllTasks();
 
-//     // DEBUG: Check first task's fields
-//     if (tasksData.length > 0) {
-//       console.log('🔍 First task object:', tasksData[0]);
-//       console.log('🔍 Task priority field:', tasksData[0].priority);
-//       console.log('🔍 All fields in task:', Object.keys(tasksData[0]));
-//     }
+  //     // DEBUG: Log the response structure
+  //     console.log('🔍 API Response:', response);
 
-//     setAllTasks(Array.isArray(tasksData) ? tasksData : []);
-//     return tasksData;
-//   } catch (err) {
-//     console.error('❌ Error fetching all tasks:', err);
-//     const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch all tasks';
-//     setError(errorMsg);
-//     setAllTasks([]);
-//   } finally {
-//     setLoading(false);
-//   }
-// }, []);
+  //     // Handle different response formats
+  //     let tasksData = [];
+  //     if (Array.isArray(response)) {
+  //       tasksData = response;
+  //     } else if (response && response.data && Array.isArray(response.data)) {
+  //       tasksData = response.data;
+  //     } else if (response && typeof response === 'object') {
+  //       console.warn('⚠️ Response is object, not array:', response);
+  //       tasksData = [];
+  //     }
+
+  //     // DEBUG: Check first task's fields
+  //     if (tasksData.length > 0) {
+  //       console.log('🔍 First task object:', tasksData[0]);
+  //       console.log('🔍 Task priority field:', tasksData[0].priority);
+  //       console.log('🔍 All fields in task:', Object.keys(tasksData[0]));
+  //     }
+
+  //     setAllTasks(Array.isArray(tasksData) ? tasksData : []);
+  //     return tasksData;
+  //   } catch (err) {
+  //     console.error('❌ Error fetching all tasks:', err);
+  //     const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch all tasks';
+  //     setError(errorMsg);
+  //     setAllTasks([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }, []);
 
   // Fetch unplanned tasks
   const fetchUnplannedTasks = useCallback(async () => {
@@ -373,45 +373,65 @@ export const useTaskManagement = () => {
 
 
   // Listen for real-time task updates
-  // useEffect(() => {
-  
-  // if (!isConnected) return;
-  // on('task:created', (newTask) => {
-  //   console.log('🎉 New task:', newTask);
-  //   setAllTasks(prev => [newTask, ...prev]);
-  // });
+  useEffect(() => {
+    if (!isConnected) return;
 
-  //   // Task created event
-  //   on('task:created', (newTask) => {
-  //     console.log('🎉 New task created:', newTask);
-  //     setAllTasks(prev => [newTask, ...prev]);
-  //   });
+    // Task created event
+    on('task:created', (newTask) => {
+      console.log('🎉 New task created:', newTask);
+      setAllTasks(prev => [newTask, ...prev]);
 
-  //   // Task updated event
-  //   on('task:updated', (updatedTask) => {
-  //     console.log('🔄 Task updated:', updatedTask);
-  //     setAllTasks(prev =>
-  //       prev.map(task =>
-  //         task.id === updatedTask.id ? updatedTask : task
-  //       )
-  //     );
-  //   });
+      // Also update myTasks if relevant (though checking validity is hard without user ID context here, 
+      // we can rely on manual fetch or just optimistically add if it matches pattern. 
+      // For now, only allTasks which Admin sees is updated.)
+    });
 
-  //   // Task deleted event
-  //   on('task:deleted', (deletedTaskId) => {
-  //     console.log('🗑️ Task deleted:', deletedTaskId);
-  //     setAllTasks(prev =>
-  //       prev.filter(task => task.id !== deletedTaskId)
-  //     );
-  //   });
+    // Task updated event
+    on('task:updated', (updatedTask) => {
+      console.log('🔄 Task updated:', updatedTask);
+      setAllTasks(prev =>
+        prev.map(task =>
+          task.id === updatedTask.id ? updatedTask : task
+        )
+      );
+      setMyTasks(prev =>
+        prev.map(task =>
+          task.id === updatedTask.id ? updatedTask : task
+        )
+      );
+    });
 
-  //   // Clean up
-  //   return () => {
-  //     off('task:created', null);
-  //     off('task:updated', null);
-  //     off('task:deleted', null);
-  //   };
-  // }, [isConnected ,on, off]);
+    // Task deleted event
+    on('task:deleted', (deletedTaskId) => {
+      console.log('🗑️ Task deleted:', deletedTaskId);
+      setAllTasks(prev =>
+        prev.filter(task => task.id !== deletedTaskId)
+      );
+      setMyTasks(prev =>
+        prev.filter(task => task.id !== deletedTaskId)
+      );
+    });
+
+    // User updates
+    const handleUserUpdate = () => {
+      console.log('🔄 User update received, fetching users...');
+      fetchAllUsers();
+    };
+
+    on('user:created', handleUserUpdate);
+    on('user:updated', handleUserUpdate);
+    on('user:deleted', handleUserUpdate);
+
+    // Clean up
+    return () => {
+      off('task:created', null);
+      off('task:updated', null);
+      off('task:deleted', null);
+      off('user:created', handleUserUpdate);
+      off('user:updated', handleUserUpdate);
+      off('user:deleted', handleUserUpdate);
+    };
+  }, [isConnected, on, off, fetchAllUsers]);
 
   // Load initial data
   useEffect(() => {
@@ -447,10 +467,10 @@ export const useTaskManagement = () => {
     approveTask,
     rejectTask,
 
-  //   emit,
-  //   on,
-  //   off,
-  // isConnected,
+    emit,
+    on,
+    off,
+    isConnected,
   };
 };
 

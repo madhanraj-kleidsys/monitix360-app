@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Alert,
+  Alert,Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -159,15 +159,21 @@ export default function AdminProfilePage({ onLogout, user }) {
             {/* Avatar */}
             <View style={styles.avatarContainer}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{adminData.profileInitial}</Text>
+                {/* <Text style={styles.avatarText}>{adminData.profileInitial}</Text> */}
+              <Image
+                        // source={require('../../assets/pic.jpg')}
+                        source={require('../../assets/admin.jpg')}
+                        resizeMode="cover"
+                        // style={styles.priorityCircle}
+                      />
               </View>
             </View>
 
             {/* Profile Info */}
             <Text style={styles.profileName}>{adminData.name}</Text>
             <Text style={styles.profileEmail}>EMAIL : {adminData.email}</Text>
-            <Text style={styles.profileRole}>{adminData.role}</Text>
-            <Text style={styles.profileRole}>{adminData.Company}</Text>
+            <Text style={styles.profileRole}>Role : {adminData.role}</Text>
+            <Text style={styles.profileRole}>Company Name : {adminData.Company}</Text>
 
             {/* Status Badge */}
             <View style={styles.statusBadge}>
@@ -325,6 +331,19 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: '800',
     color: '#fff',
+  },
+    priorityCircle: {
+    width: 150,
+    height:110,
+    borderRadius: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
   },
 
   // PROFILE INFO

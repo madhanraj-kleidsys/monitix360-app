@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Dimensions,
   Modal,
   KeyboardAvoidingView,
@@ -25,10 +26,11 @@ import * as MediaLibrary from 'expo-media-library';
 import XLSX from 'xlsx';
 import useTaskManagement from '../hooks/useTaskManagement';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { useWebSocket } from './hooks/useWebSocket';
+import { useWebSocket } from '../hooks/useWebSocket';
 import useProjects from '../hooks/useProjects';
 import HomeTimeline from './HomeTimeline';
 import api from '../../../api/client';
+import { CompactToggle } from './CompactToggle';
 
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
@@ -271,7 +273,7 @@ function Header() {
 }
 
 // ========== FILTER BAR COMPONENT ==========
-function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
+function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline, setShowTimeline }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleTodayPress = () => {
@@ -308,6 +310,10 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
             <Ionicons name="chevron-down" size={16} color={COLORS.textLight} />
           </TouchableOpacity>
 
+
+
+          <CompactToggle isActive={showTimeline} onToggle={(val) => setShowTimeline(val)} />
+
           <TouchableOpacity
             style={styles.exportButton}
             onPress={() => exportTasksToExcel(filteredTasks, selectedDate)}
@@ -316,7 +322,7 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
             <Text style={styles.exportButtonText}>Export</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </View >
 
       {showDatePicker && (
         <DateTimePicker
@@ -325,7 +331,8 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks }) {
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleDateChange}
         />
-      )}
+      )
+      }
     </>
   );
 }
@@ -444,8 +451,8 @@ function TaskCard({ task, onPress }) {
             {priorityDisplay}
           </Text>  */}
           <Image
-            source={require('../../../assets/pic.jpg')}
-            // source={require('../../../assets/men1.jpg')}
+            // source={require('../../../assets/pic.jpg')}
+            source={require('../../../assets/men1.jpg')}
             resizeMode="cover"
             style={styles.priorityCircle}
           />
@@ -576,11 +583,15 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <View style={[styles.overlay, { backgroundColor: 'transparent' }]}>
+        {/* Backdrop Layer - Sibling to content */}
+        <TouchableOpacity
+          style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+
+        {/* Modal Content - Sibling, touches won't bubble to backdrop */}
         <View style={[styles.modalContent, { height: modalHeight }]}>
           <LinearGradient
             colors={['#00D4FF', '#0099FF', '#667EEA']}
@@ -595,26 +606,32 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
             <View style={{ width: 44 }} />
           </LinearGradient>
 
-          <ScrollView style={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Task Details</Text>
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              style={styles.modalScrollContent}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Task Details</Text>
 
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Task No:</Text>
-                <Text style={styles.value}>{task.id}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Status:</Text>
-                <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
-                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                  <Text style={[styles.statusBadgeText, { color: statusColor }]}>
-                    {task.status}
-                  </Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Task No:</Text>
+                  <Text style={styles.value}>{task.id}</Text>
                 </View>
-              </View>
 
-              {/* <View style={styles.detailRow}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Status:</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                    <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                      {task.status}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* <View style={styles.detailRow}>
                 <Text style={styles.label}>Priority:</Text>
                 <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
                   <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
@@ -624,78 +641,79 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
                 </View>
               </View> */}
 
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Priority:</Text>
-                <View style={[
-                  styles.priorityBadge,
-                  {
-                    backgroundColor: `${priorityColor}15`,
-                    borderWidth: 1,
-                    borderColor: `${priorityColor}30`,
-                  }
-                ]}>
-                  <Ionicons
-                    name={priorityDisplay === 'High' ? 'alert-circle' :
-                      priorityDisplay === 'Medium' ? 'time' : 'checkmark-circle'}
-                    size={14}
-                    color={priorityColor}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={[
-                    styles.priorityBadgeText,
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Priority:</Text>
+                  <View style={[
+                    styles.priorityBadge,
                     {
-                      color: priorityColor,
-                      fontWeight: '800',
+                      backgroundColor: `${priorityColor}15`,
+                      borderWidth: 1,
+                      borderColor: `${priorityColor}30`,
                     }
                   ]}>
-                    {priorityDisplay}
+                    <Ionicons
+                      name={priorityDisplay === 'High' ? 'alert-circle' :
+                        priorityDisplay === 'Medium' ? 'time' : 'checkmark-circle'}
+                      size={14}
+                      color={priorityColor}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[
+                      styles.priorityBadgeText,
+                      {
+                        color: priorityColor,
+                        fontWeight: '800',
+                      }
+                    ]}>
+                      {priorityDisplay}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Department:</Text>
+                  <Text style={styles.value}>{task.name}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Project:</Text>
+                  <Text style={styles.value}>{task.Project_Title}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Description:</Text>
+                </View>
+                <Text style={styles.descriptionText}>{task.description}</Text>
+
+                <View style={styles.divider} />
+
+                <Text style={styles.sectionTitle}>Timeline</Text>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>Start Date & Time:</Text>
+                </View>
+                <Text style={styles.dateTimeText}>
+                  {formatDateTime(task.startDate)}
+                </Text>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.label}>End Date & Time:</Text>
+                </View>
+                <Text style={styles.dateTimeText}>
+                  {formatDateTime(task.endDate)}
+                </Text>
+
+                <View style={[styles.detailRow, { marginTop: 16 }]}>
+                  <Text style={styles.label}>Total Duration :</Text>
+                  <Text style={[styles.value, { color: COLORS.primary, fontWeight: '700' }]}>
+                    {calculateDuration(task.startDate, task.endDate)}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Department:</Text>
-                <Text style={styles.value}>{task.name}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Project:</Text>
-                <Text style={styles.value}>{task.Project_Title}</Text>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Description:</Text>
-              </View>
-              <Text style={styles.descriptionText}>{task.description}</Text>
-
-              <View style={styles.divider} />
-
-              <Text style={styles.sectionTitle}>Timeline</Text>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Start Date & Time:</Text>
-              </View>
-              <Text style={styles.dateTimeText}>
-                {formatDateTime(task.startDate)}
-              </Text>
-
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>End Date & Time:</Text>
-              </View>
-              <Text style={styles.dateTimeText}>
-                {formatDateTime(task.endDate)}
-              </Text>
-
-              <View style={[styles.detailRow, { marginTop: 16 }]}>
-                <Text style={styles.label}>Total Duration :</Text>
-                <Text style={[styles.value, { color: COLORS.primary, fontWeight: '700' }]}>
-                  {calculateDuration(task.startDate, task.endDate)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
 
           <View style={styles.modalFooter}>
             <TouchableOpacity
@@ -720,7 +738,7 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
           </View>
 
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
@@ -938,12 +956,13 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
+        <View style={[styles.overlay, { backgroundColor: 'transparent' }]}>
           <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+          <View
             activeOpacity={1}
             onPress={e => e.stopPropagation()}
             style={[styles.sheetWrapper, { maxHeight: height * 0.95 }]}
@@ -1345,8 +1364,8 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
                 </View>
               </ScrollView>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -1599,16 +1618,13 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         style={styles.modalRoot}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={onClose}
-        >
+        <View style={[styles.overlay, { backgroundColor: 'transparent' }]}>
           <TouchableOpacity
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]}
             activeOpacity={1}
-            onPress={e => e.stopPropagation()}
-            style={[styles.sheetWrapper, { maxHeight: height * 0.95 }]}
-          >
+            onPress={onClose}
+          />
+          <View style={[styles.sheetWrapper, { maxHeight: height * 0.95 }]}>
             <View style={styles.modalContent}>
               {/* Header */}
               <LinearGradient
@@ -1625,17 +1641,19 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
               </LinearGradient>
 
               {/* Body */}
-              <ScrollView
-                style={styles.modalBody}
-                contentContainerStyle={styles.scrollViewContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.section}>
+              <View style={{ flex: 1 }}>
+                <ScrollView
+                  style={styles.modalBody}
+                  contentContainerStyle={styles.scrollViewContent}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
+                  <View style={styles.section}>
 
-                  {/* Task Title */}
-                  <Text style={styles.fieldLabel}>Task Title *</Text>
-                  {/* <TextInput
+                    {/* Task Title */}
+                    <Text style={styles.fieldLabel}>Task Title *</Text>
+                    {/* <TextInput
                     style={styles.input}
                     placeholder="Enter task title"
                     placeholderTextColor={COLORS.textLight}
@@ -1644,70 +1662,70 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     editable={!loading}
                   /> */}
 
-                  <View>
-                    <TouchableOpacity
-                      style={styles.dropdown}
-                      onPress={() => setDepartmentOpen(prev => !prev)}
-                      disabled={loading}
-                    >
-                      <Text style={[
-                        styles.dropdownText,
-                        !editedTask.title && { color: COLORS.textLight },
-                      ]}>
-                        {editedTask.title || 'Select Task Title'}
-                      </Text>
-                      <Ionicons
-                        name={departmentOpen ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={COLORS.textLight}
-                      />
-                    </TouchableOpacity>
-
-                    {departmentOpen && (
-                      <View style={styles.customInputWrapper}>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Type custom department"
-                          placeholderTextColor={COLORS.textLight}
-                          value={editedTask.title}
-                          onChangeText={(value) => handleInputChange('title', value)}
-                          editable={!loading}
+                    <View>
+                      <TouchableOpacity
+                        style={styles.dropdown}
+                        onPress={() => setDepartmentOpen(prev => !prev)}
+                        disabled={loading}
+                      >
+                        <Text style={[
+                          styles.dropdownText,
+                          !editedTask.title && { color: COLORS.textLight },
+                        ]}>
+                          {editedTask.title || 'Select Task Title'}
+                        </Text>
+                        <Ionicons
+                          name={departmentOpen ? 'chevron-up' : 'chevron-down'}
+                          size={18}
+                          color={COLORS.textLight}
                         />
-                      </View>
-                    )}
+                      </TouchableOpacity>
 
-                    {departmentOpen && (
-                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
-                        {departments.map((dept, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              handleInputChange('title', dept);
-                              setDepartmentOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{dept}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
+                      {departmentOpen && (
+                        <View style={styles.customInputWrapper}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Type custom department"
+                            placeholderTextColor={COLORS.textLight}
+                            value={editedTask.title}
+                            onChangeText={(value) => handleInputChange('title', value)}
+                            editable={!loading}
+                          />
+                        </View>
+                      )}
 
-                  {/* Description */}
-                  <Text style={styles.fieldLabel}>Description</Text>
-                  <TextInput
-                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                    placeholder="Enter task description"
-                    placeholderTextColor={COLORS.textLight}
-                    value={editedTask.description}
-                    onChangeText={(value) => handleInputChange('description', value)}
-                    editable={!loading}
-                    multiline
-                  />
+                      {departmentOpen && (
+                        <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                          {departments.map((dept, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              style={styles.dropdownItem}
+                              onPress={() => {
+                                handleInputChange('title', dept);
+                                setDepartmentOpen(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownItemText}>{dept}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
 
-                  {/* Department Dropdown */}
-                  {/* <Text style={styles.fieldLabel}>Department</Text>
+                    {/* Description */}
+                    <Text style={styles.fieldLabel}>Description</Text>
+                    <TextInput
+                      style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                      placeholder="Enter task description"
+                      placeholderTextColor={COLORS.textLight}
+                      value={editedTask.description}
+                      onChangeText={(value) => handleInputChange('description', value)}
+                      editable={!loading}
+                      multiline
+                    />
+
+                    {/* Department Dropdown */}
+                    {/* <Text style={styles.fieldLabel}>Department</Text>
                   <View>
                     <TouchableOpacity
                       style={styles.dropdown}
@@ -1758,42 +1776,42 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     )}
                   </View> */}
 
-                  {/* Project Title */}
+                    {/* Project Title */}
 
-                  <Text style={styles.fieldLabel}>Project Title</Text>
-                  <View>
-                    <TouchableOpacity
-                      style={styles.dropdown}
-                      onPress={() => setProjectTitleOpen(prev => !prev)}
-                      disabled={loading}
-                    >
-                      <Text style={[
-                        styles.dropdownText,
-                        !editedTask.Project_Title && { color: COLORS.textLight },
-                      ]}>
-                        {editedTask.Project_Title || 'Select project'}
-                      </Text>
-                      <Ionicons
-                        name={projectTitleOpen ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={COLORS.textLight}
-                      />
-                    </TouchableOpacity>
-
-                    {projectTitleOpen && (
-                      <View style={styles.customInputWrapper}>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Type custom project name"
-                          placeholderTextColor={COLORS.textLight}
-                          value={editedTask.Project_Title}
-                          onChangeText={(value) => handleInputChange('Project_Title', value)}
-                          editable={!loading}
+                    <Text style={styles.fieldLabel}>Project Title</Text>
+                    <View>
+                      <TouchableOpacity
+                        style={styles.dropdown}
+                        onPress={() => setProjectTitleOpen(prev => !prev)}
+                        disabled={loading}
+                      >
+                        <Text style={[
+                          styles.dropdownText,
+                          !editedTask.Project_Title && { color: COLORS.textLight },
+                        ]}>
+                          {editedTask.Project_Title || 'Select project'}
+                        </Text>
+                        <Ionicons
+                          name={projectTitleOpen ? 'chevron-up' : 'chevron-down'}
+                          size={18}
+                          color={COLORS.textLight}
                         />
-                      </View>
-                    )}
+                      </TouchableOpacity>
 
-                    {/* {projectTitleOpen && (
+                      {projectTitleOpen && (
+                        <View style={styles.customInputWrapper}>
+                          <TextInput
+                            style={styles.input}
+                            placeholder="Type custom project name"
+                            placeholderTextColor={COLORS.textLight}
+                            value={editedTask.Project_Title}
+                            onChangeText={(value) => handleInputChange('Project_Title', value)}
+                            editable={!loading}
+                          />
+                        </View>
+                      )}
+
+                      {/* {projectTitleOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
                         {projectOptions.map((proj, idx) => (
                           <TouchableOpacity
@@ -1810,195 +1828,197 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                       </View>
                     )} */}
 
-                    {projectTitleOpen && (
-                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
-                        {(projects || []).map((proj) => (
-                          <TouchableOpacity
-                            key={proj.id}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              // only store/display name
-                              handleInputChange('Project_Title', proj.name);
-                              setProjectTitleOpen(false);
-                            }}
+                      {projectTitleOpen && (
+                        <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
+                          {(projects || []).map((proj) => (
+                            <TouchableOpacity
+                              key={proj.id}
+                              style={styles.dropdownItem}
+                              onPress={() => {
+                                // only store/display name
+                                handleInputChange('Project_Title', proj.name);
+                                setProjectTitleOpen(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownItemText}>{proj.name}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+
+                    </View>
+
+
+                    {/* Status */}
+                    <Text style={styles.fieldLabel}>Status</Text>
+                    <View style={styles.statusPicker}>
+                      {['pending', 'in progress', 'completed'].map((status) => (
+                        <TouchableOpacity
+                          key={status}
+                          style={[
+                            styles.statusOption,
+                            editedTask.status === status && styles.statusOptionActive
+                          ]}
+                          onPress={() => handleInputChange('status', status)}
+                        >
+                          <Text
+                            style={[
+                              styles.statusOptionText,
+                              editedTask.status === status && styles.statusOptionTextActive
+                            ]}
                           >
-                            <Text style={styles.dropdownItemText}>{proj.name}</Text>
-                          </TouchableOpacity>
-                        ))}
+                            {status}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {/* Priority */}
+                    <Text style={styles.fieldLabel}>Priority</Text>
+                    <View style={styles.priorityPicker}>
+                      {['High', 'Medium', 'Low'].map((pri) => (
+                        <TouchableOpacity
+                          key={pri}
+                          style={[
+                            styles.priorityOption,
+                            editedTask.priority === pri && styles.priorityOptionActive
+                          ]}
+                          onPress={() => handleInputChange('priority', pri)}
+                        >
+                          <Text
+                            style={[
+                              styles.priorityOptionText,
+                              editedTask.priority === pri && styles.priorityOptionTextActive
+                            ]}
+                          >
+                            {pri}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {/* Duration Display */}
+                    <View style={styles.durationSection}>
+                      <Text style={styles.fieldLabel}>Duration</Text>
+                      <View style={styles.durationDisplay}>
+                        <Text style={styles.durationDisplayText}>
+                          {editedTask.duration || '0.00'} hours
+                        </Text>
                       </View>
+
+                      {/* Hours & Minutes */}
+                      <View style={styles.durationInputRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.subLabel}>Hours</Text>
+                          <TextInput
+                            style={styles.durationInput}
+                            placeholder="0"
+                            placeholderTextColor={COLORS.textLight}
+                            keyboardType="number-pad"
+                            value={editedTask.durationHours}
+                            onChangeText={(value) => {
+                              handleInputChange('durationHours', value);
+                              handleInputChange('durationInputMode', 'manual');
+                            }}
+                            editable={!loading}
+                            maxLength={2}
+                          />
+                        </View>
+
+                        <Text style={styles.durationSeparator}>:</Text>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.subLabel}>Minutes</Text>
+                          <TextInput
+                            style={styles.durationInput}
+                            placeholder="00"
+                            placeholderTextColor={COLORS.textLight}
+                            keyboardType="number-pad"
+                            value={editedTask.durationMinutes}
+                            onChangeText={(value) => {
+                              const limited = value.length > 2 ? value.slice(0, 2) : value;
+                              handleInputChange('durationMinutes', limited);
+                              handleInputChange('durationInputMode', 'manual');
+                            }}
+                            editable={!loading}
+                            maxLength={2}
+                          />
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Start Time */}
+                    <Text style={styles.fieldLabel}>Start Time *</Text>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => openDateTimePicker('startTime', 'date')}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !editedTask.startTime && { color: COLORS.textLight },
+                      ]}>
+                        {formatDisplayDate(editedTask.startTime) || 'Select start date & time'}
+                      </Text>
+                      <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                    </TouchableOpacity>
+
+                    {/* End Time */}
+                    <Text style={styles.fieldLabel}>End Time *</Text>
+                    <TouchableOpacity
+                      style={styles.dropdown}
+                      onPress={() => openDateTimePicker('endTime', 'date')}
+                      disabled={loading}
+                    >
+                      <Text style={[
+                        styles.dropdownText,
+                        !editedTask.endTime && { color: COLORS.textLight },
+                      ]}>
+                        {formatDisplayDate(editedTask.endTime) || 'Select end date & time'}
+                      </Text>
+                      <Ionicons name="calendar" size={18} color={COLORS.primary} />
+                    </TouchableOpacity>
+
+                    {/* DateTimePicker */}
+                    {showDateTimePicker && (
+                      <DateTimePicker
+                        value={editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date()}
+                        mode={dateTimePickerMode}
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onDateTimeChange}
+                      />
                     )}
 
-                  </View>
-
-
-                  {/* Status */}
-                  <Text style={styles.fieldLabel}>Status</Text>
-                  <View style={styles.statusPicker}>
-                    {['pending', 'in progress', 'completed'].map((status) => (
+                    {/* Action Buttons */}
+                    <View style={styles.buttonGroup}>
                       <TouchableOpacity
-                        key={status}
-                        style={[
-                          styles.statusOption,
-                          editedTask.status === status && styles.statusOptionActive
-                        ]}
-                        onPress={() => handleInputChange('status', status)}
+                        style={styles.cancelButton}
+                        onPress={onClose}
+                        disabled={loading}
                       >
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            editedTask.status === status && styles.statusOptionTextActive
-                          ]}
-                        >
-                          {status}
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.saveButton, loading && { opacity: 0.6 }]}
+                        onPress={handleSave}
+                        disabled={loading}
+                      >
+                        <Text style={styles.saveButtonText}>
+                          {loading ? 'Saving...' : 'Save Changes'}
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* Priority */}
-                  <Text style={styles.fieldLabel}>Priority</Text>
-                  <View style={styles.priorityPicker}>
-                    {['High', 'Medium', 'Low'].map((pri) => (
-                      <TouchableOpacity
-                        key={pri}
-                        style={[
-                          styles.priorityOption,
-                          editedTask.priority === pri && styles.priorityOptionActive
-                        ]}
-                        onPress={() => handleInputChange('priority', pri)}
-                      >
-                        <Text
-                          style={[
-                            styles.priorityOptionText,
-                            editedTask.priority === pri && styles.priorityOptionTextActive
-                          ]}
-                        >
-                          {pri}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* Duration Display */}
-                  <View style={styles.durationSection}>
-                    <Text style={styles.fieldLabel}>Duration</Text>
-                    <View style={styles.durationDisplay}>
-                      <Text style={styles.durationDisplayText}>
-                        {editedTask.duration || '0.00'} hours
-                      </Text>
                     </View>
 
-                    {/* Hours & Minutes */}
-                    <View style={styles.durationInputRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.subLabel}>Hours</Text>
-                        <TextInput
-                          style={styles.durationInput}
-                          placeholder="0"
-                          placeholderTextColor={COLORS.textLight}
-                          keyboardType="number-pad"
-                          value={editedTask.durationHours}
-                          onChangeText={(value) => {
-                            handleInputChange('durationHours', value);
-                            handleInputChange('durationInputMode', 'manual');
-                          }}
-                          editable={!loading}
-                          maxLength={2}
-                        />
-                      </View>
-
-                      <Text style={styles.durationSeparator}>:</Text>
-
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.subLabel}>Minutes</Text>
-                        <TextInput
-                          style={styles.durationInput}
-                          placeholder="00"
-                          placeholderTextColor={COLORS.textLight}
-                          keyboardType="number-pad"
-                          value={editedTask.durationMinutes}
-                          onChangeText={(value) => {
-                            const limited = value.length > 2 ? value.slice(0, 2) : value;
-                            handleInputChange('durationMinutes', limited);
-                            handleInputChange('durationInputMode', 'manual');
-                          }}
-                          editable={!loading}
-                          maxLength={2}
-                        />
-                      </View>
-                    </View>
                   </View>
-
-                  {/* Start Time */}
-                  <Text style={styles.fieldLabel}>Start Time *</Text>
-                  <TouchableOpacity
-                    style={styles.dropdown}
-                    onPress={() => openDateTimePicker('startTime', 'date')}
-                    disabled={loading}
-                  >
-                    <Text style={[
-                      styles.dropdownText,
-                      !editedTask.startTime && { color: COLORS.textLight },
-                    ]}>
-                      {formatDisplayDate(editedTask.startTime) || 'Select start date & time'}
-                    </Text>
-                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
-                  </TouchableOpacity>
-
-                  {/* End Time */}
-                  <Text style={styles.fieldLabel}>End Time *</Text>
-                  <TouchableOpacity
-                    style={styles.dropdown}
-                    onPress={() => openDateTimePicker('endTime', 'date')}
-                    disabled={loading}
-                  >
-                    <Text style={[
-                      styles.dropdownText,
-                      !editedTask.endTime && { color: COLORS.textLight },
-                    ]}>
-                      {formatDisplayDate(editedTask.endTime) || 'Select end date & time'}
-                    </Text>
-                    <Ionicons name="calendar" size={18} color={COLORS.primary} />
-                  </TouchableOpacity>
-
-                  {/* DateTimePicker */}
-                  {showDateTimePicker && (
-                    <DateTimePicker
-                      value={editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date()}
-                      mode={dateTimePickerMode}
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={onDateTimeChange}
-                    />
-                  )}
-
-                  {/* Action Buttons */}
-                  <View style={styles.buttonGroup}>
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={onClose}
-                      disabled={loading}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.saveButton, loading && { opacity: 0.6 }]}
-                      onPress={handleSave}
-                      disabled={loading}
-                    >
-                      <Text style={styles.saveButtonText}>
-                        {loading ? 'Saving...' : 'Save Changes'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                </View>
-              </ScrollView>
+                </ScrollView>
+              </View>
             </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
+
       </KeyboardAvoidingView>
-    </Modal>
+    </Modal >
   );
 }
 
@@ -2022,6 +2042,7 @@ export default function HomePage() {
     // off,
     // isConnected,
   } = useTaskManagement();
+  const { on, off, isConnected } = useWebSocket();
   const tasks = allTasks || [];
   const { projects, projectsLoading } = useProjects();
 
@@ -2032,7 +2053,7 @@ export default function HomePage() {
   const [showDashboard, setShowDashboard] = useState(false);
 
   const [shifts, setShifts] = useState([]);
-  const [showTimeline, setShowTimeline] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(true);
 
   const [isDetailVisible, setIsDetailVisible] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -2050,24 +2071,45 @@ export default function HomePage() {
   const [undoTimeoutId, setUndoTimeoutId] = useState(null);
 
 
-  useEffect(() => {
-    const fetchShifts = async () => {
-      try {
-        // Adjust API path to match your setup
-        const response = await api.get('/shifts');
-        const formatted = (response.data || []).map((shift) => ({
-          id: shift.id,
-          startTime: shift.shift_start,    // e.g., "09:00"
-          endTime: shift.shift_end,        // e.g., "17:00"
-          breaks: shift.shift_breaks || [],
-        }));
-        setShifts(formatted);
-      } catch (error) {
-        console.error('Fetch shifts error:', error);
-      }
-    };
-    fetchShifts();
+  const fetchShifts = React.useCallback(async () => {
+    try {
+      // Adjust API path to match your setup
+      const response = await api.get('/shifts');
+      const formatted = (response.data || []).map((shift) => ({
+        id: shift.id,
+        startTime: shift.shift_start,    // e.g., "09:00"
+        endTime: shift.shift_end,        // e.g., "17:00"
+        breaks: shift.shift_breaks || [],
+      }));
+      setShifts(formatted);
+    } catch (error) {
+      console.error('Fetch shifts error:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchShifts();
+  }, [fetchShifts]);
+
+  // Listen for real-time shift updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleShiftUpdate = (data) => {
+      console.log('🔄 Shift update received:', data);
+      fetchShifts();
+    };
+
+    on('shift:created', handleShiftUpdate);
+    on('shift:updated', handleShiftUpdate);
+    on('shift:deleted', handleShiftUpdate);
+
+    return () => {
+      off('shift:created', handleShiftUpdate);
+      off('shift:updated', handleShiftUpdate);
+      off('shift:deleted', handleShiftUpdate);
+    };
+  }, [isConnected, on, off, fetchShifts]);
 
   const handleTaskDragEnd = async (taskId, newStartIso, newEndIso) => {
     try {
@@ -2172,22 +2214,34 @@ export default function HomePage() {
   const uiTasks = useMemo(() => {
     if (!Array.isArray(allTasks)) return [];
 
-    return allTasks.map(t => ({
-      id: t.id,
-      employeeName: t.assigned_to_name || `User #${t.assigned_to}`,
-      name: t.title,
-      status: t.status === 'pending' ? 'pending' : t.status,
-      // Handle backend (project_title) vs frontend (Project_Title) mismatch
-      Project_Title: t.project_title || t.Project_Title,
-      // priority: getPriorityLabel(t.priority),
-      priority: t.priority, // This was missing!
-      duration_minutes: t.duration_minutes, // This was missing!
-      department: t.department,
-      description: t.description,
-      startDate: t.start,
-      endDate: t.end_time,
-    }));
-  }, [allTasks]);
+    return allTasks.map(t => {
+      // Logic for user name fallback
+      let empName = t.assigned_to_name;
+      if (!empName && allUsers && allUsers.length > 0) {
+        const user = allUsers.find(u => u.id === t.assigned_to);
+        if (user) {
+          empName = user.username || user.first_name;
+        }
+      }
+      if (!empName) empName = 'Unassigned';
+
+      return {
+        id: t.id,
+        employeeName: empName,
+        name: t.title,
+        status: t.status === 'pending' ? 'pending' : t.status,
+        // Handle backend (project_title) vs frontend (Project_Title) mismatch
+        Project_Title: t.project_title || t.Project_Title,
+        // priority: getPriorityLabel(t.priority),
+        priority: t.priority, // This was missing!
+        duration_minutes: t.duration_minutes, // This was missing!
+        department: t.department,
+        description: t.description,
+        startDate: t.start,
+        endDate: t.end_time,
+      }
+    });
+  }, [allTasks, allUsers]);
 
   //  Filter tasks by date
   const filteredTasks = useMemo(() => {
@@ -2217,7 +2271,7 @@ export default function HomePage() {
   //   setIsDetailVisible(true);
   // };
   const handleTaskPress = (task) => {
-    // console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
+    console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
     setSelectedTask(task);
     setIsDetailVisible(true);
   };
@@ -2236,7 +2290,7 @@ export default function HomePage() {
       setIsEditModalVisible(false);
       // Keep detail sheet open to show updated data
       // if (isConnected) emit
-      // console.log('task:updated', { id, ...data });
+      console.log('task:updated', { id, ...data });
       await fetchAllTasks();
       setSelectedTask(null); // Close detail sheet too
       setIsDetailVisible(false);
@@ -2281,10 +2335,12 @@ export default function HomePage() {
         selectedDate={selectedDate}
         setSelectedDate={setSelectedDate}
         filteredTasks={filteredTasks}
+        showTimeline={showTimeline}
+        setShowTimeline={setShowTimeline}
       />
 
       {/* VIEW MODE TOGGLE */}
-      <View style={styles.viewModeToggle}>
+      {/* <View style={styles.viewModeToggle}>
         <TouchableOpacity
           style={[
             styles.viewToggleBtn,
@@ -2328,8 +2384,9 @@ export default function HomePage() {
             Cards
           </Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
+      {/* View Toggle Moved to FilterBar */}
 
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
         <ScrollView
@@ -2344,7 +2401,7 @@ export default function HomePage() {
         >
           <View style={styles.tasksSection}>
             <View style={styles.filterContainer}>
-              <Text style={styles.sectionTitle}>Employee Tasks ({filteredTasks.length})</Text>
+              <Text style={styles.sectionTitle}>Total Tasks ({filteredTasks.length})</Text>
               <TouchableOpacity
                 style={styles.assignButton}
                 onPress={handleAddTask}

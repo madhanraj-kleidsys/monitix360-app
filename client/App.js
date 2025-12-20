@@ -65,17 +65,28 @@ function AdminMainTabs({ onLogout, user }) {
 }
 
 // ========== EMPLOYEE MAIN TABS ==========
-function EmployeeMainTabs({ onLogout }) {
+function EmployeeMainTabs({ onLogout, user }) {
+  const [activeScreen, setActiveScreen] = useState('home');
+
+  const handleTabPress = (id) => {
+    setActiveScreen(id);
+  };
   return (
     <Tab.Navigator
-      tabBar={(props) => <DockNavigation {...props} />}
+      tabBar={(props) => <DockNavigation {...props}
+        activeScreen={activeScreen}
+        onTabPress={handleTabPress}
+      />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomePage} />
+      <Tab.Screen name="Home" >
+        {(props) => <HomePage {...props} user={user} />}
+      </Tab.Screen>
       <Tab.Screen name="Tasks" component={TaskScreen} />
       <Tab.Screen name="Progress" component={ProgressPage} />
       <Tab.Screen name="Profile">
-        {(props) => <ProfilePage {...props} onLogout={onLogout} />}
+        {(props) => <ProfilePage {...props} onLogout={onLogout}
+          user={user} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -168,17 +179,26 @@ export default function App() {
           <Stack.Screen name="Main">
             {props =>
               user.role === 'admin'
-                ? <AdminMainTabs {...props} onLogout={async () => {
-                  await AsyncStorage.multiRemove(['authToken', 'userData']);
-                  setUser(null);
-                  setToken(null);
-                }}
-                  user={user} />
-                : <EmployeeMainTabs {...props} onLogout={async () => {
-                  await AsyncStorage.multiRemove(['authToken', 'userData']);
-                  setUser(null);
-                  setToken(null);
-                }} />
+                ?
+                <AdminMainTabs {...props}
+                  onLogout={
+                    async () => {
+                      await AsyncStorage.multiRemove(['authToken', 'userData']);
+                      setUser(null);
+                      setToken(null);
+                    }
+                  }
+                  user={user}
+                />
+                :
+                <EmployeeMainTabs {...props}
+                  user={user}
+                  onLogout={
+                    async () => {
+                    await AsyncStorage.multiRemove(['authToken', 'userData']);
+                    setUser(null);
+                    setToken(null);
+                  }} />
             }
           </Stack.Screen>
         )}

@@ -1,6 +1,6 @@
 // controllers/unplannedTaskController.js
 const {
-   createTask,
+  createTask,
   findUserById,
   getMyTasks,
   getAllTasks,
@@ -21,6 +21,7 @@ const {
 } = require("../tasks/tasks.model");
 
 const { sendTaskEmail } = require("../tasks/utils/emailTamplate");
+const { getIO } = require("../../socket/socket");
 
 // ---------------------------------------------
 // CREATE TASK
@@ -40,10 +41,10 @@ exports.createNewTask = async (req, res) => {
     } = req.body;
 
     if (!title || !description || !assigned_to || !start || !end_time ||
-        !priority || !duration_minutes || !Project_Title) {
+      !priority || !duration_minutes || !Project_Title) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-console.log('📝 Creating task:', { title, Project_Title, priority });
+    console.log('📝 Creating task:', { title, Project_Title, priority });
     const task = await createTask({
       title,
       description,
@@ -57,7 +58,7 @@ console.log('📝 Creating task:', { title, Project_Title, priority });
       project_title: Project_Title,
       company_id: req.user.company_id,
     });
-console.log('✅ Task created:', task.id, task.title);
+    console.log('✅ Task created:', task.id, task.title);
     const assignedUser = await findUserById(assigned_to, req.user.company_id);
 
     if (assignedUser?.email) {
@@ -74,6 +75,12 @@ console.log('✅ Task created:', task.id, task.title);
           </ul>
         `;
       await sendTaskEmail(assignedUser.email, subject, html);
+    }
+
+    try {
+      getIO().emit("task:created", task);
+    } catch (socketError) {
+      console.error("Socket emit error:", socketError.message);
     }
 
     res.status(201).json(task);
@@ -155,6 +162,12 @@ exports.updateTask = async (req, res) => {
       updated_at: new Date(),
     });
 
+    try {
+      getIO().emit("task:updated", updated);
+    } catch (socketError) {
+      console.error("Socket emit error:", socketError.message);
+    }
+
     res.json(updated);
   } catch (err) {
     console.error("Update task error:", err);
@@ -171,6 +184,13 @@ exports.updateStatus = async (req, res) => {
     if (!task) return res.status(404).json({ error: "Task not found" });
 
     await updateTask(task, { status: req.body.status, updated_at: new Date() });
+
+    try {
+      // Fetch fresh task to send consistent object structure if needed
+      getIO().emit("task:updated", task);
+    } catch (socketError) {
+      console.error("Socket emit error:", socketError.message);
+    }
 
     res.json(task);
   } catch (err) {
@@ -242,6 +262,11 @@ exports.deleteTask = async (req, res) => {
     }
 
     res.json({ message: "Deleted", deletedTask: deletedData });
+    try {
+      getIO().emit("task:deleted", req.params.id);
+    } catch (socketError) {
+      console.error("Socket emit error:", socketError.message);
+    }
   } catch (err) {
     console.error("Delete error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -269,6 +294,11 @@ exports.updateUserTask = async (req, res) => {
     });
 
     res.json({ message: "Task updated", task });
+    try {
+      getIO().emit("task:updated", task);
+    } catch (socketError) {
+      console.error("Socket emit error:", socketError.message);
+    }
   } catch (err) {
     console.error("User update error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -309,6 +339,11 @@ exports.patchTimer = async (req, res) => {
     await updateTask(task, updateData);
 
     res.json({ message: "Timer updated successfully", task });
+    try {
+      getIO().emit("task:updated", task);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("patchTimer error:", err);
     res.status(500).json({ message: "Server error" });
@@ -363,6 +398,11 @@ exports.putTimer = async (req, res) => {
     await updateTask(task, updateData);
 
     res.json({ message: "Timer updated successfully", task });
+    try {
+      getIO().emit("task:updated", task);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("putTimer error:", err);
     res.status(500).json({ message: "Server error" });
@@ -392,6 +432,14 @@ async function handleReason(req, res, fieldName) {
     });
 
     res.json({ message: `${fieldName} saved` });
+
+    // Fetch fresh task or construct it if needed, but here we only have 'task' sequelize object
+    // which has been updated.
+    try {
+      getIO().emit("task:updated", task);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("reason error:", err);
     res.status(500).json({ error: "Server error" });

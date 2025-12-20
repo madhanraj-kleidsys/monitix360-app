@@ -8,6 +8,7 @@ const {
   updateProject,
   deleteProject
 } = require("../project-master/projectMaster.model");
+const { getIO } = require("../../socket/socket");
 
 // =========================
 // GET all projects
@@ -56,6 +57,11 @@ exports.addProject = async (req, res) => {
     });
 
     res.status(201).json(newProject);
+    try {
+      getIO().emit("project:created", newProject);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error creating project:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -82,6 +88,11 @@ exports.updateProject = async (req, res) => {
     await updateProject(project, { project_name, project_code });
 
     res.json(project);
+    try {
+      getIO().emit("project:updated", project);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ error: 'Duplicate entry - Project code already exists' });
@@ -110,6 +121,11 @@ exports.deleteProject = async (req, res) => {
     await deleteProject(project);
 
     res.json({ message: "Project deleted successfully" });
+    try {
+      getIO().emit("project:deleted", id);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error deleting project:", err);
     res.status(500).json({ error: "Internal server error" });

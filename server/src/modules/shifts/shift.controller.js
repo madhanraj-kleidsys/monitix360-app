@@ -7,6 +7,7 @@ const {
   deleteBreaksByShift,
   deleteShift,
 } = require("../shifts/shift.model");
+const { getIO } = require("../../socket/socket");
 
 // ------------------------------------------------------------
 // GET all shifts with breaks
@@ -56,6 +57,11 @@ exports.addShift = async (req, res) => {
     }
 
     res.status(201).json(newShift);
+    try {
+      getIO().emit("shift:created", newShift);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error creating shift:", err);
     res.status(500).json({ error: "Failed to add shift with breaks" });
@@ -99,6 +105,12 @@ exports.updateShift = async (req, res) => {
     }
 
     res.json({ message: "Shift updated successfully" });
+    try {
+      // Ideally fetch the updated shift to send it, but trigger a fetch on client is easiest
+      getIO().emit("shift:updated", { id, shift_name, shift_start, shift_end, breaks });
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error updating shift:", err);
     res.status(500).json({ error: "Failed to update shift" });
@@ -126,6 +138,11 @@ exports.deleteShift = async (req, res) => {
     await deleteBreaksByShift(id, companyId);
 
     res.json({ message: "Shift deleted successfully" });
+    try {
+      getIO().emit("shift:deleted", id);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error deleting shift:", err);
     res.status(500).json({ error: "Failed to delete shift" });

@@ -1,85 +1,78 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// REPLACE WITH YOUR ACTUAL MACHINE IP IF DIFFERENT
 const SOCKET_URL = 'http://192.168.0.216:3000';
 
 export const useWebSocket = () => {
   const socketRef = useRef(null);
-  const reconnectAttempts = useRef(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
+  const [isConnected, setIsConnected] = useState(false);
 
-  // Initialize socket connection
   useEffect(() => {
+    let socket;
+
     const connectSocket = async () => {
       try {
         const token = await AsyncStorage.getItem('authToken');
-        
-        socketRef.current = io(SOCKET_URL, {
-          auth: {
-            token: token,
-          },
+
+        socket = io(SOCKET_URL, {
+          auth: { token },
+          transports: ['websocket'], // Force websocket
           reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
-          transports: ['websocket', 'polling'],
+          reconnectionAttempts: 10,
         });
 
-        // Connection events
-        socketRef.current.on('connect', () => {
-          console.log('✅ WebSocket Connected:', socketRef.current.id);
-          reconnectAttempts.current = 0;
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          console.log('✅ Socket.IO Connected:', socket.id);
+          setIsConnected(true);
         });
 
-        socketRef.current.on('disconnect', (reason) => {
-          console.log('❌ WebSocket Disconnected:', reason);
+        socket.on('disconnect', (reason) => {
+          console.log('❌ Socket.IO Disconnected:', reason);
+          setIsConnected(false);
         });
 
-        socketRef.current.on('connect_error', (error) => {
-          console.error('❌ WebSocket Error:', error);
-          reconnectAttempts.current++;
+        socket.on('connect_error', (err) => {
+          console.error('⚠️ Socket.IO Connection Error:', err.message);
         });
 
       } catch (error) {
-        console.error('Failed to connect WebSocket:', error);
+        console.error('Failed to initialize socket:', error);
       }
     };
 
     connectSocket();
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      if (socket) {
+        socket.disconnect();
+        socketRef.current = null;
       }
     };
   }, []);
 
-  // Emit event
   const emit = useCallback((event, data) => {
-    if (socketRef.current) {
+    if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit(event, data);
+    } else {
+      console.warn('⚠️ Cannot emit, socket not connected');
     }
   }, []);
 
-  // Listen to event
   const on = useCallback((event, callback) => {
     if (socketRef.current) {
       socketRef.current.on(event, callback);
     }
   }, []);
 
-  // Stop listening to event
   const off = useCallback((event, callback) => {
     if (socketRef.current) {
       socketRef.current.off(event, callback);
     }
   }, []);
 
-  return {
-    socket: socketRef.current,
-    emit,
-    on,
-    off,
-  };
+  return { socket: socketRef.current, isConnected, emit, on, off };
 };

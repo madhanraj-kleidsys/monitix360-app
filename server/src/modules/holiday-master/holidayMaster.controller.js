@@ -6,6 +6,7 @@ const {
   updateHoliday,
   deleteHoliday,
 } = require("../holiday-master/holidayMaster.modal");
+const { getIO } = require("../../socket/socket");
 
 // ------------------------------------------------------------
 // GET all holidays
@@ -63,6 +64,11 @@ exports.addHoliday = async (req, res) => {
     });
 
     res.status(201).json({ message: "Holiday added successfully" });
+    try {
+      getIO().emit("holiday:created", { holiday_date, description, company_id: companyId });
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("POST /holidays:", err);
     res.status(500).json({ error: "Failed to add holiday" });
@@ -86,6 +92,11 @@ exports.updateHoliday = async (req, res) => {
     await updateHoliday(holiday, { holiday_date, description });
 
     res.json({ message: "Holiday updated successfully" });
+    try {
+      getIO().emit("holiday:updated", { id, holiday_date, description });
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("PUT /holidays/:id:", err);
     res.status(500).json({ error: "Failed to update holiday" });
@@ -108,6 +119,11 @@ exports.deleteHoliday = async (req, res) => {
     await deleteHoliday(holiday);
 
     res.json({ message: "Holiday deleted successfully" });
+    try {
+      getIO().emit("holiday:deleted", id);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("DELETE /holidays/:id:", err);
     res.status(500).json({ error: "Failed to delete holiday" });

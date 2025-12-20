@@ -208,7 +208,7 @@ npx prisma studio
 npm start
 
 
-✅ **API is now running at:** `http://localhost:5000`
+✅ **API is now running at:** `http://localhost:3000`
 
 ---
 
@@ -310,11 +310,3 @@ Contributions are welcome! 🎉
 This project is licensed under the **MIT License**.
 
 ---
-
-<div align="center">
-
-### ⭐ If you like this project, give it a star!
-
-Made with ❤️ by **Kleidsys Technologies**
-
-</div>

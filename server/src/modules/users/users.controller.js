@@ -10,6 +10,7 @@ const {
   saveSelectedEmployees,
   getSelectedEmployees,
 } = require("../users/users.model");
+const { getIO } = require("../../socket/socket");
 
 // -----------------------------
 // GET ALL USERS (company wise)
@@ -80,6 +81,11 @@ exports.addUser = async (req, res) => {
       message: "User created successfully",
       user: newUser,
     });
+    try {
+      getIO().emit("user:created", newUser);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("User creation error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -121,6 +127,14 @@ exports.updateUser = async (req, res) => {
     await updateUser(userId, updateData);
 
     res.json({ message: "User updated successfully" });
+    try {
+      // Ideally we should return the updated user object to update client state immediately, 
+      // but triggering a fetch is safer if we don't have the full object here.
+      // However, let's try to emit just the ID so client knows to refetch.
+      getIO().emit("user:updated", { id: userId, ...updateData });
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (error) {
     console.error("Error updating user:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -139,6 +153,11 @@ exports.removeUser = async (req, res) => {
     if (!deleted) return res.status(404).json({ error: "User not found" });
 
     res.json({ message: "User deleted successfully" });
+    try {
+      getIO().emit("user:deleted", userId);
+    } catch (err) {
+      console.error("Socket emit error:", err.message);
+    }
   } catch (err) {
     console.error("Error deleting user:", err);
     res.status(500).json({ error: "Internal server error" });
