@@ -1,6 +1,6 @@
 require("dotenv").config();
 // const { pool, initializeTables } = require("./src/config/db");
-const http = require('http'); // Import http module
+const http = require('http');
 const app = require("./src/app");
 
 const { sequelize, initializeTables } = require("./src/config/db");

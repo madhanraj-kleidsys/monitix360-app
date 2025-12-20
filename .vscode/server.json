@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "starting server with Bunuuh",
+            "type": "shell",
+            "command": "bun start",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "clear": true
+            }
+        }
+    ]
+}

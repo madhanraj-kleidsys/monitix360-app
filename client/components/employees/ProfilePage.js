@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -14,7 +14,7 @@ const COLORS = {
   danger: '#EF4444',
 };
 
-export default function ProfilePage({ onLogout }) {
+export default function ProfilePage({ onLogout, user }) {
   const menuItems = [
     { icon: 'person-outline', label: 'Edit Profile', color: COLORS.primary, action: () => { } },
     { icon: 'notifications-outline', label: 'Notifications', color: COLORS.primary, action: () => { } },
@@ -25,29 +25,77 @@ export default function ProfilePage({ onLogout }) {
       label: 'Logout',
       color: COLORS.danger,
       action: () => {
-        if (onLogout) {
-          onLogout();   // This will set isLoggedIn(false) in App.js and show Login ----------/\-------
-        }
+        Alert.alert(
+          'Logout',
+          "Are you sure you want to logout?",
+          [
+            {
+              text: 'Cancel',
+              onPress: () => { },
+              style: 'cancel',
+            },
+            {
+              text: 'Logout',
+              onPress: () => {
+                if (onLogout) { onLogout(); }
+              },
+              style: 'destructive',
+            }
+          ]
+        )
+        // if (onLogout) {
+        //   onLogout();   // This will set isLoggedIn(false) in App.js and show Login ----------/\-------
+        // }
       },
     },
   ];
 
+  const employeeData = {
+    id: user?.id || 'N/A',
+    name: user?.username || 'Unknown',
+    email: user?.email || 'N/A',
+    role: user?.role || 'User',
+    profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'U',
+    department: 'Management',
+    joinDate: 'Jan 2024',
+    permissions: 'Full Access',
+    status: 'Active',
+    Company: user?.company_id || 'N/A',
+  };
+
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'Profile editing !');
+  };
+
+  const handleNotifications = () => {
+    Alert.alert('Notifications', 'No new notifications');
+  }
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#00D4FF', '#0099FF','#4facfe']}
+        // colors={['#00D4FF', '#0099FF', '#4facfe']}
+        colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
           <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>M</Text>
+            {/* <Text style={styles.avatarLargeText}>{employeeData.profileInitial}</Text> */}
+            <Image
+              source={
+                employeeData.email === 'madhanraj@kleidsys.com'
+                  ? require('../../assets/user!.jpg')
+                  : require('../../assets/pic.jpg')
+              }
+              resizeMode="cover"
+              style={styles.priorityCircle}
+            />
           </View>
-          <Text style={styles.profileName}>Madhan</Text>
-          <Text style={styles.profileEmail}>madhan@kleidsyscom</Text>
-          <Text style={styles.profileRole}>Software Developer</Text>
+          <Text style={styles.profileName}>{employeeData.name}</Text>
+          <Text style={styles.profileEmail}>Email : {employeeData.email}</Text>
+          <Text style={styles.profileRole}>Role : {employeeData.role}</Text>
         </View>
       </LinearGradient>
 
@@ -86,8 +134,6 @@ export default function ProfilePage({ onLogout }) {
             </TouchableOpacity>
           ))}
         </View>
-
-
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
@@ -132,6 +178,18 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  priorityCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   profileName: {
     fontSize: 24,

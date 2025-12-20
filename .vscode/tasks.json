@@ -1,0 +1,35 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "starting app with Bunuuh",
+            "type": "shell",
+            "command": "bun expo start --clear",
+            "options": {
+                "cwd": "${workspaceFolder}/client",
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                // "focus": true,
+                // "showReuseMessage": true,
+                // "clear": true
+            },
+        },
+        {
+            "label": "starting server with Bunuuh",
+            "type": "shell",
+            "command": "bun start",
+            "options": {
+                "cwd": "${workspaceFolder}/server"
+            },
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "clear": true
+            }
+        }
+    ]
+}

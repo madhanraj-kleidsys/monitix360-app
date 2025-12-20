@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Floating from './TimeBar/FloatIng';
+import HorizontalGanttChart from './TimeBar/HorizontalGanttChart';
 
 const { width } = Dimensions.get('window');
 const COLORS = {
@@ -20,7 +22,14 @@ const COLORS = {
   pink: '#EC4899',
 };
 
-export default function HomePage() {
+export default function HomePage({user}) {
+
+   const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning! 👋🏻';
+    if (hour < 18) return 'Good Afternoon! 👋🏻';
+    return 'Good Evening! 👋🏻';
+  };
   const stats = [
     { label: 'Total Tasks', value: '10', icon: 'list', color: COLORS.primary, bgColor: '#1E5A8E20' },
     { label: 'In Progress', value: '1', icon: 'time', color: COLORS.warning, bgColor: '#F59E0B20' },
@@ -52,6 +61,10 @@ export default function HomePage() {
     },
   ];
 
+  const staffDatas = {
+    namuuh: user?.username || 'Unknown'
+  }
+
   return (
     <View style={styles.container}>
       {/* Premium Glass Morphism Header */}
@@ -64,8 +77,8 @@ export default function HomePage() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.greeting}>Good Morning! 👋</Text>
-              <Text style={styles.userName}>Madhan Raj</Text>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.userName}>{staffDatas.namuuh}</Text>
               <View style={styles.statusBadge}>
                 <View style={styles.statusDot} />
                 <Text style={styles.statusText}>Online</Text>
@@ -89,7 +102,7 @@ export default function HomePage() {
           </View>
 
           {/* Stats Overview Card */}
-          <View style={styles.statsOverviewCard}>
+          {/* <View style={styles.statsOverviewCard}>
             <Text style={styles.statsTitle}> Today Stats</Text>
             <View style={styles.overviewRow}>
               <View style={styles.overviewItem}>
@@ -107,7 +120,7 @@ export default function HomePage() {
                 <Text style={styles.overviewLabel}>Efficiency</Text>
               </View>
             </View>
-          </View>
+          </View> */}
         </View>
       </LinearGradient>
 
@@ -117,7 +130,7 @@ export default function HomePage() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Stats Grid */}
-        <View style={styles.statsGrid}>
+        {/* <View style={styles.statsGrid}>
           {stats.map((stat, index) => (
             <View key={index} style={[styles.statCard, { backgroundColor: stat.bgColor }]}>
               <View style={[styles.statIconContainer, { backgroundColor: stat.color }]}>
@@ -127,10 +140,10 @@ export default function HomePage() {
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
-        </View>
+        </View> */}
 
         {/* Recent Activity with Timeline */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             <TouchableOpacity>
@@ -161,8 +174,9 @@ export default function HomePage() {
               </View>
             </View>
           ))}
-        </View>
-
+        </View> */}
+{/* < Floating /> */}
+<HorizontalGanttChart />
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
