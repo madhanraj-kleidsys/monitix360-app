@@ -206,10 +206,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   profileRole: {
-    fontSize: 22,
+    fontSize: 10,
     // color: COLORS.primary,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '400',
   },
   content: {
     flex: 1,

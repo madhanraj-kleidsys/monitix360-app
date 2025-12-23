@@ -10,6 +10,7 @@ import SplashScreen from './components/loader/SplashScreen';
 import LandingScreen from './components/commonScreens/LandingScreen';
 import LoginScreen from './components/commonScreens/LoginScreen';
 import RegisterScreen from './components/commonScreens/RegisterScreen';
+import companyServices from './components/admin/services/CompanyService';
 
 //admin pages
 import AdminDockNavigation from './components/admin/DockNavigation';
@@ -32,7 +33,7 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // ========== ADMIN MAIN TABS ==========
-function AdminMainTabs({ onLogout, user }) {
+function AdminMainTabs({ onLogout, user, userCompany }) {
   const [activeScreen, setActiveScreen] = useState('home');
 
   const handleTabPress = (id) => {
@@ -55,7 +56,8 @@ function AdminMainTabs({ onLogout, user }) {
         <Tab.Screen name="AdminShift" component={AdminShiftPage} />
         <Tab.Screen name="AdminProfile">
           {(props) => <AdminProfilePage {...props} onLogout={onLogout}
-            user={user} />}
+            user={user}
+            userCompany={userCompany} />}
         </Tab.Screen>
       </Tab.Navigator>
 
@@ -82,7 +84,9 @@ function EmployeeMainTabs({ onLogout, user }) {
       <Tab.Screen name="Home" >
         {(props) => <HomePage {...props} user={user} />}
       </Tab.Screen>
-      <Tab.Screen name="Tasks" component={TaskScreen} />
+      <Tab.Screen name="Tasks">
+        {(props) => <TaskScreen {...props} user={user} />}
+      </Tab.Screen>
       <Tab.Screen name="Progress" component={ProgressPage} />
       <Tab.Screen name="Profile">
         {(props) => <ProfilePage {...props} onLogout={onLogout}
@@ -100,6 +104,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userCompany, setUserCompany] = useState(null);
 
   // Check for saved token + user on app start
   useEffect(() => {
@@ -116,8 +121,22 @@ export default function App() {
         const savedUser = await AsyncStorage.getItem('userData');
 
         if (savedToken && savedUser) {
+          const parsedUser = JSON.parse(savedUser);
           setToken(savedToken);
-          setUser(JSON.parse(savedUser)); // Restore user object
+          setUser(parsedUser); // Restore user object
+
+          // fetch company detaols
+          if (parsedUser.company_id) {
+            const company = await companyServices.getCompanyById(parsedUser.company_id);
+            try {
+              setUserCompany(company);
+              // console.log('company details', company);
+            }
+            catch (err) {
+              console.log('Error fetching company:', err);
+            }
+
+          }
         }
       } catch (err) {
         console.log('Init error:', err);
@@ -189,16 +208,18 @@ export default function App() {
                     }
                   }
                   user={user}
+                  userCompany={userCompany}
                 />
                 :
                 <EmployeeMainTabs {...props}
                   user={user}
+                  userCompany={userCompany}
                   onLogout={
                     async () => {
-                    await AsyncStorage.multiRemove(['authToken', 'userData']);
-                    setUser(null);
-                    setToken(null);
-                  }} />
+                      await AsyncStorage.multiRemove(['authToken', 'userData']);
+                      setUser(null);
+                      setToken(null);
+                    }} />
             }
           </Stack.Screen>
         )}

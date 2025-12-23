@@ -417,35 +417,6 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
 export default function AdminShiftPage() {
   const [shifts, setShifts] = useState([]);
 
-  // {
-  //   id: 1,
-  //   name: 'Morning Shift',
-  //   startTime: '08:00',
-  //   endTime: '16:00',
-  //   breaks: [
-  //     { id: 101, name: 'Breakfast', startTime: '10:00', endTime: '10:30' },
-  //     { id: 102, name: 'Lunch', startTime: '12:30', endTime: '13:30' },
-  //   ],
-  // },
-  // {
-  //   id: 2,
-  //   name: 'Afternoon Shift',
-  //   startTime: '16:00',
-  //   endTime: '00:00',
-  //   breaks: [
-  //     { id: 201, name: 'Dinner', startTime: '19:00', endTime: '20:00' },
-  //   ],
-  // },
-  // {
-  //   id: 3,
-  //   name: 'Night Shift',
-  //   startTime: '22:00',
-  //   endTime: '06:00',
-  //   breaks: [
-  //     { id: 301, name: 'Midnight Snack', startTime: '02:00', endTime: '02:30' },
-  //   ],
-  // },
-
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);

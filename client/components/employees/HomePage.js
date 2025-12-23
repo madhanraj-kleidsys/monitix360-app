@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,12 +24,14 @@ const COLORS = {
 };
 
 export default function HomePage({ user }) {
+
   const [taskStats, setTaskStats] = useState({
     total: 0,
     inProgress: 0,
     completed: 0,
     pending: 0,
   });
+
   const [notifications, setNotifications] = useState([]);
   const [notifVisible, setNotifVisible] = useState(false);
   const { socket, isConnected } = useWebSocket();
@@ -54,7 +56,21 @@ export default function HomePage({ user }) {
   }, []);
 
   useEffect(() => {
+    const setupNotifications = async () => {
+      const { registerForPushNotifications } = require('../../services/NotificationService');
+      const token = await registerForPushNotifications();
+      if (token) {
+        try {
+          await ApiService.updatePushToken(token);
+          console.log('✅ Push Token registered with server');
+        } catch (err) {
+          console.error('❌ Server push token update failed:', err);
+        }
+      }
+    };
+
     fetchStats();
+    setupNotifications();
   }, [fetchStats]);
 
   // WebSocket for live notifications list
@@ -123,7 +139,7 @@ export default function HomePage({ user }) {
     { label: 'Pending', value: taskStats.pending, icon: 'alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
   ];
 
-  const renderHeader = () => (
+  const headerComponent = useMemo(() => (
     <View>
       <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
@@ -212,13 +228,13 @@ export default function HomePage({ user }) {
         </View>
       </View>
     </View>
-  );
+  ), [taskStats, notifications.length, user, fetchStats]);
 
   return (
     <View style={styles.container}>
       <TaskPage
         user={user}
-        ListHeaderComponent={renderHeader()}
+        ListHeaderComponent={headerComponent}
       />
 
       <NotificationModal

@@ -72,7 +72,7 @@ function ProfileStat({ label, value }) {
 }
 
 // ========== MAIN ADMIN PROFILE PAGE ==========
-export default function AdminProfilePage({ onLogout, user }) {
+export default function AdminProfilePage({ onLogout, user, userCompany }) {
   // const [adminData] = useState({
   //   id: 'ADMIN-001',
   //   name: 'madhan',
@@ -84,18 +84,20 @@ export default function AdminProfilePage({ onLogout, user }) {
   //   permissions: 'Full Access',
   //   status: 'Active',
   // });
-
+  
   const adminData = {
     id: user?.id || 'N/A',
     name: user?.username || 'Unknown',
     email: user?.email || 'N/A',
     role: user?.role || 'User',
-    profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'U',
-    department: 'Management',
-    joinDate: 'Jan 2024',
-    permissions: 'Full Access',
+    profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'Um',
+    // department: 'Management',
+    // joinDate: 'Jan 2024',
+    // permissions: 'Full Access',
     status: 'Active',
-    Company: user?.company_id || 'N/A',
+    // Company: user?.company_id || 'N/A',
+    CompanyName: userCompany?.company_name || 'N/dA',
+    CompanyCode: userCompany?.company_code || 'N/dA',
   }
 
   const [stats] = useState({
@@ -106,7 +108,7 @@ export default function AdminProfilePage({ onLogout, user }) {
   });
 
   const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'Profile editing !');
+    Alert.alert('Edit Profile', 'Coming in next update !');
   };
 
   const handleNotifications = () => {
@@ -114,7 +116,7 @@ export default function AdminProfilePage({ onLogout, user }) {
   };
 
   const handleSettings = () => {
-    Alert.alert('Settings', 'Settings page !');
+    Alert.alert('Settings', 'Version 1.0.0');
   };
 
   const handleHelpSupport = () => {
@@ -164,16 +166,17 @@ export default function AdminProfilePage({ onLogout, user }) {
                         // source={require('../../assets/pic.jpg')}
                         source={require('../../assets/admin.jpg')}
                         resizeMode="cover"
-                        // style={styles.priorityCircle}
+                        style={styles.priorityCircle}
                       />
               </View>
             </View>
 
             {/* Profile Info */}
             <Text style={styles.profileName}>{adminData.name}</Text>
-            <Text style={styles.profileEmail}>EMAIL : {adminData.email}</Text>
-            <Text style={styles.profileRole}>Role : {adminData.role}</Text>
-            <Text style={styles.profileRole}>Company Name : {adminData.Company}</Text>
+             {/* <Text style={styles.profileEmail}>EMAIL : {adminData.email}</Text> */}
+            {/* <Text style={styles.profileRole}>Company id : {adminData.Company}</Text> */}
+            <Text style={styles.profileRole}>{adminData.CompanyName}</Text>
+          <Text style={styles.profileRole}>role : {adminData.role}</Text>
 
             {/* Status Badge */}
             <View style={styles.statusBadge}>
@@ -202,20 +205,48 @@ export default function AdminProfilePage({ onLogout, user }) {
             </View>
             <Text style={styles.infoValue}>{adminData.id}</Text>
           </View>
-
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="mail" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Email Id</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.email}</Text>
+          </View>
+          <View style={styles.divider} />
+
+            <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="business-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Company Name</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.CompanyName}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+           <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="card" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Company Code</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.CompanyCode}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* <View style={styles.infoRow}>
             <View style={styles.infoLabel}>
               <Ionicons name="briefcase" size={16} color={COLORS.primary} />
               <Text style={styles.infoLabelText}>Department</Text>
             </View>
             <Text style={styles.infoValue}>{adminData.department}</Text>
-          </View>
+          </View> */}
 
           <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
+          {/* <View style={styles.infoRow}>
             <View style={styles.infoLabel}>
               <Ionicons name="calendar" size={16} color={COLORS.primary} />
               <Text style={styles.infoLabelText}>Join Date</Text>
@@ -231,7 +262,7 @@ export default function AdminProfilePage({ onLogout, user }) {
               <Text style={styles.infoLabelText}>Permissions</Text>
             </View>
             <Text style={styles.infoValue}>{adminData.permissions}</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Menu Section */}
