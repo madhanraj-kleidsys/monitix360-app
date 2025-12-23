@@ -12,7 +12,7 @@ import {
   TextInput,
   Alert,
   Platform,
-  ActivityIndicator, Image,
+  ActivityIndicator, Image, FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -337,14 +337,13 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
   );
 }
 
-function TaskCard({ task, onPress }) {
+const TaskCard = React.memo(({ task, onPress }) => {
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
 
-  // priority colors with gradients
   const PRIORITY_COLORS = {
-    1: ['#fd0022ff', '#fd0022ff'], // High
-    2: ['#FFC46B', '#FFD93D'], // Medium 
-    3: ['#08a745ff', '#08a745ff'], // Low
+    1: ['#fd0022ff', '#fd0022ff'],
+    2: ['#FFC46B', '#FFD93D'],
+    3: ['#08a745ff', '#08a745ff'],
     'High': ['#fd0022ff', '#fd0022ff'],
     'Medium': ['#FFC46B', '#FFD93D'],
     'Low': ['#00ff33ff', '#08a745ff'],
@@ -353,29 +352,13 @@ function TaskCard({ task, onPress }) {
     'low': ['#00ff33ff', '#08a745ff'],
   };
 
-  // 🎨 Status colors makeover
-  const STATUS_COLORS_CUTE = {
-    pending: '#FFB347',
-    'in progress': '#74B9FF',
-    completed: '#55A3FF',
-    Paused: '#FF7675',
-  };
-
-  const getPriorityColor = (priority) => {
-    const priorityLabel = getPriorityLabel(priority);
-    return PRIORITY_COLORS[priorityLabel] || ['#A8E6CF', '#88D8C0'];
-  };
-
-  // 🌟 Enhanced priority label function
   const getPriorityLabel = (priorityNum) => {
     if (priorityNum === null || priorityNum === undefined) return 'Low';
-
     if (typeof priorityNum === 'number') {
       if (priorityNum === 1) return 'High';
       if (priorityNum === 2) return 'Medium';
       if (priorityNum === 3) return 'Low';
     }
-
     if (typeof priorityNum === 'string') {
       const num = parseInt(priorityNum);
       if (!isNaN(num)) {
@@ -383,28 +366,24 @@ function TaskCard({ task, onPress }) {
         if (num === 2) return 'Medium';
         if (num === 3) return 'Low';
       }
-
       const lower = priorityNum.trim().toLowerCase();
       if (lower === 'high') return 'High';
       if (lower === 'medium') return 'Medium';
       if (lower === 'low') return 'Low';
     }
-
     return 'Low';
   };
 
-  // 🎭 Cute icon mapping
+  const getPriorityColor = (priority) => {
+    const priorityLabel = getPriorityLabel(priority);
+    return PRIORITY_COLORS[priorityLabel] || ['#A8E6CF', '#88D8C0'];
+  };
+
   const getCuteIcon = (priority) => {
-    const labels = {
-      'High': 'High',
-      'Medium': 'Mid',
-      'Low': 'Low',
-    };
+    const labels = { 'High': 'High', 'Medium': 'Mid', 'Low': 'Low' };
     return labels[getPriorityLabel(priority)] || 'Low';
   };
 
-
-  // 🌈 Status emoji mapping
   const getStatusEmoji = (status) => {
     const emojis = {
       pending: '⏳',
@@ -415,11 +394,10 @@ function TaskCard({ task, onPress }) {
     return emojis[status] || '📋';
   };
 
-  const priorityDisplay = getPriorityLabel(task.priority);
+  if (!task) return null;
+
   const priorityColors = getPriorityColor(task.priority);
   const statusEmoji = getStatusEmoji(task.status);
-
-  if (!task) return null;
 
   return (
     <TouchableOpacity
@@ -427,50 +405,29 @@ function TaskCard({ task, onPress }) {
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {/* 🌟 Gradient background overlay */}
       <LinearGradient
         colors={['rgba(255,255,255,0.9)', 'rgba(248,250,252,0.7)']}
         style={styles.cardGradient}
       />
 
       <View style={styles.cardContent}>
-
-        {/* 🎨 Left side - Cute priority indicator */}
         <View style={styles.leftSection}>
-          {/* <LinearGradient
-            colors={priorityColors}
-            style={styles.priorityCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.priorityEmoji}>{getCuteIcon(task.priority)}</Text>
-          </LinearGradient>
-
-          {/* 🌸 Priority label */}
-          {/* <Text style={[styles.priorityLabel, { color: priorityColors[0] }]}>
-            {priorityDisplay}
-          </Text>  */}
           <Image
-            // source={require('../../../assets/pic.jpg')}
             source={require('../../../assets/men1.jpg')}
             resizeMode="cover"
             style={styles.priorityCircle}
           />
         </View>
 
-        {/* 📋 Middle section - Task info */}
         <View style={styles.middleSection}>
-          {/* 🖼️ Task name + priority inline */}
           <View style={styles.taskHeader}>
-            {/* 👤 Employee */}
             <View style={styles.employeeRow}>
               <Text style={styles.employeeEmoji}>👤</Text>
-              <Text >
+              <Text style={styles.employeeNameText}>
                 {task.employeeName || 'Unassigned'}
               </Text>
             </View>
 
-            {/* 🌸 Priority badge - RIGHT AFTER NAME */}
             <LinearGradient
               colors={priorityColors}
               style={styles.miniPriorityBadge}
@@ -483,16 +440,12 @@ function TaskCard({ task, onPress }) {
             </LinearGradient>
           </View>
 
-          {/* 🎯 Project */}
           <Text style={styles.projectText}>🎯 {task.Project_Title}</Text>
-
-
-          <Text style={styles.employeeName} numberOfLines={2}>
+          <Text style={styles.taskTitleText} numberOfLines={2}>
             {task.name || 'No Title'}
           </Text>
         </View>
 
-        {/* ✅ Right side - Status */}
         <View style={styles.rightSection}>
           <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
             <Text style={styles.statusEmoji}>{statusEmoji}</Text>
@@ -501,14 +454,12 @@ function TaskCard({ task, onPress }) {
             </Text>
           </View>
 
-          {/* ➡️ Forward arrow with cute styling */}
           <View style={styles.forwardArrow}>
             <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
           </View>
         </View>
       </View>
 
-      {/* ✨ Cute decorative elements */}
       <View style={styles.decorativeDots}>
         <View style={[styles.dot, { backgroundColor: priorityColors[0] }]} />
         <View style={[styles.dot, { backgroundColor: priorityColors[1] }]} />
@@ -516,7 +467,7 @@ function TaskCard({ task, onPress }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 // ========== TASK MODAL COMPONENT ==========
 
@@ -2290,7 +2241,7 @@ export default function HomePage() {
       setIsEditModalVisible(false);
       // Keep detail sheet open to show updated data
       // if (isConnected) emit
-      console.log('task:updated', { id, ...data });
+      console.log('task:updatedrrr', { id, ...data });
       await fetchAllTasks();
       setSelectedTask(null); // Close detail sheet too
       setIsDetailVisible(false);
@@ -2389,17 +2340,11 @@ export default function HomePage() {
       {/* View Toggle Moved to FilterBar */}
 
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-        <ScrollView
-          style={styles.content}
-          scrollEnabled={!isDetailVisible}
+        <View
+          style={[styles.content, { paddingBottom: 0 }]}
           pointerEvents={isDetailVisible ? 'none' : 'auto'}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: bottomPadding }
-          ]}
         >
-          <View style={styles.tasksSection}>
+          <View style={[styles.tasksSection, { flex: 1 }]}>
             <View style={styles.filterContainer}>
               <Text style={styles.sectionTitle}>Total Tasks ({filteredTasks.length})</Text>
               <TouchableOpacity
@@ -2472,15 +2417,26 @@ export default function HomePage() {
                 {loading ? (
                   <ActivityIndicator size="large" color={COLORS.primary} />
                 ) : Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
-                  <ScrollView style={{ flex: 1 }}>
-                    {filteredTasks.map((task) => (
+                  <FlatList
+                    data={filteredTasks}
+                    keyExtractor={(item) => String(item.id)}
+                    renderItem={({ item }) => (
                       <TaskCard
-                        key={task.id}
-                        task={task}
-                        onPress={() => handleTaskPress(task)}
+                        task={item}
+                        onPress={() => handleTaskPress(item)}
                       />
-                    ))}
-                  </ScrollView>
+                    )}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{
+                      paddingBottom: bottomPadding,
+                      paddingHorizontal: 16,
+                      paddingTop: 8
+                    }}
+                    removeClippedSubviews={true}
+                    maxToRenderPerBatch={10}
+                    initialNumToRender={10}
+                    windowSize={5}
+                  />
                 ) : (
                   <View style={styles.emptyState}>
                     <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
@@ -2489,8 +2445,8 @@ export default function HomePage() {
                 )}
               </>
             )}
-            {/* Timeline Bar Chart VIEW */}
 
+            {/* Timeline Bar Chart VIEW */}
             {showTimeline && (
               <HomeTimeline
                 tasks={filteredTasks}
@@ -2502,7 +2458,7 @@ export default function HomePage() {
             )}
 
           </View>
-        </ScrollView>
+        </View>
       </View>
 
       {/* ONLY THESE THREE MODALS */}

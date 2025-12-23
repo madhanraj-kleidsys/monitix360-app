@@ -1,78 +1,108 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// REPLACE WITH YOUR ACTUAL MACHINE IP IF DIFFERENT
+// Ensure this matches your backend IP and port
 const SOCKET_URL = 'http://192.168.0.216:3000';
 
+let socketInstance = null;
+let isInitializing = false;
+const listeners = new Set();
+
+const updateListeners = () => {
+  listeners.forEach(fn => fn(socketInstance));
+};
+
 export const useWebSocket = () => {
-  const socketRef = useRef(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [socket, setSocket] = useState(socketInstance);
+  const [isConnected, setIsConnected] = useState(socketInstance?.connected || false);
 
   useEffect(() => {
-    let socket;
+    const handleInstanceUpdate = (instance) => {
+      setSocket(instance);
+      if (instance) {
+        setIsConnected(instance.connected);
 
-    const connectSocket = async () => {
-      try {
-        const token = await AsyncStorage.getItem('authToken');
-
-        socket = io(SOCKET_URL, {
-          auth: { token },
-          transports: ['websocket'], // Force websocket
-          reconnection: true,
-          reconnectionAttempts: 10,
-        });
-
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
-          console.log('✅ Socket.IO Connected:', socket.id);
+        const onConnect = () => {
+          console.log('✅ Socket connected:', instance.id);
           setIsConnected(true);
-        });
-
-        socket.on('disconnect', (reason) => {
-          console.log('❌ Socket.IO Disconnected:', reason);
+        };
+        const onDisconnect = (reason) => {
+          console.log('❌ Socket disconnected:', reason);
           setIsConnected(false);
-        });
+        };
+        const onConnectError = (err) => {
+          console.error('⚠️ Socket connection error:', err.message);
+        };
 
-        socket.on('connect_error', (err) => {
-          console.error('⚠️ Socket.IO Connection Error:', err.message);
-        });
+        instance.on('connect', onConnect);
+        instance.on('disconnect', onDisconnect);
+        instance.on('connect_error', onConnectError);
 
-      } catch (error) {
-        console.error('Failed to initialize socket:', error);
+        return () => {
+          instance.off('connect', onConnect);
+          instance.off('disconnect', onDisconnect);
+          instance.off('connect_error', onConnectError);
+        };
       }
     };
 
-    connectSocket();
+    listeners.add(handleInstanceUpdate);
+
+    // If already initialized, trigger update immediately
+    if (socketInstance) {
+      handleInstanceUpdate(socketInstance);
+    }
+
+    const initializeSocket = async () => {
+      if (!socketInstance && !isInitializing) {
+        isInitializing = true;
+        try {
+          // CONSISTENCY: LoginScreen saves 'accessToken', so we use that.
+          const token = await AsyncStorage.getItem('accessToken') || await AsyncStorage.getItem('authToken');
+          console.log('🔌 Initializing socket with token:', token ? 'Present' : 'Missing');
+
+          socketInstance = io(SOCKET_URL, {
+            auth: { token },
+            transports: ['websocket'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+          });
+
+          updateListeners();
+        } catch (error) {
+          console.error('Failed to initialize socket:', error);
+          isInitializing = false;
+        }
+      }
+    };
+
+    initializeSocket();
 
     return () => {
-      if (socket) {
-        socket.disconnect();
-        socketRef.current = null;
-      }
+      listeners.delete(handleInstanceUpdate);
     };
   }, []);
 
   const emit = useCallback((event, data) => {
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit(event, data);
+    if (socketInstance && socketInstance.connected) {
+      socketInstance.emit(event, data);
     } else {
-      console.warn('⚠️ Cannot emit, socket not connected');
+      console.warn(`⚠️ Cannot emit ${event}, socket not connected`);
     }
   }, []);
 
   const on = useCallback((event, callback) => {
-    if (socketRef.current) {
-      socketRef.current.on(event, callback);
+    if (socketInstance) {
+      socketInstance.on(event, callback);
     }
   }, []);
 
   const off = useCallback((event, callback) => {
-    if (socketRef.current) {
-      socketRef.current.off(event, callback);
+    if (socketInstance) {
+      socketInstance.off(event, callback);
     }
   }, []);
 
-  return { socket: socketRef.current, isConnected, emit, on, off };
+  return { socket, isConnected, emit, on, off };
 };

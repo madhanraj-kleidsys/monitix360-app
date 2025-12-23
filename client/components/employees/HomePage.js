@@ -1,9 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions} from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Floating from './TimeBar/FloatIng';
-import HorizontalGanttChart from './TimeBar/HorizontalGanttChart';
+import TaskPage from './TaskPage';
+import ApiService from '../../services/ApiService';
+import NotificationModal from './NotificationModal';
+import { useWebSocket } from '../admin/hooks/useWebSocket';
+import moment from 'moment';
 
 const { width } = Dimensions.get('window');
 const COLORS = {
@@ -18,56 +21,110 @@ const COLORS = {
   text: '#0F172A',
   textLight: '#64748B',
   border: '#E2E8F0',
-  purple: '#8B5CF6',
-  pink: '#EC4899',
 };
 
-export default function HomePage({user}) {
+export default function HomePage({ user }) {
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    inProgress: 0,
+    completed: 0,
+    pending: 0,
+  });
+  const [notifications, setNotifications] = useState([]);
+  const [notifVisible, setNotifVisible] = useState(false);
+  const { socket, isConnected } = useWebSocket();
 
-   const getGreeting = () => {
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await ApiService.getMyTasks();
+      const tasks = res.data.filter(task => {
+        if (task.added_by_user === false) return true;
+        return task.approval_status === "approved";
+      });
+
+      setTaskStats({
+        total: tasks.length,
+        inProgress: tasks.filter(t => t.status === 'In Progress').length,
+        completed: tasks.filter(t => t.status === 'completed').length,
+        pending: tasks.filter(t => t.status === 'pending').length,
+      });
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // WebSocket for live notifications list
+  useEffect(() => {
+    console.log('🏠 HomePage Socket Effect:', { socket: !!socket, isConnected, userId: user?.id });
+    if (socket && isConnected && user?.id) {
+      console.log(`🏠 Joining room: user_${user.id}`);
+      socket.emit("joinRoom", `user_${user.id}`);
+
+      const onTaskAssigned = (task) => {
+        console.log('🏠 Task Assigned Event Received:', task.id);
+        if (String(task.assigned_to) !== String(user.id)) return;
+
+        const newNotif = {
+          id: Date.now().toString(),
+          title: "New Task Assigned! 🚀",
+          body: task.description || "You have a new task to work on.",
+          project: task.project_title || "General",
+          time: moment().format('hh:mm A'),
+          icon: "rocket",
+          color: COLORS.primary,
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+        fetchStats();
+      };
+
+      const onTaskUpdated = (task) => {
+        console.log('🏠 Task Updated Event Received:', task.id);
+        if (String(task.assigned_to) !== String(user.id)) return;
+
+        const newNotif = {
+          id: Date.now().toString(),
+          title: "Task Updated 🔄",
+          body: `Status: ${task.status}`,
+          project: task.project_title,
+          time: moment().format('hh:mm A'),
+          icon: "refresh",
+          color: COLORS.warning,
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+        fetchStats();
+      };
+
+      socket.on("task:created", onTaskAssigned);
+      socket.on("task:updated", onTaskUpdated);
+
+      return () => {
+        console.log('🏠 Cleaning up HomePage listeners');
+        socket.off("task:created", onTaskAssigned);
+        socket.off("task:updated", onTaskUpdated);
+      };
+    }
+  }, [socket, isConnected, user?.id]);
+
+  const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning! 👋🏻';
     if (hour < 18) return 'Good Afternoon! 👋🏻';
     return 'Good Evening! 👋🏻';
   };
-  const stats = [
-    { label: 'Total Tasks', value: '10', icon: 'list', color: COLORS.primary, bgColor: '#1E5A8E20' },
-    { label: 'In Progress', value: '1', icon: 'time', color: COLORS.warning, bgColor: '#F59E0B20' },
-    { label: 'Completed', value: '8', icon: 'checkmark-circle', color: COLORS.success, bgColor: '#10B98120' },
-    { label: 'Pending', value: '1', icon: 'alert-circle', color: COLORS.danger, bgColor: '#EF444420' },
+
+  const statsDisplay = [
+    { label: 'Total Tasks', value: taskStats.total, icon: 'list', color: COLORS.primary, bgColor: '#1E5A8E15' },
+    { label: 'In Progress', value: taskStats.inProgress, icon: 'time', color: COLORS.warning, bgColor: '#F59E0B15' },
+    { label: 'Completed', value: taskStats.completed, icon: 'checkmark-circle', color: COLORS.success, bgColor: '#10B98115' },
+    { label: 'Pending', value: taskStats.pending, icon: 'alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
   ];
 
-  const recentActivity = [
-    {
-      task: 'ERP Module Development',
-      time: '2 hours ago',
-      type: 'completed',
-      icon: 'code-slash',
-      color: COLORS.success
-    },
-    {
-      task: 'Mobile App UI Design',
-      time: '5 hours ago',
-      type: 'started',
-      icon: 'phone-portrait',
-      color: COLORS.primary
-    },
-    {
-      task: 'Database Optimization',
-      time: 'Yesterday',
-      type: 'paused',
-      icon: 'server',
-      color: COLORS.warning
-    },
-  ];
-
-  const staffDatas = {
-    namuuh: user?.username || 'Unknown'
-  }
-
-  return (
-    <View style={styles.container}>
-      {/* Premium Glass Morphism Header */}
+  const renderHeader = () => (
+    <View>
       <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
@@ -78,30 +135,24 @@ export default function HomePage({user}) {
           <View style={styles.headerContent}>
             <View>
               <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>{staffDatas.namuuh}</Text>
+              <Text style={styles.userName}>{user?.username || 'Unknown'}</Text>
               <View style={styles.statusBadge}>
                 <View style={styles.statusDot} />
                 <Text style={styles.statusText}>Online</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.profileContainer}>
-              <LinearGradient
-                colors={['#FFFFFF', '#F0F9FF']}
-                style={styles.avatar}
-              >
-                {/* <Text style={styles.avatarText}>MR</Text> */}
-                <TouchableOpacity style={styles.notificationBtn}>
-                  <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
-                  <View style={styles.badge} />
-                </TouchableOpacity>
+            <TouchableOpacity style={styles.profileContainer} onPress={() => setNotifVisible(true)}>
+              <LinearGradient colors={['#FFFFFF', '#F0F9FF']} style={styles.avatar}>
+                <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
               </LinearGradient>
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>3</Text>
-              </View>
+              {notifications.length > 0 ? (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationText}>{notifications.length}</Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
           </View>
 
-          {/* Stats Overview Card */}
           {/* <View style={styles.statsOverviewCard}>
             <Text style={styles.statsTitle}> Today Stats</Text>
             <View style={styles.overviewRow}>
@@ -121,64 +172,64 @@ export default function HomePage({user}) {
               </View>
             </View>
           </View> */}
+
+          <View style={styles.statsOverviewCard}>
+            <Text style={styles.statsTitle}>Today Stats</Text>
+            <View style={styles.overviewRow}>
+              {statsDisplay.map((stat, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <View style={styles.overviewDivider} />}
+                  <View style={styles.overviewItem}>
+                    {/* <Ionicons name={stat.icon} size={20} color={stat.color} style={{ marginBottom: 6 }} /> */}
+                    <Text style={[styles.overviewValue, { color: stat.color }]}>
+                      {stat.value}
+                    </Text>
+                    <Text style={styles.overviewLabel}>{stat.label}</Text>
+                  </View>
+                </React.Fragment>
+              ))}
+            </View>
+          </View>
         </View>
       </LinearGradient>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Stats Grid */}
+      <View style={styles.contentPadding}>
         {/* <View style={styles.statsGrid}>
-          {stats.map((stat, index) => (
+          {statsDisplay.map((stat, index) => (
             <View key={index} style={[styles.statCard, { backgroundColor: stat.bgColor }]}>
-              <View style={[styles.statIconContainer, { backgroundColor: stat.color }]}>
-                <Ionicons name={stat.icon} size={24} color="#fff" />
-              </View>
-              <Text style={styles.statValue}>{stat.value}</Text>
+              <Ionicons name={stat.icon} size={24} color={stat.color} />
+              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
         </View> */}
 
-        {/* Recent Activity with Timeline */}
-        {/* <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>My Tasks</Text>
+          <TouchableOpacity onPress={fetchStats}>
+            <Ionicons name="refresh" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 
-          {recentActivity.map((activity, index) => (
-            <View key={index} style={styles.activityCard}>
-              <View style={styles.activityTimeline}>
-                <View style={[styles.timelineDot, { backgroundColor: activity.color }]} />
-                {index < recentActivity.length - 1 && <View style={styles.timelineLine} />}
-              </View>
+  return (
+    <View style={styles.container}>
+      <TaskPage
+        user={user}
+        ListHeaderComponent={renderHeader()}
+      />
 
-              <View style={styles.activityContent}>
-                <View style={[styles.activityIconContainer, { backgroundColor: `${activity.color}15` }]}>
-                  <Ionicons name={activity.icon} size={20} color={activity.color} />
-                </View>
-
-                <View style={styles.activityDetails}>
-                  <Text style={styles.activityTask}>{activity.task}</Text>
-                  <Text style={styles.activityTime}>{activity.time}</Text>
-                </View>
-
-                <TouchableOpacity style={styles.activityButton}>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View> */}
-{/* < Floating /> */}
-<HorizontalGanttChart />
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      <NotificationModal
+        visible={notifVisible}
+        notifications={notifications}
+        onClose={() => setNotifVisible(false)}
+        onNotificationPress={(item) => {
+          setNotifVisible(false);
+          // logic to scroll to task if taskId exists
+        }}
+      />
     </View>
   );
 }
@@ -191,19 +242,18 @@ const styles = StyleSheet.create({
   headerGradient: {
     paddingTop: 50,
     paddingBottom: 40,
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    zIndex: 10,
-    elevation: 10,
-  },
-  header: {
-    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  profileContainer: {
+    position: 'relative',
   },
   greeting: {
     fontSize: 16,
@@ -212,7 +262,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   userName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 8,
@@ -238,36 +288,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  profileContainer: {
-    position: 'relative',
-  },
-  notificationBtn: {
-    position: 'relative',
-  },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.5)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.primary,
   },
   notificationBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#EF4444',
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.danger,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -324,177 +358,48 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: COLORS.border,
   },
-  content: {
-    flex: 1,
-    marginTop: -60,
-    zIndex: 1,
+  contentPadding: {
+    paddingHorizontal: 16,
   },
-  scrollContent: {
-    paddingTop: 65,
-    paddingHorizontal: 3,
-    paddingBottom: 20,
-  },
-
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    marginTop: 16,
     gap: 12,
-    marginBottom: 15,
+    marginBottom: 24,
   },
   statCard: {
     width: '48%',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
-    minHeight: 20,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    minHeight: 110,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 4,
+    fontSize: 26,
+    fontWeight: '800',
+    marginVertical: 4,
   },
   statLabel: {
     fontSize: 12,
     color: COLORS.textLight,
-    fontWeight: '500',
-  },
-
-  progressBar: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 3,
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginTop: 32,
+    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '800',
     color: COLORS.text,
-  },
-  seeAllText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  actionCard: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  actionGradient: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  actionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  activityCard: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  activityTimeline: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  timelineDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 3,
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  timelineLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: COLORS.border,
-    marginTop: 8,
-  },
-  activityContent: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: COLORS.cardBg,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  activityIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  activityDetails: {
-    flex: 1,
-  },
-  activityTask: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    fontWeight: '500',
-  },
-  activityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

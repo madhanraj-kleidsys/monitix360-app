@@ -13,10 +13,10 @@ const initializeSocket = (server) => {
     io.on("connection", (socket) => {
         console.log("Details: New Client Connected:", socket.id);
 
-        // Join user to their specific room if authenticated (optional, for future use)
-        // if (socket.handshake.auth.userId) {
-        //   socket.join(`user:${socket.handshake.auth.userId}`);
-        // }
+        socket.on("joinRoom", (room) => {
+            socket.join(room);
+            console.log(`Socket ${socket.id} joined room: ${room}`);
+        });
 
         socket.on("disconnect", () => {
             console.log("Client Disconnected:", socket.id);

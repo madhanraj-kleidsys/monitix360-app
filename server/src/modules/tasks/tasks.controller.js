@@ -253,6 +253,12 @@ exports.deleteTask = async (req, res) => {
     if (!task) return res.status(404).json({ error: "Not found" });
 
     const deletedData = { ...task.dataValues };
+    const taskId = task.id;
+
+    // Delete related records first to avoid FK constraint errors
+    const { TaskReason, TimeUpdate } = require("../../config/db");
+    await TaskReason.destroy({ where: { task_id: taskId } });
+    await TimeUpdate.destroy({ where: { task_id: taskId } });
 
     await deleteTask(task);
 
@@ -261,12 +267,13 @@ exports.deleteTask = async (req, res) => {
       await sequelize.query(`DBCC CHECKIDENT ('tasks', RESEED, 0)`);
     }
 
-    res.json({ message: "Deleted", deletedTask: deletedData });
     try {
-      getIO().emit("task:deleted", req.params.id);
+      getIO().emit("task:deleted", taskId);
     } catch (socketError) {
       console.error("Socket emit error:", socketError.message);
     }
+
+    res.json({ message: "Deleted", deletedTask: deletedData });
   } catch (err) {
     console.error("Delete error:", err);
     res.status(500).json({ error: "Internal server error" });

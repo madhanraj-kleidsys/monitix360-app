@@ -376,57 +376,43 @@ export const useTaskManagement = () => {
   useEffect(() => {
     if (!isConnected) return;
 
-    // Task created event
-    on('task:created', (newTask) => {
+    // Event handlers
+    const handleTaskCreated = (newTask) => {
       console.log('🎉 New task created:', newTask);
-      setAllTasks(prev => [newTask, ...prev]);
+      setAllTasks(prev => {
+        if (prev.find(t => t.id === newTask.id)) return prev;
+        return [newTask, ...prev];
+      });
+    };
 
-      // Also update myTasks if relevant (though checking validity is hard without user ID context here, 
-      // we can rely on manual fetch or just optimistically add if it matches pattern. 
-      // For now, only allTasks which Admin sees is updated.)
-    });
+    const handleTaskUpdated = (updatedTask) => {
+      setAllTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+      setMyTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    };
 
-    // Task updated event
-    on('task:updated', (updatedTask) => {
-      console.log('🔄 Task updated:', updatedTask);
-      setAllTasks(prev =>
-        prev.map(task =>
-          task.id === updatedTask.id ? updatedTask : task
-        )
-      );
-      setMyTasks(prev =>
-        prev.map(task =>
-          task.id === updatedTask.id ? updatedTask : task
-        )
-      );
-    });
-
-    // Task deleted event
-    on('task:deleted', (deletedTaskId) => {
+    const handleTaskDeleted = (deletedTaskId) => {
       console.log('🗑️ Task deleted:', deletedTaskId);
-      setAllTasks(prev =>
-        prev.filter(task => task.id !== deletedTaskId)
-      );
-      setMyTasks(prev =>
-        prev.filter(task => task.id !== deletedTaskId)
-      );
-    });
+      setAllTasks(prev => prev.filter(task => task.id !== deletedTaskId));
+      setMyTasks(prev => prev.filter(task => task.id !== deletedTaskId));
+    };
 
-    // User updates
     const handleUserUpdate = () => {
       console.log('🔄 User update received, fetching users...');
       fetchAllUsers();
     };
 
+    on('task:created', handleTaskCreated);
+    on('task:updated', handleTaskUpdated);
+    on('task:deleted', handleTaskDeleted);
     on('user:created', handleUserUpdate);
     on('user:updated', handleUserUpdate);
     on('user:deleted', handleUserUpdate);
 
     // Clean up
     return () => {
-      off('task:created', null);
-      off('task:updated', null);
-      off('task:deleted', null);
+      off('task:created', handleTaskCreated);
+      off('task:updated', handleTaskUpdated);
+      off('task:deleted', handleTaskDeleted);
       off('user:created', handleUserUpdate);
       off('user:updated', handleUserUpdate);
       off('user:deleted', handleUserUpdate);

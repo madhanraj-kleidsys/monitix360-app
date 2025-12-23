@@ -38,12 +38,12 @@ const STATUS_COLORS = {
   // 'Incomplete': '#95A5A6',
   // 'Paused': '#E74C3C',
 
-  'pending': ['#ffb700','#ffd93d'],
+  'pending': ['#ffb700', '#ffd93d'],
   'in progress': ['#ff6b6b', '#ee5a52'],
   // ['#3498DB', '#2980B9'],
-  'completed': ['#4caf50','#6bcf7f'],
-  'Incomplete': ['#95A5A6', '#7F8C8D'],
-  'Paused': ['#E74C3C', '#C0392B'],
+  'completed': ['#4caf50', '#6bcf7f'],
+  'incomplete': ['#95A5A6', '#7F8C8D'],
+  'paused': ['#E74C3C', '#C0392B'],
 };
 
 /**
@@ -425,7 +425,8 @@ export const DraggableTimeline = ({
                 {/* Task Bars */}
                 {empData.tasks.map((task, taskIdx) => {
                   const { left, taskWidth } = getTaskPosition(task);
-                  const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
+                  const statusKey = (task.status || 'pending').toLowerCase();
+                  const statusColor = STATUS_COLORS[statusKey] || STATUS_COLORS['pending'];
 
                   return (
                     <ResizableTaskBar
@@ -496,14 +497,6 @@ function ResizableTaskBar({
         if (interactionType.current === 'move') {
           pan.setValue(gestureState.dx);
         }
-        // For resize, we might want to animate width/left locally? 
-        // Complex. For now, rely on parent re-render or just drag end?
-        // User asked for "live" adjustment? "while moving it has to automatically take start and end time"
-        // The parent `handleTaskUpdate` is called on Drag END right now (based on previous code).
-        // Wait, the prompt implies dragging updates. But updating parent state on every frame is heavy.
-        // Let's stick to "Drag End" updates for calculation safety, 
-        // BUT visual feedback on drag is needed.
-        // If I can't easily animate width locally, I'll stick to move animation only.
       },
       onPanResponderRelease: (evt, gestureState) => {
         onUpdate?.(interactionType.current, gestureState.dx);
@@ -528,14 +521,12 @@ function ResizableTaskBar({
       ]}
       {...panResponder.panHandlers}
     >
-      {/* Left Handle */}
-
       <LinearGradient
-    colors={statusColor} // This must be an array, e.g., ['#3498DB', '#2980B9']
-    start={{ x: 0, y: 0 }}
-    end={{ x: 1, y: 0 }}
-    style={[StyleSheet.absoluteFill, { borderRadius: styles.taskBar.borderRadius || 4 }]}
-  />
+        colors={statusColor}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[StyleSheet.absoluteFill, { borderRadius: 6 }]}
+      />
 
       <View style={styles.resizeHandleLeft}>
         <View style={styles.handleBar} />
@@ -547,7 +538,6 @@ function ResizableTaskBar({
         </Text>
       </View>
 
-      {/* Right Handle */}
       <View style={styles.resizeHandleRight}>
         <View style={styles.handleBar} />
       </View>
@@ -560,7 +550,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
   header: {
     flexDirection: 'row',
     backgroundColor: COLORS.cardBg,
@@ -568,7 +557,6 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     height: 50,
   },
-
   employeeLabel: {
     width: 60,
     justifyContent: 'center',
@@ -576,29 +564,24 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: COLORS.border,
   },
-
   employeeLabelText: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textLight,
   },
-
   timelineInfo: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
-
   timelineInfoText: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.primary,
   },
-
   scrollView: {
     flex: 1,
   },
-
   hoursRow: {
     flexDirection: 'row',
     height: 45,
@@ -606,35 +589,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: COLORS.primary,
   },
-
   hoursCellLabel: {
     backgroundColor: COLORS.background,
   },
-
   timelineTrack: {
     position: 'relative',
   },
-
   hourLabel: {
     position: 'absolute',
     width: 50,
     top: 10,
     alignItems: 'center',
   },
-
   hourLabelText: {
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.text,
   },
-
   gridLine: {
     position: 'absolute',
     width: 1,
     height: '100%',
     backgroundColor: COLORS.border,
   },
-
   employeeRow: {
     flexDirection: 'row',
     height: 80,
@@ -642,7 +619,6 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
     backgroundColor: COLORS.background,
   },
-
   employeeCell: {
     width: 60,
     paddingHorizontal: 8,
@@ -652,24 +628,20 @@ const styles = StyleSheet.create({
     borderRightColor: COLORS.border,
     backgroundColor: COLORS.cardBg,
   },
-
   employeeNameText: {
     fontSize: 11,
     fontWeight: '600',
     color: COLORS.text,
     textAlign: 'center',
   },
-
   tasksTrack: {
     position: 'relative',
     paddingVertical: 6,
     paddingHorizontal: 6,
   },
-
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
-
   taskBar: {
     position: 'absolute',
     top: 6,
@@ -684,43 +656,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-
   taskBarContent: {
     justifyContent: 'center',
   },
-
   taskTitle: {
     fontSize: 10,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 0,
   },
-
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 300,
   },
-
   emptyText: {
     fontSize: 14,
     color: COLORS.textLight,
     marginTop: 12,
     fontWeight: '500',
   },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 12,
-    fontWeight: '500',
-  },
-
   breakBlock: {
     position: 'absolute',
     height: '100%',
-    backgroundColor: 'rgba(200, 200, 200, 0.1)', // Light overlay
-    zIndex: 1, // Behind tasks (tasks have zIndex implicit high or need checking)
+    backgroundColor: 'rgba(200, 200, 200, 0.1)',
+    zIndex: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: 'rgba(0,0,0,0.05)',
