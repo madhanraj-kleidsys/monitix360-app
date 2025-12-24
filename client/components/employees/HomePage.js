@@ -7,6 +7,7 @@ import ApiService from '../../services/ApiService';
 import NotificationModal from './NotificationModal';
 import { useWebSocket } from '../admin/hooks/useWebSocket';
 import moment from 'moment';
+import * as NotificationServices from '../../services/NotificationService';
 
 const { width } = Dimensions.get('window');
 const COLORS = {

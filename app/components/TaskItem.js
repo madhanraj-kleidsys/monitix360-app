@@ -197,7 +197,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
     if (s === 'in progress')
       return { color: COLORS.primary, label: 'In Progress', icon: 'play-circle' };
     if (s === 'pending')
-      return { color: COLORS.warning, label: 'Pending', icon: 'clock' };
+      return { color: COLORS.warning, label: 'pending', icon: 'clock' };
     if (s === 'incomplete')
       return { color: COLORS.danger, label: 'Incomplete', icon: 'close-circle' };
     if (s === 'paused')
@@ -547,11 +547,11 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
               style={styles.picker}
               mode="dropdown"
             >
-              <Picker.Item label="Pending" value="pending" />
-              <Picker.Item label="In Progress" value="In Progress" />
-              <Picker.Item label="Completed" value="completed" />
-              <Picker.Item label="Incomplete" value="Incomplete" />
-              <Picker.Item label="Paused" value="Paused" />
+              <Picker.Item label="pending" value="pending" />
+              <Picker.Item label="in progress" value="in progress" />
+              <Picker.Item label="completed" value="completed" />
+              <Picker.Item label="incomplete" value="incomplete" />
+              <Picker.Item label="paused" value="paused" />
             </Picker>
             <MaterialCommunityIcons
               name="chevron-down"

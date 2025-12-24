@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const authenticateJWT = require("../../middlewares/auth");
-const authorizeRoles  = require("../../middlewares/role");
+const authorizeRoles = require("../../middlewares/role");
 
 const {
   getUsers,
@@ -30,5 +30,9 @@ router.post("/select", authenticateJWT, authorizeRoles("admin"), selectUsers);
 
 // GET selected employees
 router.get("/selected", authenticateJWT, authorizeRoles("admin"), getSelectedUsers);
+
+// UPDATE PUSH TOKEN
+const { updatePushToken } = require("../users/users.controller");
+router.post("/push-token", authenticateJWT, updatePushToken);
 
 module.exports = router;

@@ -181,6 +181,11 @@ const User = sequelize.define("users", {
     }
   },
 
+  expo_push_token: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

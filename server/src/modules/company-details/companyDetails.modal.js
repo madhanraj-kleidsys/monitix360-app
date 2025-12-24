@@ -1,6 +1,12 @@
 // models/companyModel.js
 const { Company } = require("../../config/db");
 
+// get by company id
+const getCompanyByPk = async (id) => {
+  return await Company.findByPk(id);
+};
+
+
 // Get all companies
 const getAllCompanies = async () => {
   return await Company.findAll({
@@ -21,6 +27,7 @@ const createCompany = async (data) => {
 };
 
 module.exports = {
+  getCompanyByPk,
   getAllCompanies,
   findCompanyByCode,
   createCompany,

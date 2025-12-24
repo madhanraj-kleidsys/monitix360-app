@@ -16,9 +16,33 @@ if (Platform.OS === 'android') {
         name: 'default',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
+        lightColor: '#ff0400ff',
     });
 }
+
+export const registerForPushNotifications = async () => {
+    try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+            console.log('Permission not granted for push notifications');
+            return null;
+        }
+
+        const token = (await Notifications.getExpoPushTokenAsync({
+            projectId: '0b1cf24e-c39f-4284-a820-84322836ddcf'
+        })).data;
+        console.log('🚀 Expo Push Token:', token);
+        return token;
+    } catch (err) {
+        console.error('❌ Failed to get push token:', err);
+        return null;
+    }
+};
 
 export const requestNotificationPermissions = async () => {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -53,13 +77,15 @@ export const scheduleLocalNotification = async (title, body, data = {}, seconds 
     }
 };
 
-export const scheduleTaskReminder = async (taskId, taskName, delaySeconds = 180) => {
+export const scheduleTaskReminder = async (user, taskId, taskName, delaySeconds = 180) => {
     try {
         console.log(`📅 Scheduling reminder for task ${taskId} in ${delaySeconds}s`);
+        console.log(user.username);
+        
         return await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Task Reminder 🤨",
-                body: `Hey, task "${taskName}" was assigned. When will you start?`,
+                title: "⚠️Task Reminder 🤨",
+                body: `Hey ${user.username}, task "${taskName}" is still pending. When will you start?`,
                 data: { taskId, type: 'reminder' },
                 sound: true,
                 priority: Notifications.AndroidImportance.HIGH,
@@ -76,12 +102,12 @@ export const scheduleTaskReminder = async (taskId, taskName, delaySeconds = 180)
     }
 };
 
-export const scheduleActiveTaskReminder = async (taskId, taskName) => {
+export const scheduleActiveTaskReminder = async (user, taskId, taskName) => {
     try {
         return await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Still Working? 🚀",
-                body: `You are currently working on "${taskName}". Keep it up!`,
+                title: `Hey ${user.username} are you Working ? 🤔`,
+                body: `You are currently working on "${taskName}" right ?. Keep it up!`,
                 data: { taskId, type: 'active_reminder' },
                 sound: true,
                 priority: Notifications.AndroidImportance.HIGH,
@@ -89,7 +115,7 @@ export const scheduleActiveTaskReminder = async (taskId, taskName) => {
             },
             trigger: {
                 type: 'timeInterval',
-                seconds: 60, // Every 1 minute for "active" tasks
+                seconds: 3600,
                 repeats: true,
             },
         });

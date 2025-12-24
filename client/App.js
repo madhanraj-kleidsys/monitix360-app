@@ -74,6 +74,7 @@ function EmployeeMainTabs({ onLogout, user }) {
     setActiveScreen(id);
   };
   return (
+    <>
     <Tab.Navigator
       tabBar={(props) => <DockNavigation {...props}
         activeScreen={activeScreen}
@@ -93,6 +94,7 @@ function EmployeeMainTabs({ onLogout, user }) {
           user={user} />}
       </Tab.Screen>
     </Tab.Navigator>
+    </>
   );
 }
 

@@ -35,7 +35,7 @@ exports.createNewTask = async (req, res) => {
       assigned_to,
       start,
       end_time,
-      status = "pending",
+      status = "Pending",
       duration_minutes,
       Project_Title,
     } = req.body;
@@ -79,8 +79,19 @@ exports.createNewTask = async (req, res) => {
 
     try {
       getIO().emit("task:created", task);
-    } catch (socketError) {
-      console.error("Socket emit error:", socketError.message);
+
+      // Send Push Notification
+      if (assignedUser?.expo_push_token) {
+        const { sendPushNotification } = require("../../services/notificationService");
+        await sendPushNotification(
+          assignedUser.expo_push_token,
+          "📋 New Task Assigned",
+          `Project: ${Project_Title}\nTask: ${title}`,
+          { taskId: task.id, type: 'task_assigned' }
+        );
+      }
+    } catch (pushError) {
+      console.error("Push notification/Socket error:", pushError.message);
     }
 
     res.status(201).json(task);

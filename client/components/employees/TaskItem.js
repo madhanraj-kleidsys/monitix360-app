@@ -1,57 +1,65 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    useWindowDimensions,
+    ActivityIndicator,
+    Animated,
+    Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import ApiService from '../../services/ApiService';
 import moment from 'moment';
 
-
 const COLORS = {
-    primary: '#2563EB',
-    primarySoft: '#EFF6FF',
-    secondary: '#0EA5E9',
-    accent: '#22C55E',
-    success: '#16A34A',
-    warning: '#F59E0B',
+    primary: '#3B82F6',
+    accent: '#10B981',
+    success: '#059669',
+    warning: '#D97706',
     danger: '#DC2626',
-    background: '#F1F5F9',
-    cardBg: '#FFFFFF',
+    background: '#F8FAFC',
+    surface: '#FFFFFF',
     text: '#0F172A',
-    textLight: '#64748B',
+    textSecondary: '#475569',
+    textTertiary: '#94A3B8',
     border: '#E2E8F0',
-    chipBg: '#F9FAFB',
+    primaryLight: '#DBEAFE',
+    accentLight: '#ECFDF5',
 };
 
 const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange }) => {
     const [elapsed, setElapsed] = useState(task.elapsed_seconds || 0);
     const [timings, setTimings] = useState([]);
     const [loadingTimings, setLoadingTimings] = useState(false);
+    const [showActivity, setShowActivity] = useState(false);
+
     const intervalRef = useRef(null);
     const { width } = useWindowDimensions();
     const isTablet = width >= 768;
 
-
-    const fetchTimings = async () => {
+    const fetchTimings = useCallback(async () => {
         if (!task?.id) return;
         try {
             setLoadingTimings(true);
             const res = await ApiService.getTaskTimeUpdates(task.id);
             if (res.data) {
-                setTimings(res.data);
+                setTimings(Array.isArray(res.data) ? res.data : []);
             }
         } catch (err) {
             console.error(`Failed to fetch timings for task ${task.id}`, err);
         } finally {
             setLoadingTimings(false);
         }
+    }, [task.id]);
+
+    const toggleActivity = () => {
+        if (!showActivity && timings.length === 0) {
+            fetchTimings();
+        }
+        setShowActivity(!showActivity);
     };
-
-    useEffect(() => {
-        fetchTimings();
-    }, [task.id, task.status]);
-
-    // Moving socket listeners to parent (TaskPage) for better performance
-    // and to avoid 100s of listeners when list is long.
 
     const isRunning = task.task_start && task.timer_start;
 
@@ -62,7 +70,6 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
         }
 
         if (isRunning) {
-            console.log(`⏱️ Starting timer for Task ${task.id}`);
             const base = task.elapsed_seconds || 0;
             const start = new Date(task.timer_start);
 
@@ -75,7 +82,6 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
             update();
             intervalRef.current = setInterval(update, 1000);
         } else {
-            console.log(`⏹️ Timer idle for Task ${task.id}`);
             setElapsed(task.elapsed_seconds || 0);
         }
 
@@ -92,204 +98,166 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        return (
-            String(hours).padStart(2, '0') +
-            ':' +
-            String(minutes).padStart(2, '0') +
-            ':' +
-            String(seconds).padStart(2, '0')
-        );
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     };
 
-    const getPriorityColor = (priority) => {
-        switch (String(priority)) {
-            case '1': return COLORS.danger;
-            case '2': return COLORS.warning;
-            case '3': return COLORS.success;
-            default: return COLORS.textLight;
+    const priorityConfig = useMemo(() => {
+        switch (String(task.priority)) {
+            case '1': return { color: COLORS.danger, label: 'High', icon: 'alert-circle' };
+            case '2': return { color: COLORS.warning, label: 'Medium', icon: 'alert' };
+            case '3': return { color: COLORS.success, label: 'Low', icon: 'checkmark-circle' };
+            default: return { color: COLORS.textTertiary, label: 'Normal', icon: 'information-circle' };
         }
-    };
+    }, [task.priority]);
 
-    const getPriorityLabel = (priority) => {
-        switch (String(priority)) {
-            case '1': return 'High';
-            case '2': return 'Medium';
-            case '3': return 'Low';
-            default: return 'Normal';
-        }
-    };
-
-    const getStatusColor = (status) => {
-        const s = (status || '').toLowerCase();
-        if (s === 'completed') return COLORS.success;
-        if (s === 'in progress') return COLORS.primary;
-        if (s === 'pending') return COLORS.warning;
-        if (s === 'incomplete') return COLORS.danger;
-        if (s === 'paused') return COLORS.textLight;
-        return COLORS.textLight;
-    };
-
-
+    const statusConfig = useMemo(() => {
+        const s = (task.status || '').toLowerCase();
+        if (s === 'completed') return { color: COLORS.success, label: 'Completed', icon: 'checkmark-done-circle' };
+        if (s === 'in progress') return { color: COLORS.primary, label: 'In Progress', icon: 'play-circle' };
+        if (s === 'pending') return { color: COLORS.warning, label: 'Pending', icon: 'time' };
+        if (s === 'paused') return { color: COLORS.textTertiary, label: 'Paused', icon: 'pause-circle' };
+        if (s === 'incomplete') return { color: COLORS.danger, label: 'Incomplete', icon: 'close-circle' };
+        return { color: COLORS.textTertiary, label: task.status, icon: 'help-circle' };
+    }, [task.status]);
 
     const renderTimingItem = (timing) => {
         const isStart = timing.type === 1;
-        // Use moment for robust parsing and formatting
-        const m = moment(timing.time);
-        const isValid = m.isValid();
-        const timeDisplay = isValid ? m.format('hh:mm:ss A') : 'Invalid Time';
-        const dateDisplay = isValid ? m.format('MMM DD') : 'Invalid Date';
+        const m = moment(timing.time_logged || timing.time);
+        const date = m.isValid() ? m.format('MMM DD') : 'Invalid';
+        const time = m.isValid() ? m.format('hh:mm A') : 'Date';
 
         return (
             <View key={timing.id || Math.random().toString()} style={styles.timingItem}>
-                <View style={[styles.timingIcon, { backgroundColor: isStart ? COLORS.success + '15' : COLORS.danger + '15' }]}>
-                    <Ionicons name={isStart ? "play" : "stop"} size={12} color={isStart ? COLORS.success : COLORS.danger} />
+                <View style={[styles.timingIcon, { backgroundColor: isStart ? COLORS.accentLight : COLORS.primaryLight }]}>
+                    <Ionicons name={isStart ? "play" : "stop"} size={14} color={isStart ? COLORS.success : COLORS.danger} />
                 </View>
                 <View style={styles.timingInfo}>
-                    <Text style={styles.timingTypeText}>{isStart ? 'Started' : 'Stopped'}</Text>
-                    <Text style={styles.timingTimeText}>{dateDisplay}, {timeDisplay}</Text>
+                    <Text style={styles.timingType}>{isStart ? 'Started' : 'Stopped'}</Text>
+                    <Text style={styles.timingDate}>{date}</Text>
                 </View>
+                <Text style={styles.timingTime}>{time}</Text>
             </View>
         );
     };
 
-    const formatPlannedDate = (d) => {
-        const m = moment(d);
-        return m.isValid() ? m.format('MMM DD, hh:mm A') : 'Invalid Date';
-    };
-
     return (
-        <View style={[styles.taskCard, { padding: isTablet ? 24 : 16, borderRadius: isTablet ? 20 : 16 }]}>
-            {/* Header */}
-            <View style={styles.taskHeader}>
-                <View style={{ flex: 1 }}>
-                    <Text style={[styles.projectName, { fontSize: isTablet ? 20 : 18 }]} numberOfLines={1}>
-                        {task.title || task.project_title}
-                    </Text>
-                    <Text style={styles.projectTitle} numberOfLines={1}>
-                        {task.project_title}
-                    </Text>
+        <View style={styles.card}>
+            <View style={styles.header}>
+                <View style={styles.titleArea}>
+                    <Text style={styles.projectName} numberOfLines={1}>{task.title || task.project_title}</Text>
+                    <Text style={styles.projectSub}>{task.project_title}</Text>
                 </View>
-
-                <View style={styles.headerRight}>
-                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) + '15' }]}>
-                        <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
-                        <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
-                            {getPriorityLabel(task.priority)}
-                        </Text>
+                <View style={styles.badges}>
+                    <View style={[styles.badge, { backgroundColor: priorityConfig.color + '15' }]}>
+                        <Ionicons name={priorityConfig.icon} size={10} color={priorityConfig.color} style={{ marginRight: 2 }} />
+                        <Text style={[styles.badgeText, { color: priorityConfig.color }]}>{priorityConfig.label}</Text>
                     </View>
-
-                    <View style={[styles.statusPill, { backgroundColor: getStatusColor(task.status) + '15' }]}>
-                        <View style={[styles.statusDot, { backgroundColor: getStatusColor(task.status) }]} />
-                        <Text style={[styles.statusText, { color: getStatusColor(task.status) }]} numberOfLines={1}>
-                            {task.status || 'Pending'}
-                        </Text>
+                    <View style={[styles.badge, { backgroundColor: statusConfig.color + '15' }]}>
+                        <Ionicons name={statusConfig.icon} size={10} color={statusConfig.color} style={{ marginRight: 2 }} />
+                        <Text style={[styles.badgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
                     </View>
                 </View>
             </View>
 
-            {/* Description */}
             {task.description ? (
-                <Text style={[styles.description, { fontSize: isTablet ? 14 : 13 }]} numberOfLines={3}>
-                    {task.description}
-                </Text>
+                <Text style={styles.description} numberOfLines={2}>{task.description}</Text>
             ) : null}
 
-            {/* Planned Time Section */}
-            <View style={styles.sectionDivider} />
+            <View style={styles.divider} />
+
             <View style={styles.timeRow}>
-                <View style={styles.labelContainer}>
-                    <Ionicons name="calendar-outline" size={14} color={COLORS.textLight} />
-                    <Text style={styles.sectionLabel}>Planned Schedule</Text>
+                <View style={styles.timeBlock}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="calendar-outline" size={12} color={COLORS.primary} />
+                        <Text style={styles.timeLabel}>Start</Text>
+                    </View>
+                    <Text style={styles.timeValue}>{moment(task.start).format('MMM DD, LT')}</Text>
                 </View>
-                <View style={styles.timeChipsRow}>
-                    <View style={styles.timeChip}>
-                        <Text style={styles.timeText}>{formatPlannedDate(task.start)}</Text>
+                <Ionicons name="arrow-forward" size={14} color={COLORS.textTertiary} />
+                <View style={styles.timeBlock}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="time-outline" size={12} color={COLORS.secondary || COLORS.primary} />
+                        <Text style={styles.timeLabel}>End</Text>
                     </View>
-                    <Ionicons name="arrow-forward" size={14} color={COLORS.textLight} style={{ marginHorizontal: 4 }} />
-                    <View style={styles.timeChip}>
-                        <Text style={styles.timeText}>{formatPlannedDate(task.end_time)}</Text>
-                    </View>
+                    <Text style={styles.timeValue}>{moment(task.end_time).format('MMM DD, LT')}</Text>
                 </View>
             </View>
 
-            {/* Actual Timings Section (New) */}
-            <View style={styles.timingSection}>
-                <View style={styles.labelContainer}>
-                    <Ionicons name="stats-chart-outline" size={14} color={COLORS.textLight} />
-                    <Text style={styles.sectionLabel}>Activity Log</Text>
-                </View>
-                {loadingTimings ? (
-                    <ActivityIndicator size="small" color={COLORS.primary} style={{ alignSelf: 'flex-start', marginVertical: 8 }} />
-                ) : (
-                    <View style={styles.timingsList}>
-                        {timings.length > 0 ? (
-                            timings.slice(-3).reverse().map(renderTimingItem)
-                        ) : (
-                            <Text style={styles.emptyTimingsText}>No activity recorded yet</Text>
-                        )}
-                    </View>
-                )}
-            </View>
+            <TouchableOpacity style={styles.activityToggle} onPress={toggleActivity}>
+                <Ionicons name="analytics-outline" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.activityToggleText}>
+                    {showActivity ? 'Hide Activity Log' : 'Show Activity Log'}
+                </Text>
+                <Ionicons name={showActivity ? "chevron-up" : "chevron-down"} size={14} color={COLORS.primary} />
+            </TouchableOpacity>
 
-            {/* Reasons */}
-            {(task.start_early_reason || task.start_late_reason) && (
-                <View style={styles.reasonsContainer}>
-                    {task.start_early_reason && (
-                        <View style={styles.reasonRow}>
-                            <Text style={styles.reasonLabel}>Early start:</Text>
-                            <Text style={styles.reasonText}>{task.start_early_reason}</Text>
+            {showActivity && (
+                <View style={styles.activityLog}>
+                    {loadingTimings ? (
+                        <ActivityIndicator size="small" color={COLORS.primary} />
+                    ) : timings.length > 0 ? (
+                        <View style={{ gap: 10 }}>
+                            {timings.slice(-5).reverse().map((timing, idx) => (
+                                <View key={timing.id || idx}>
+                                    {renderTimingItem(timing)}
+                                    {idx < Math.min(timings.length, 5) - 1 && <View style={styles.timingDivider} />}
+                                </View>
+                            ))}
                         </View>
-                    )}
-                    {task.start_late_reason && (
-                        <View style={styles.reasonRow}>
-                            <Text style={styles.reasonLabel}>Late start:</Text>
-                            <Text style={styles.reasonText}>{task.start_late_reason}</Text>
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="information-circle-outline" size={20} color={COLORS.textTertiary} />
+                            <Text style={styles.emptyText}>No activity recorded yet</Text>
                         </View>
                     )}
                 </View>
             )}
 
-            {/* Timer & Controls */}
             <View style={styles.footer}>
-                <View style={styles.timerColumn}>
-                    <Text style={styles.timerLabel}>Total Time Elapsed</Text>
-                    <View style={styles.timerChip}>
+                <View style={styles.timerArea}>
+                    <Text style={styles.timerSub}>Time Elapsed</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="timer-outline" size={18} color={COLORS.primary} />
-                        <Text style={[styles.timerText, { fontSize: isTablet ? 26 : 22 }]}>
-                            {formatTime(elapsed)}
-                        </Text>
+                        <Text style={styles.timerMain}>{formatTime(elapsed)}</Text>
                     </View>
                 </View>
 
-                <View style={[styles.controlsColumn, { width: isTablet ? '45%' : '100%' }]}>
-                    <View style={styles.pickerContainer}>
-                        <Picker
-                            selectedValue={task.status}
-                            onValueChange={(val) => onStatusChange(task, val)}
-                            style={styles.picker}
-                            mode="dropdown"
-                        >
-                            <Picker.Item label="Pending" value="pending" />
-                            <Picker.Item label="In Progress" value="In Progress" />
-                            <Picker.Item label="Completed" value="completed" />
-                            <Picker.Item label="Incomplete" value="Incomplete" />
-                            <Picker.Item label="Paused" value="Paused" />
-                        </Picker>
-                    </View>
+                <View style={styles.controls}>
+                    <TouchableOpacity
+                        style={styles.pickerWrapper}
+                        onPress={() => {
+                            Alert.alert(
+                                "Select Status",
+                                "Update the current status of this task",
+                                [
+                                    { text: "Pending", onPress: () => onStatusChange(task, 'Pending') },
+                                    { text: "In Progress", onPress: () => onStatusChange(task, 'In Progress') },
+                                    { text: "Completed", onPress: () => onStatusChange(task, 'Completed') },
+                                    { text: "Incomplete", onPress: () => onStatusChange(task, 'Incomplete') },
+                                    { text: "Paused", onPress: () => onStatusChange(task, 'Paused') },
+                                    { text: "Cancel", style: "cancel" }
+                                ]
+                            );
+                        }}
+                    >
+                        <Text style={styles.statusSelectText}>
+                            {statusConfig.label}
+                        </Text>
+                        <Ionicons name="chevron-down" size={12} color={COLORS.textTertiary} />
+                    </TouchableOpacity>
 
-                    <View style={styles.actionButtons}>
+                    <View style={styles.buttons}>
                         {!isRunning ? (
-                            <TouchableOpacity style={[styles.btn, styles.btnStart]} onPress={() => onStart(task)}>
-                                <Ionicons name="play" size={18} color="#fff" />
-                                <Text style={styles.btnText}>{elapsed > 0 ? 'Resume' : 'Start'}</Text>
+                            <TouchableOpacity style={styles.playBtn} onPress={() => onStart(task)}>
+                                <Ionicons name={elapsed > 0 ? "play-forward" : "play"} size={22} color="#fff" />
                             </TouchableOpacity>
                         ) : (
                             <>
-                                <TouchableOpacity style={[styles.iconBtn, styles.btnPause]} onPress={() => onPause(task)}>
-                                    <Ionicons name="pause" size={18} color="#fff" />
+                                <TouchableOpacity style={styles.pauseBtn} onPress={() => onPause(task)}>
+                                    <Ionicons name="pause" size={22} color="#fff" />
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[styles.iconBtn, styles.btnStop]} onPress={() => onStop(task)}>
-                                    <Ionicons name="stop" size={18} color="#fff" />
+                                <TouchableOpacity style={styles.stopBtn} onPress={() => onStop(task)}>
+                                    <Ionicons name="stop" size={22} color="#fff" />
                                 </TouchableOpacity>
                             </>
                         )}
@@ -300,265 +268,248 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
     );
 });
 
-export default TaskItem;
-
 const styles = StyleSheet.create({
-    taskCard: {
-        backgroundColor: COLORS.cardBg,
+    card: {
+        backgroundColor: COLORS.surface,
+        marginHorizontal: 16,
         marginBottom: 16,
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-        elevation: 4,
-        borderWidth: 0.5,
-        borderColor: 'rgba(148, 163, 184, 0.25)',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    taskHeader: {
+    header: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: 12,
     },
-    headerRight: {
-        marginLeft: 12,
-        alignItems: 'flex-end',
-        gap: 6,
+    titleArea: {
+        flex: 1,
     },
     projectName: {
-        fontWeight: '800',
+        fontSize: 18,
+        fontWeight: '700',
         color: COLORS.text,
     },
-    projectTitle: {
-        fontSize: 14,
+    projectSub: {
+        fontSize: 12,
+        color: COLORS.primary,
         fontWeight: '600',
-        color: COLORS.secondary,
-        marginTop: 2,
+    },
+    badges: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: '700',
     },
     description: {
-        color: COLORS.textLight,
-        marginBottom: 16,
-        lineHeight: 20,
+        fontSize: 13,
+        color: COLORS.textSecondary,
+        marginBottom: 12,
+        lineHeight: 18,
     },
-    sectionDivider: {
+    divider: {
         height: 1,
         backgroundColor: COLORS.border,
         marginVertical: 12,
-        opacity: 0.5,
-    },
-    labelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    sectionLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: COLORS.textLight,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginLeft: 6,
     },
     timeRow: {
-        marginBottom: 12,
-    },
-    timeChipsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        marginBottom: 12,
     },
-    timeChip: {
-        backgroundColor: COLORS.chipBg,
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderWidth: 1,
-        borderColor: COLORS.border,
+    timeBlock: {
+        flex: 1,
     },
-    timeText: {
+    timeLabel: {
+        fontSize: 10,
+        color: COLORS.textTertiary,
+        textTransform: 'uppercase',
+    },
+    timeValue: {
         fontSize: 12,
-        color: COLORS.text,
+        color: COLORS.textSecondary,
         fontWeight: '500',
     },
-    timingSection: {
-        marginBottom: 16,
+    activityToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        backgroundColor: COLORS.background,
+        borderRadius: 8,
+        marginBottom: 12,
     },
-    timingsList: {
-        gap: 8,
+    activityToggleText: {
+        fontSize: 12,
+        color: COLORS.primary,
+        fontWeight: '600',
+        marginRight: 4,
+    },
+    activityLog: {
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
     timingItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.background,
-        padding: 8,
-        borderRadius: 10,
+        gap: 12,
+        paddingVertical: 2,
     },
     timingIcon: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         alignItems: 'center',
-        marginRight: 10,
+        justifyContent: 'center',
     },
     timingInfo: {
         flex: 1,
     },
-    timingTypeText: {
-        fontSize: 11,
+    timingType: {
+        fontSize: 12,
         fontWeight: '700',
         color: COLORS.text,
     },
-    timingTimeText: {
-        fontSize: 11,
-        color: COLORS.textLight,
+    timingDate: {
+        fontSize: 10,
+        color: COLORS.textTertiary,
     },
-    emptyTimingsText: {
+    timingTime: {
         fontSize: 12,
-        color: COLORS.textLight,
-        fontStyle: 'italic',
-        marginLeft: 4,
-        marginTop: 4,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
     },
-    priorityBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+    timingDivider: {
+        height: 1,
+        backgroundColor: COLORS.border,
+        marginLeft: 34,
     },
-    priorityDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    priorityText: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    statusPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    statusText: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    reasonsContainer: {
-        backgroundColor: '#FFFBEB',
+    emptyState: {
         padding: 12,
-        borderRadius: 12,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#FEF3C7',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
     },
-    reasonRow: {
+    timeRow: {
         flexDirection: 'row',
-        marginBottom: 4,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
     },
-    reasonLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#92400E',
-        width: 80,
-    },
-    reasonText: {
-        fontSize: 12,
-        color: '#B45309',
+    timeBlock: {
         flex: 1,
+    },
+    timeLabel: {
+        fontSize: 10,
+        color: COLORS.textTertiary,
+        textTransform: 'uppercase',
+        fontWeight: '700',
+    },
+    timeValue: {
+        fontSize: 12,
+        color: COLORS.textSecondary,
+        fontWeight: '600',
+        marginTop: 2,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        flexWrap: 'wrap',
-        gap: 16,
+        alignItems: 'center',
+        marginTop: 12,
     },
-    timerColumn: {
+    timerArea: {
         flex: 1,
-        minWidth: 150,
     },
-    timerLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: COLORS.textLight,
+    timerSub: {
+        fontSize: 10,
+        color: COLORS.textTertiary,
         textTransform: 'uppercase',
-        marginBottom: 6,
+        fontWeight: '700',
+        marginBottom: 4,
     },
-    timerChip: {
+    timerMain: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: COLORS.text,
+    },
+    controls: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EEF2FF',
+        gap: 12,
+    },
+    pickerWrapper: {
+        width: 130,
+        height: 44,
+        backgroundColor: COLORS.background,
         borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        alignSelf: 'flex-start',
-        borderWidth: 1,
-        borderColor: '#E0E7FF',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
     },
-    timerText: {
-        fontWeight: '800',
-        color: COLORS.primary,
-        marginLeft: 8,
+    statusSelectText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.textSecondary,
     },
-    controlsColumn: {
+    buttons: {
+        flexDirection: 'row',
         gap: 8,
     },
-    pickerContainer: {
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        borderRadius: 12,
-        height: 48,
-        justifyContent: 'center',
-        backgroundColor: COLORS.chipBg,
-    },
-    picker: {
-        height: 48,
-        width: '100%',
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    btn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 12,
+    playBtn: {
         backgroundColor: COLORS.accent,
-    },
-    iconBtn: {
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
+        elevation: 2,
+        shadowColor: COLORS.accent,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    btnStart: {
-        backgroundColor: COLORS.accent,
-    },
-    btnPause: {
+    pauseBtn: {
         backgroundColor: COLORS.warning,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: COLORS.warning,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    btnStop: {
+    stopBtn: {
         backgroundColor: COLORS.danger,
-    },
-    btnText: {
-        color: '#fff',
-        fontWeight: '800',
-        marginLeft: 8,
-        fontSize: 14,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: COLORS.danger,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
 });
+
+export default TaskItem;

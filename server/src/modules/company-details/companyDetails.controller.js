@@ -1,9 +1,28 @@
 // controllers/companyController.js
 const {
+  getCompanyByPk,
   getAllCompanies,
   findCompanyByCode,
   createCompany,
 } = require("../company-details/companyDetails.modal");
+
+// get compay by id
+exports.getCompanyById = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const company = await getCompanyByPk(id);
+    // Company.findByPk(id);
+    if (!company) {
+      return res.status(404).json({ error: 'company not found for the provideed id' });
+    }
+    // console.log(company.company_name);
+    res.status(200).json(company);
+  }
+  catch (err) {
+    res.status(500).json({ "error in fetching company name": err.message });
+    console.error(`${err.name} : ${err.message}`);
+  }
+};
 
 // --------------------------------------------------
 // GET ALL COMPANIES

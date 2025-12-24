@@ -10,7 +10,7 @@ const {
 // ------------------------------------------------------------
 exports.startOrStopTask = async (req, res) => {
   try {
-    const { task_id, type } = req.body;
+    const { task_id, type, time_logged } = req.body;
     const user_id = req.user.id;
     const company_id = req.user.company_id;
 
@@ -24,14 +24,22 @@ exports.startOrStopTask = async (req, res) => {
       return res.status(404).json({ error: "Task not found or unauthorized" });
     }
 
+    // Update time entries
     await createTimeUpdate({
       task_id,
       user_id,
       type,
+      time_logged: time_logged || new Date(),
     });
+
+    // If starting, ensure status is 'In Progress'
+    if (type === 1) {
+      await task.update({ status: 'In Progress', updated_at: new Date() });
+    }
 
     res.json({
       message: type === 1 ? "Task started" : "Task stopped",
+      status: type === 1 ? "In Progress" : task.status
     });
   } catch (err) {
     console.error("Error inserting time update:", err);

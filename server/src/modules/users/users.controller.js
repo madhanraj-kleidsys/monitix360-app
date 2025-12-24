@@ -203,3 +203,23 @@ exports.getSelectedUsers = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+// -----------------------------
+// UPDATE PUSH TOKEN
+// -----------------------------
+exports.updatePushToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: "Token is required" });
+    }
+
+    await updateUser(userId, { expo_push_token: token });
+
+    res.json({ message: "Push token updated successfully" });
+  } catch (err) {
+    console.error("Error updating push token:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

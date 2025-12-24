@@ -88,6 +88,14 @@ async function runMigration() {
       END
     `);
 
+        await sequelize.query(`
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[users]') AND name = 'expo_push_token')
+      BEGIN
+          ALTER TABLE [dbo].[users] ADD [expo_push_token] NVARCHAR(MAX) NULL;
+          PRINT 'Added expo_push_token to users';
+      END
+    `);
+
         console.log("✅ Migration completed successfully.");
         process.exit(0);
     } catch (error) {

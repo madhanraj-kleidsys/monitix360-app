@@ -4,7 +4,8 @@ const http = require('http');
 const app = require("./src/app");
 
 const { sequelize, initializeTables } = require("./src/config/db");
-const { initializeSocket } = require("./src/socket/socket"); // Import socket init
+const { initializeSocket } = require("./src/socket/socket");
+const { startReminderTicker } = require("./src/services/reminderTicker");
 
 const port = process.env.PORT || 3000; // Updated default port to 3000
 const HOST = process.env.HOST || "0.0.0.0"; // Listen on all available network interfaces
@@ -24,6 +25,7 @@ initializeSocket(server);
     console.log("✅ Sequelize connected to MSSQL");
 
     await initializeTables();          // ⬅️ Sync all models to MSSQL
+    startReminderTicker();             // ⬅️ Start automated push reminders
 
     // Listen on the HTTP server, not just the Express app
     server.listen(port, HOST, () => {

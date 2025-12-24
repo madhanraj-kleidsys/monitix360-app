@@ -38,7 +38,7 @@ class ApiService {
     }
 
     markTaskCompleted(id) {
-        return client.patch(`/tasks/${id}/status`, { status: 'completed' });
+        return client.patch(`/tasks/${id}/status`, { status: 'Completed' });
     }
 
     markTaskInProgress(id) {
@@ -71,6 +71,10 @@ class ApiService {
 
     getShiftBreaks() {
         return client.get("/shift-breaks");
+    }
+
+    updatePushToken(token) {
+        return client.post('/users/push-token', { token });
     }
 }
 

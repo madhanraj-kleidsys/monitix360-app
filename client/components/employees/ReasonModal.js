@@ -79,7 +79,7 @@ const REASON_OPTIONS = {
   conflictRunBoth: ['Both tasks manageable', 'Time-sensitive tasks', 'Requested by manager', 'Other'],
 };
 
-const REASON_LABELS= {
+const REASON_LABELS = {
   early: 'Why did you start early?',
   late: 'What caused the late start?',
   pause: 'Why are you pausing?',
@@ -91,18 +91,26 @@ const REASON_LABELS= {
 };
 
 
-export default function ReasonModal({ visible, onClose, onSave, type })
- {
+export default function ReasonModal({ visible, onClose, onSave, type }) {
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+  const [completionStatus, setCompletionStatus] = useState('Completed');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleSave = () => {
     const finalReason = selectedReason === 'Other' ? customReason.trim() : selectedReason;
     if (!finalReason) return;
-    onSave(finalReason);
+
+    // For stop types, we pass the status too
+    if (type === 'stop' || type === 'conflictStop') {
+      onSave(finalReason, completionStatus);
+    } else {
+      onSave(finalReason);
+    }
+
     setSelectedReason('');
     setCustomReason('');
+    setCompletionStatus('Completed');
     setPickerOpen(false);
   };
 
@@ -131,6 +139,27 @@ export default function ReasonModal({ visible, onClose, onSave, type })
 
             {/* Content */}
             <View style={styles.content}>
+              {/* Status Selection (Only for Stop) */}
+              {(type === 'stop' || type === 'conflictStop') && (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Final Task Status</Text>
+                  <View style={styles.statusGroup}>
+                    <TouchableOpacity
+                      style={[styles.statusOption, completionStatus === 'Completed' && styles.statusOptionActive]}
+                      onPress={() => setCompletionStatus('Completed')}
+                    >
+                      <Text style={[styles.statusOptionText, completionStatus === 'Completed' && styles.statusOptionTextActive]}>Completed</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.statusOption, completionStatus === 'Incomplete' && styles.statusOptionActive, completionStatus === 'Incomplete' && { borderColor: COLORS.danger, backgroundColor: COLORS.danger + '10' }]}
+                      onPress={() => setCompletionStatus('Incomplete')}
+                    >
+                      <Text style={[styles.statusOptionText, completionStatus === 'Incomplete' && { color: COLORS.danger }]}>Incomplete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
               {/* Reason Selector */}
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Select a reason</Text>
@@ -234,7 +263,7 @@ export default function ReasonModal({ visible, onClose, onSave, type })
                 style={[
                   styles.buttonSave,
                   (!selectedReason || (selectedReason === 'Other' && !customReason.trim())) &&
-                    styles.buttonSaveDisabled,
+                  styles.buttonSaveDisabled,
                 ]}
                 activeOpacity={0.8}
                 disabled={!selectedReason || (selectedReason === 'Other' && !customReason.trim())}
@@ -408,6 +437,32 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     minHeight: 100,
     maxHeight: 140,
+  },
+  statusGroup: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statusOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '10',
+  },
+  statusOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+  },
+  statusOptionTextActive: {
+    color: COLORS.primary,
   },
   charCount: {
     fontSize: 12,

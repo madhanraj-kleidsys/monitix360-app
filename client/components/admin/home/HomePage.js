@@ -50,11 +50,11 @@ const COLORS = {
 };
 
 const STATUS_COLORS = {
-  Incomplete: '#95A5A6',
-  pending: '#F39C12',
-  'in progress': '#3498DB',
-  completed: '#27AE60',
-  Paused: '#E74C3C',
+  'Incomplete': '#95A5A6',
+  'Pending': '#F39C12',
+  'In Progress': '#3498DB',
+  'Completed': '#27AE60',
+  'Paused': '#E74C3C',
 };
 
 const formatDate = (date) => {
@@ -168,18 +168,10 @@ const exportTasksToExcel = async (tasks, dateRange) => {
       encoding: FileSystem.EncodingType.Base64,
     });
 
-    // Save to media library (accessible from phone's file manager)
-    try {
-      await MediaLibrary.saveToLibraryAsync(filePath);
-    } catch (mediaError) {
-      console.warn('Could not save to media library:', mediaError);
-      // Continue - file is still saved locally
-    }
-
     // Show success notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Export Successful',
+        title: 'Export Successful ✅',
         body: `${fileName}\nTotal Tasks: ${tasks.length}`,
         sound: 'default',
       },
@@ -198,14 +190,13 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Show error notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'ðŸ”´ Export Failed',
+        title: 'Export Failed ❌',
         body: error.message || 'Something went wrong',
         sound: 'default',
       },
       trigger: null,
     });
-
-    alert('ðŸ”´ Export Failed:\n' + error.message);
+    Alert.alert('Export Error', error.message);
   }
 };
 
@@ -319,7 +310,7 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
             onPress={() => exportTasksToExcel(filteredTasks, selectedDate)}
           >
             <Ionicons name="download" size={16} color="#fff" />
-            <Text style={styles.exportButtonText}>Export</Text>
+            <Text style={styles.exportButtonText}>Export Data</Text>
           </TouchableOpacity>
         </View>
       </View >
@@ -385,13 +376,15 @@ const TaskCard = React.memo(({ task, onPress }) => {
   };
 
   const getStatusEmoji = (status) => {
+    const s = (status || '').toLowerCase();
     const emojis = {
-      pending: '⏳',
+      'pending': '⏳',
       'in progress': '🚀',
-      completed: '✅',
-      Paused: '⏸️',
+      'completed': '✅',
+      'paused': '⏸️',
+      'incomplete': '❌',
     };
-    return emojis[status] || '📋';
+    return emojis[s] || '📋';
   };
 
   if (!task) return null;
@@ -450,7 +443,7 @@ const TaskCard = React.memo(({ task, onPress }) => {
           <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
             <Text style={styles.statusEmoji}>{statusEmoji}</Text>
             <Text style={[styles.statusText, { color: statusColor }]}>
-              {task.status || 'pending'}
+              {task.status || 'Pending'}
             </Text>
           </View>
 
@@ -1329,7 +1322,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
     description: '',
     department: '',
     Project_Title: '',
-    status: 'Pending',
+    status: 'pending',
     priority: 'Medium',
     durationHours: '',
     durationMinutes: '',
@@ -1369,7 +1362,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         description: task.description || '',
         department: task.department || '',
         Project_Title: task.project_title || task.Project_Title || '',
-        status: task.status === 'pending' ? 'Pending' : (task.status || 'Pending'),
+        status: task.status === 'pending' ? 'pending' : (task.status || 'pending'),
         priority: priorityLabel,
         durationHours: String(hours),
         durationMinutes: String(minutes),
@@ -1402,7 +1395,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         description: task.description || '',
         department: task.department || '',
         Project_Title: task.Project_Title || '',
-        status: task.status === 'pending' ? 'Pending' : (task.status || 'Pending'),
+        status: task.status === 'pending' ? 'pending' : (task.status || 'pending'),
         priority: getPriorityLabel(task.priority),
         durationHours: String(hours),
         durationMinutes: String(minutes),
@@ -2222,7 +2215,7 @@ export default function HomePage() {
   //   setIsDetailVisible(true);
   // };
   const handleTaskPress = (task) => {
-    console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
+    // console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
     setSelectedTask(task);
     setIsDetailVisible(true);
   };
