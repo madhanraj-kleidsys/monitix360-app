@@ -29,7 +29,7 @@ const COLORS = {
 const STATUS_COLORS = {
   'Pending': '#F39C12',
   'In Progress': '#3498DB',
-  'Completed': '#27AE60',
+  'completed': '#27AE60',
   'Incomplete': '#95A5A6',
   'Paused': '#E74C3C',
 };
@@ -48,15 +48,19 @@ export const HomeBarChart = ({ tasks, selectedDate, onTaskPress }) => {
     }).length;
     const inProgress = tasks.filter(t => {
       const s = (t.status || '').toLowerCase();
-      return s === 'in progress';
+      return s === 'In Progress';
     }).length;
     const pending = tasks.filter(t => {
       const s = (t.status || '').toLowerCase();
-      return s === 'pending';
+      return s === 'Pending';
     }).length;
     const paused = tasks.filter(t => {
       const s = (t.status || '').toLowerCase();
-      return s === 'paused';
+      return s === 'Paused';
+    }).length;
+     const incomplete = tasks.filter(t => {
+      const s = (t.status || '').toLowerCase();
+      return s === 'In complete';
     }).length;
 
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -72,6 +76,8 @@ export const HomeBarChart = ({ tasks, selectedDate, onTaskPress }) => {
       completed,
       inProgress,
       pending,
+      paused,
+      incomplete,
       completionRate,
       efficiency,
       totalHours: totalHours.toFixed(1),

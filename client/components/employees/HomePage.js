@@ -31,6 +31,8 @@ export default function HomePage({ user }) {
     inProgress: 0,
     completed: 0,
     pending: 0,
+    paused: 3,
+    incomplete: 0,
   });
 
   const [notifications, setNotifications] = useState([]);
@@ -47,9 +49,11 @@ export default function HomePage({ user }) {
 
       setTaskStats({
         total: tasks.length,
-        inProgress: tasks.filter(t => t.status === 'In Progress').length,
-        completed: tasks.filter(t => t.status === 'completed').length,
-        pending: tasks.filter(t => t.status === 'pending').length,
+        inProgress: tasks.filter(t => (t.status || '').toLowerCase() === 'in progress').length,
+        completed: tasks.filter(t => (t.status || '').toLowerCase() === 'completed').length,
+        pending: tasks.filter(t => (t.status || '').toLowerCase() === 'pending').length,
+        paused: tasks.filter(t => (t.status || '').toLowerCase() === 'paused').length,
+        incomplete: tasks.filter(t => ['in complete', 'incomplete'].includes((t.status || '').toLowerCase())).length,
       });
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -135,9 +139,11 @@ export default function HomePage({ user }) {
 
   const statsDisplay = [
     { label: 'Total Tasks', value: taskStats.total, icon: 'list', color: COLORS.primary, bgColor: '#1E5A8E15' },
-    { label: 'In Progress', value: taskStats.inProgress, icon: 'time', color: COLORS.warning, bgColor: '#F59E0B15' },
-    { label: 'Completed', value: taskStats.completed, icon: 'checkmark-circle', color: COLORS.success, bgColor: '#10B98115' },
     { label: 'Pending', value: taskStats.pending, icon: 'alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
+    { label: 'completed', value: taskStats.completed, icon: 'checkmark-circle', color: COLORS.success, bgColor: '#10B98115' },
+    { label: 'In Progress', value: taskStats.inProgress, icon: 'time', color: COLORS.warning, bgColor: '#F59E0B15' },
+    { label: 'Paused', value: taskStats.paused, icon: 'pause-circle', color: COLORS.danger, bgColor: '#EF444415' },
+    { label: 'In complete', value: taskStats.incomplete, icon: 'close-alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
   ];
 
   const headerComponent = useMemo(() => (
@@ -152,11 +158,11 @@ export default function HomePage({ user }) {
           <View style={styles.headerContent}>
             <View>
               <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>{user?.username || 'Unknown'}</Text>
-              <View style={styles.statusBadge}>
+              <Text style={styles.userName}>{user?.username || 'Unknown'} </Text>
+              {/* <View style={styles.statusBadge}>
                 <View style={styles.statusDot} />
                 <Text style={styles.statusText}>Online</Text>
-              </View>
+              </View> */}
             </View>
             <TouchableOpacity style={styles.profileContainer} onPress={() => setNotifVisible(true)}>
               <LinearGradient colors={['#FFFFFF', '#F0F9FF']} style={styles.avatar}>
@@ -194,16 +200,14 @@ export default function HomePage({ user }) {
             <Text style={styles.statsTitle}>Today Stats</Text>
             <View style={styles.overviewRow}>
               {statsDisplay.map((stat, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && <View style={styles.overviewDivider} />}
+                <View key={index} style={styles.overviewItemWrapper}>
                   <View style={styles.overviewItem}>
-                    {/* <Ionicons name={stat.icon} size={20} color={stat.color} style={{ marginBottom: 6 }} /> */}
                     <Text style={[styles.overviewValue, { color: stat.color }]}>
                       {stat.value}
                     </Text>
                     <Text style={styles.overviewLabel}>{stat.label}</Text>
                   </View>
-                </React.Fragment>
+                </View>
               ))}
             </View>
           </View>
@@ -211,16 +215,6 @@ export default function HomePage({ user }) {
       </LinearGradient>
 
       <View style={styles.contentPadding}>
-        {/* <View style={styles.statsGrid}>
-          {statsDisplay.map((stat, index) => (
-            <View key={index} style={[styles.statCard, { backgroundColor: stat.bgColor }]}>
-              <Ionicons name={stat.icon} size={24} color={stat.color} />
-              <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View> */}
-
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Tasks</Text>
           <TouchableOpacity onPress={fetchStats}>
@@ -243,8 +237,8 @@ export default function HomePage({ user }) {
         notifications={notifications}
         onClose={() => setNotifVisible(false)}
         onNotificationPress={(item) => {
-          setNotifVisible(false);
-          // logic to scroll to task if taskId exists
+          setNotifications(prev => prev.filter(n => n.id !== item.id));
+          // Optional: Navigate to task if needed in future
         }}
       />
     </View>
@@ -255,14 +249,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    marginBottom: 70,
   },
   headerGradient: {
-    paddingTop: 50,
+    paddingTop: 45,
     paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  header: {
+    marginBottom: -10,
   },
   headerContent: {
     flexDirection: 'row',
@@ -275,14 +273,14 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 4,
+    // marginBottom: 4,
     fontWeight: '500',
   },
   userName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.95)',
+    // marginBottom: 2,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: 20,
-    marginTop: 24,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.15,
@@ -344,7 +342,8 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   statsTitle: {
-    fontSize: 18,
+    fontSize: 17,
+    shadowColor: '#000',
     fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
@@ -352,11 +351,17 @@ const styles = StyleSheet.create({
   },
   overviewRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
+  },
+  overviewItemWrapper: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   overviewItem: {
-    flex: 1,
     alignItems: 'center',
   },
   overviewValue: {
@@ -377,35 +382,6 @@ const styles = StyleSheet.create({
   },
   contentPadding: {
     paddingHorizontal: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
-  },
-  statCard: {
-    width: '48%',
-    padding: 16,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 110,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginVertical: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',

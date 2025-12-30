@@ -2,7 +2,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, Alert, Platform } from 'react-native';
 
-const BASE_URL = 'http://192.168.0.216:3000/api';
+const BASE_URL ='http://192.168.0.216:3000/api';
+// 'https://9dpv1qxv-5000.inc1.devtunnels.ms';
 
 const axiosInstance = axios.create({ baseURL: BASE_URL, timeout: 10000 });
 

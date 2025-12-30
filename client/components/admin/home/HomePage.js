@@ -50,10 +50,11 @@ const COLORS = {
 };
 
 const STATUS_COLORS = {
-  'Incomplete': '#95A5A6',
-  'Pending': '#F39C12',
-  'In Progress': '#3498DB',
-  'Completed': '#27AE60',
+  'In complete': '#95A5A6',
+  'Pending': '#3498DB',
+  'pending': '#3498DB',
+  'In Progress': '#F39C12',
+  'completed': '#27AE60',
   'Paused': '#E74C3C',
 };
 
@@ -378,11 +379,14 @@ const TaskCard = React.memo(({ task, onPress }) => {
   const getStatusEmoji = (status) => {
     const s = (status || '').toLowerCase();
     const emojis = {
+      'Pending': '⏳',
       'pending': '⏳',
-      'in progress': '🚀',
+      'In Progress': '🚀',
       'completed': '✅',
+      'Paused': '⏸️',
       'paused': '⏸️',
       'incomplete': '❌',
+      'in complete': '❌',
     };
     return emojis[s] || '📋';
   };
@@ -1322,7 +1326,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
     description: '',
     department: '',
     Project_Title: '',
-    status: 'pending',
+    status: 'Pending',
     priority: 'Medium',
     durationHours: '',
     durationMinutes: '',
@@ -1362,7 +1366,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         description: task.description || '',
         department: task.department || '',
         Project_Title: task.project_title || task.Project_Title || '',
-        status: task.status === 'pending' ? 'pending' : (task.status || 'pending'),
+        status: task.status === 'Pending' ? 'Pending' : (task.status || 'Pending'),
         priority: priorityLabel,
         durationHours: String(hours),
         durationMinutes: String(minutes),
@@ -1395,7 +1399,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         description: task.description || '',
         department: task.department || '',
         Project_Title: task.Project_Title || '',
-        status: task.status === 'pending' ? 'pending' : (task.status || 'pending'),
+        status: task.status === 'Pending' ? 'Pending' : (task.status || 'Pending'),
         priority: getPriorityLabel(task.priority),
         durationHours: String(hours),
         durationMinutes: String(minutes),
@@ -1796,7 +1800,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     {/* Status */}
                     <Text style={styles.fieldLabel}>Status</Text>
                     <View style={styles.statusPicker}>
-                      {['pending', 'in progress', 'completed'].map((status) => (
+                      {['Pending', 'In Progress', 'completed', 'Paused', 'In complete'].map((status) => (
                         <TouchableOpacity
                           key={status}
                           style={[
@@ -1820,7 +1824,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     {/* Priority */}
                     <Text style={styles.fieldLabel}>Priority</Text>
                     <View style={styles.priorityPicker}>
-                      {['High', 'Medium', 'Low'].map((pri) => (
+                      {['Low', 'Medium', 'High'].map((pri) => (
                         <TouchableOpacity
                           key={pri}
                           style={[
@@ -2173,7 +2177,7 @@ export default function HomePage() {
         id: t.id,
         employeeName: empName,
         name: t.title,
-        status: t.status === 'pending' ? 'pending' : t.status,
+        status: t.status === 'Pending' ? 'Pending' : t.status,
         // Handle backend (project_title) vs frontend (Project_Title) mismatch
         Project_Title: t.project_title || t.Project_Title,
         // priority: getPriorityLabel(t.priority),
@@ -3759,7 +3763,7 @@ const styles = StyleSheet.create({
 //         <View style={styles.statusSection}>
 //           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
 //           <Text style={[styles.statusText, { color: statusColor }]}>
-//             {task.status || 'pending'}
+//             {task.status || 'Pending'}
 //           </Text>
 //         </View>
 

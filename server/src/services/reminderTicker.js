@@ -1,5 +1,6 @@
 const cron = require('node-cron');
-const { Task, User } = require('../config/db');
+const { getIO } = require('../socket/socket');
+const { Task, User, Shift, ShiftBreak } = require('../config/db');
 const { sendPushNotification } = require('./notificationService');
 const { Op } = require('sequelize');
 
@@ -11,14 +12,125 @@ const { Op } = require('sequelize');
 function startReminderTicker() {
     console.log('🔔 Reminder Ticker Started (Remote Push Mode)');
 
+    // 0. Every minute: Check for BREAK TIMES and AUTO-PAUSE tasks
+    cron.schedule('* * * * *', async () => {
+        try {
+            const now = new Date();
+            const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+            // Helper to normalize time "9:00" -> "09:00", "09:00:00" -> "09:00"
+            const norm = (t) => {
+                if (!t) return "";
+                const parts = t.split(':');
+                if (parts.length >= 2) {
+                    const h = parts[0].padStart(2, '0');
+                    const m = parts[1].padStart(2, '0');
+                    return `${h}:${m}`; // HH:MM
+                }
+                return t;
+            };
+            const currentHM = norm(currentTime);
+
+            // Find all tasks that are In Progress (case insensitive consideration if needed)
+            const activeTasks = await Task.findAll({
+                where: {
+                    status: { [Op.or]: ['In Progress', 'in progress'] },
+                    task_start: true
+                },
+                include: [{ model: User, as: 'AssignedTo' }]
+            });
+
+            if (activeTasks.length > 0) {
+                // 1. Get unique company IDs
+                const companyIds = [...new Set(activeTasks.map(t => t.company_id).filter(id => !!id))];
+
+                if (companyIds.length === 0) return;
+
+                // 2. Fetch shifts for these companies in one query
+                const shifts = await Shift.findAll({
+                    where: { company_id: { [Op.in]: companyIds } },
+                    include: [{ model: ShiftBreak }]
+                });
+
+                // 3. Map company -> active break (if any)
+                const companyBreakMap = {};
+
+                for (const shift of shifts) {
+                    const breaks = shift.shift_breaks || shift.ShiftBreaks || [];
+                    const actualBreaks = Array.isArray(breaks) ? breaks : (shift.ShiftBreaks || []);
+
+                    for (const b of actualBreaks) {
+                        if (!b.break_start || !b.break_end) continue;
+
+                        const bStart = norm(b.break_start);
+                        const bEnd = norm(b.break_end);
+
+                        // Check if current time is within break time (Start <= Current < End)
+                        // Use string comparison for HH:MM
+                        if (currentHM >= bStart && currentHM <= bEnd) {
+                            // Store active break for this company. 
+                            // Note: Assuming one active shift per company for simplicity, or we match shift to user later if needed.
+                            // ideally we should match user -> shift, but here we likely rely on company-wide shifts or assigned shifts.
+                            // For now, mapping by company_id as per original logic.
+                            companyBreakMap[shift.company_id] = b;
+                            break;
+                        }
+                    }
+                }
+
+                console.log(`⏱️ Auto-Pause Ticker: ${activeTasks.length} active tasks, ${Object.keys(companyBreakMap).length} companies on break.`);
+
+                // 4. Process tasks
+                for (const task of activeTasks) {
+                    const activeBreak = companyBreakMap[task.company_id];
+
+                    if (activeBreak) {
+                        // Double check if already paused
+                        if (task.status === 'Paused') continue;
+
+                        // Calculate elapsed
+                        const start = new Date(task.timer_start);
+                        const sessionElapsed = Math.floor((now - start) / 1000);
+                        const totalElapsed = (task.elapsed_seconds || 0) + sessionElapsed;
+
+                        // Update Task
+                        await task.update({
+                            status: 'Paused',
+                            task_start: false,
+                            timer_start: null,
+                            elapsed_seconds: totalElapsed
+                        });
+
+                        console.log(`⏸️ Auto-pausing task ${task.id} (Company ${task.company_id}) due to break: ${activeBreak.break_type}`);
+
+                        // Emit Socket Event
+                        try {
+                            const io = getIO();
+                            if (io) {
+                                io.to(`user_${task.assigned_to}`).emit('task:updated', task);
+                                io.to(`user_${task.assigned_to}`).emit('break:started', {
+                                    break: activeBreak,
+                                    taskId: task.id
+                                });
+                            }
+                        } catch (socketErr) {
+                            console.error("Socket emit error:", socketErr);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Auto Pause Cron Error:', err);
+        }
+    });
+
     // 1. Every 5 minutes: Check for PENDING tasks that were assigned but not started
-    cron.schedule('*/5 * * * *', async () => {
+    cron.schedule('*/30 * * * *', async () => {
         try {
             const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
 
             const pendingTasks = await Task.findAll({
                 where: {
-                    status: 'Pending',
+                    status: 'Pending' || 'pending',
                     task_start: false,
                     createdAt: { [Op.lt]: fiveMinsAgo }
                 },

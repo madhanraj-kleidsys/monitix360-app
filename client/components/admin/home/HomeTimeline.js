@@ -38,11 +38,15 @@ const STATUS_COLORS = {
   // 'Incomplete': '#95A5A6',
   // 'Paused': '#E74C3C',
 
-  'pending': ['#ffb700', '#ffd93d'],
-  'in progress': ['#ff6b6b', '#ee5a52'],
-  // ['#3498DB', '#2980B9'],
+  'pending': ['#3498DB', '#2980B9'],
+  'Pending': ['#3498DB', '#2980B9'],
+  'In Progress': ['#ffb700', '#ffd93d'],
+  'in progress': ['#ffb700', '#ffd93d'],
+  // ['#ff6b6b', '#ee5a52'],
   'completed': ['#4caf50', '#6bcf7f'],
-  'incomplete': ['#95A5A6', '#7F8C8D'],
+  'In complete': ['#95A5A6', '#7F8C8D'],
+  'In in complete': ['#95A5A6', '#7F8C8D'], // Fallback if typo
+  'Paused': ['#E74C3C', '#C0392B'],
   'paused': ['#E74C3C', '#C0392B'],
 };
 

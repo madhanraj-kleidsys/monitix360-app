@@ -86,7 +86,7 @@ exports.createNewTask = async (req, res) => {
         await sendPushNotification(
           assignedUser.expo_push_token,
           "📋 New Task Assigned",
-          `Project: ${Project_Title}\nTask: ${title}`,
+          `Project: ${Project_Title}\nTask: ${title}\n${description || ''}`,
           { taskId: task.id, type: 'task_assigned' }
         );
       }
@@ -343,6 +343,7 @@ exports.patchTimer = async (req, res) => {
       "elapsed_seconds",
       "start",
       "end_time",
+      "status",
     ];
 
     const updateData = {};

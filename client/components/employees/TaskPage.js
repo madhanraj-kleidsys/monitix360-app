@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, StyleSheet, FlatList, Alert, ActivityIndicator, Text, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, Alert, ActivityIndicator, Text, Platform, AppState } from 'react-native';
 import ApiService from '../../services/ApiService';
 import { useWebSocket } from '../admin/hooks/useWebSocket';
 import TaskItem from './TaskItem';
@@ -98,6 +98,29 @@ export default function TaskPage({ user, ListHeaderComponent }) {
     fetchTasks();
     loadShiftBreaks();
     requestNotificationPermissions().catch(console.error);
+
+    // AppState listener for sticky notifications
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'background') {
+        // App went to background: Schedule sticky notification if task is running
+        const runningTask = tasksRef.current.find(t => t.task_start && t.timer_start);
+        if (runningTask) {
+          await scheduleActiveTaskReminder(user, runningTask.id, runningTask.project_title || runningTask.title);
+        }
+      } else if (nextAppState === 'active') {
+        // App came to foreground: Cancel all sticky notifications
+        // We iterate potentially or just cancel all known active ones. 
+        // For now, cancel all for the running task if we know it, or just generic cancel.
+        const runningTask = tasksRef.current.find(t => t.task_start && t.timer_start);
+        if (runningTask) {
+          await cancelAllTaskNotifications(runningTask.id);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, [loadShiftBreaks]);
 
   useEffect(() => {
@@ -161,8 +184,8 @@ export default function TaskPage({ user, ListHeaderComponent }) {
 
         try {
           await scheduleLocalNotification(
-            `Hey ${user.username || 'there'} 👋🏻`,
-            `New Task Assigned: ${task.project_title || task.title}`,
+            `Hello ${user.username || 'there'} 👋🏻 New Task Assigned to uuh !! ✨`,
+            `Project: ${task.project_title || task.Project_Title}\nTask: ${task.title || task.name}\n${task.description || ''}`,
             { taskId: task.id, type: 'assignment' },
             5
           );
@@ -177,6 +200,11 @@ export default function TaskPage({ user, ListHeaderComponent }) {
       const onTaskUpdated = async (task) => {
         if (String(task.assigned_to) !== String(user.id)) return;
         setTasks(prev => prev.map(t => (t.id === task.id ? task : t)));
+
+        // If task is no longer in progress (e.g. auto-paused by server), cancel notifications
+        if (task.status !== 'In Progress') {
+          await cancelAllTaskNotifications(task.id);
+        }
       };
 
       const onTaskDeleted = (taskId) => {
@@ -207,21 +235,17 @@ export default function TaskPage({ user, ListHeaderComponent }) {
   const handleStartRequest = useCallback(async (task) => {
     const running = tasksRef.current.find(t => t.task_start && t.id !== task.id);
     if (running) {
-      Alert.alert(
-        "Conflict",
-        `Task "${running.title || running.project_title}" is already running.`,
-        [
-          { text: "Pause & Start New", onPress: () => handleConflictAction(task, running, 'pause') },
-          { text: "Stop & Start New", onPress: () => handleConflictAction(task, running, 'stop') },
-          { text: "Cancel", style: 'cancel' }
-        ]
-      );
+      // User request: Show ReasonModal instead of Conflict Alert
+      setConflictTask(running);
+      setPendingTask(task);
+      setModalType('conflictPause');
+      setModalVisible(true);
       return;
     }
     // Allow manual run even during breaks
     allowRunDuringBreakRef.current[task.id] = true;
     await executeStart(task);
-  }, [executeStart, handleConflictAction]);
+  }, [executeStart]);
 
   const executeStart = useCallback(async (task) => {
     try {
@@ -231,7 +255,9 @@ export default function TaskPage({ user, ListHeaderComponent }) {
       await ApiService.markTaskInProgress(task.id);
 
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', task_start: true, timer_start: now } : t));
-      await scheduleActiveTaskReminder(user, task.id, task.project_title || task.title);
+
+      // Cancel any pending start reminders before scheduling the active one
+      await cancelAllTaskNotifications(task.id);
     } catch (err) { console.error(err); }
   }, [user]);
 
@@ -243,7 +269,7 @@ export default function TaskPage({ user, ListHeaderComponent }) {
     const totalElapsed = (task.elapsed_seconds || 0) + sessionElapsed;
 
     try {
-      await ApiService.updateTaskTimer(task.id, { task_start: false, timer_start: null, elapsed_seconds: totalElapsed });
+      await ApiService.updateTaskTimer(task.id, { task_start: false, timer_start: null, elapsed_seconds: totalElapsed, status: 'Paused' });
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Paused', task_start: false, timer_start: null, elapsed_seconds: totalElapsed } : t));
       await cancelAllTaskNotifications(task.id);
 

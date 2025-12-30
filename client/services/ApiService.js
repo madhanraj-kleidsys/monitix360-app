@@ -33,6 +33,10 @@ class ApiService {
         return client.get(`/time_update/time_get/${taskId}`);
     }
 
+    getTaskReasons(taskId){
+        return client.get(`/taskReasons/${taskId}`);
+    }
+
     submitReason(taskId, reasonType, payload) {
         return client.post(`/taskReasons/${taskId}/${reasonType}`, payload);
     }

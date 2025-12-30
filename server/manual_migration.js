@@ -83,7 +83,7 @@ async function runMigration() {
         await sequelize.query(`
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[tasks]') AND name = 'approval_status')
       BEGIN
-          ALTER TABLE [dbo].[tasks] ADD [approval_status] NVARCHAR(255) DEFAULT 'pending';
+          ALTER TABLE [dbo].[tasks] ADD [approval_status] NVARCHAR(255) DEFAULT 'Pending';
           PRINT 'Added approval_status to tasks';
       END
     `);

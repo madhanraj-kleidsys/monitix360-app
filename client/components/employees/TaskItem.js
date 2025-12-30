@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     useWindowDimensions,
     ActivityIndicator,
+    ScrollView,
     Animated,
     Alert,
 } from 'react-native';
@@ -32,8 +33,10 @@ const COLORS = {
 const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange }) => {
     const [elapsed, setElapsed] = useState(task.elapsed_seconds || 0);
     const [timings, setTimings] = useState([]);
+    const [TaskReasons, setTaskReasons] = useState([]);
     const [loadingTimings, setLoadingTimings] = useState(false);
     const [showActivity, setShowActivity] = useState(false);
+    const [showFullDesc, setShowFullDesc] = useState(false);
 
     const intervalRef = useRef(null);
     const { width } = useWindowDimensions();
@@ -54,14 +57,43 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
         }
     }, [task.id]);
 
+    //pause , Incomplete timings reasons
+    const fetchTaskReasons = useCallback(async () => {
+        if (!task?.id) return;
+        try {
+            setLoadingTimings(true);
+            const res = await ApiService.getTaskReasons(task.id);
+            if (res.data) {
+                setTaskReasons(Array.isArray(res.data) ? res.data : []);
+            }
+        } catch (err) {
+            console.error(`Failed to fetch reasons for task ${task.id}`, err);
+        } finally {
+            setLoadingTimings(false);
+        }
+    }, [task.id]);
+
     const toggleActivity = () => {
-        if (!showActivity && timings.length === 0) {
-            fetchTimings();
+        if (!showActivity) {
+            const fetchBoth = async () => {
+                setLoadingTimings(true);
+                try {
+                    if (timings.length === 0) {
+                        await fetchTimings();
+                    }
+                    if (TaskReasons.length === 0) {
+                        await fetchTaskReasons();
+                    }
+                } finally {
+                    setLoadingTimings(false);
+                }
+            };
+            fetchBoth();
         }
         setShowActivity(!showActivity);
     };
 
-    const isRunning = task.task_start && task.timer_start;
+    const isRunning = (task.task_start && task.timer_start) || (task.status === 'In Progress' && task.timer_start);
 
     useEffect(() => {
         if (intervalRef.current) {
@@ -110,20 +142,76 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
         }
     }, [task.priority]);
 
+    // const statusConfig = useMemo(() => {
+    //     const s = (task.status || '').toLowerCase();
+    //     if (s === 'completed') return { color: COLORS.success, label: 'completed', icon: 'checkmark-done-circle' };
+    //     if (s === 'In Progress') return { color: COLORS.primary, label: 'In Progress', icon: 'play-circle' };
+    //     if (s === 'Pending') return { color: COLORS.warning, label: 'Pending', icon: 'time' };
+    //     if (s === 'Paused') return { color: COLORS.textTertiary, label: 'Paused', icon: 'pause-circle' };
+    //     if (s === 'In complete') return { color: COLORS.danger, label: 'In complete', icon: 'close-circle' };
+    //     if (s === 'incomplete') return { color: COLORS.danger, label: 'In complete', icon: 'close-circle' };
+    //     return { color: COLORS.textTertiary, label: task.status, icon: 'help-circle' };
+    // }, [task.status]);
+    
     const statusConfig = useMemo(() => {
         const s = (task.status || '').toLowerCase();
-        if (s === 'completed') return { color: COLORS.success, label: 'Completed', icon: 'checkmark-done-circle' };
+        if (s === 'completed') return { color: COLORS.success, label: 'Completed', icon: 'checkmark-circle' };
         if (s === 'in progress') return { color: COLORS.primary, label: 'In Progress', icon: 'play-circle' };
         if (s === 'pending') return { color: COLORS.warning, label: 'Pending', icon: 'time' };
         if (s === 'paused') return { color: COLORS.textTertiary, label: 'Paused', icon: 'pause-circle' };
-        if (s === 'incomplete') return { color: COLORS.danger, label: 'Incomplete', icon: 'close-circle' };
+        if (s === 'in complete' || s === 'incomplete') return { color: COLORS.danger, label: 'Incomplete', icon: 'close-circle' };
         return { color: COLORS.textTertiary, label: task.status, icon: 'help-circle' };
     }, [task.status]);
+
+
+    const renderReasonItem = (reason) => {
+        const m = moment(reason.createdAt);
+        const date = m.isValid() ? m.format('MMM DD YYYY') : 'Invalid';
+        const time = m.isValid() ? m.format('hh:mm A') : 'Time';
+
+        // Map reason_type -> label + icon
+        let label = 'Updated';
+        let icon = 'help-circle-outline';
+        let bg = COLORS.primaryLight;
+        let color = COLORS.primary;
+
+        // 1 = pause, 2 = incomplete
+        if (reason.reason_type === 3) {
+            label = 'Paused';
+            icon = 'pause-circle';
+            bg = COLORS.primaryLight;
+            color = COLORS.warning;
+        } else if (reason.reason_type === 4) {
+            label = 'Incomplete';
+            icon = 'alert-circle';
+            bg = '#FEF3C7';
+            color = COLORS.danger;
+        }
+
+        return (
+            <View key={reason.id} style={styles.timingItem}>
+                <View style={[styles.timingIcon, { backgroundColor: bg }]}>
+                    <Ionicons name={icon} size={14} color={color} />
+                </View>
+
+                <View style={styles.timingInfo}>
+                    <Text style={styles.timingType}>
+                        {label} · {reason.reason}
+                    </Text>
+                    <Text style={styles.timingDate}>
+                        {date} ·
+                    </Text>
+                </View>
+
+                <Text style={styles.timingTime}>{time}</Text>
+            </View>
+        );
+    };
 
     const renderTimingItem = (timing) => {
         const isStart = timing.type === 1;
         const m = moment(timing.time_logged || timing.time);
-        const date = m.isValid() ? m.format('MMM DD') : 'Invalid';
+        const date = m.isValid() ? m.format('MMM DD YYYY') : 'Invalid';
         const time = m.isValid() ? m.format('hh:mm A') : 'Date';
 
         return (
@@ -139,6 +227,32 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
             </View>
         );
     };
+
+
+
+    const combinedLogs = useMemo(() => {
+        const safeTimings = Array.isArray(timings) ? timings : [];
+        const safeReasons = Array.isArray(TaskReasons) ? TaskReasons : [];
+
+        // Add a flag to identify type easily
+        const formattedTimings = safeTimings.map(t => ({
+            ...t,
+            _type: 'timing',
+            _date: t.time_logged || t.time
+        }));
+
+        const formattedReasons = safeReasons.map(r => ({
+            ...r,
+            _type: 'reason',
+            _date: r.createdAt
+        }));
+
+        const allActivity = [...formattedTimings, ...formattedReasons];
+
+        // Sort descending: Newest time at the top
+        return allActivity.sort((a, b) => moment(b._date).valueOf() - moment(a._date).valueOf());
+    }, [timings, TaskReasons]);
+
 
     return (
         <View style={styles.card}>
@@ -159,9 +273,34 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </View>
             </View>
 
+            {/* {task.description ? (
+                <ScrollView
+                    style={styles.descriptionScroll}
+                    scrollEnabled={task.description.length > 100}
+                    nestedScrollEnabled
+                >
+                <Text style={styles.description}>{task.description}</Text>
+                </ScrollView>
+            ) : null} */}
+
             {task.description ? (
-                <Text style={styles.description} numberOfLines={2}>{task.description}</Text>
+                <>
+                    <Text
+                        style={styles.description}
+                        numberOfLines={showFullDesc ? 0 : 2}
+                    >
+                        {task.description}
+                    </Text>
+                    {task.description.length > 80 && (
+                        <TouchableOpacity onPress={() => setShowFullDesc(!showFullDesc)}>
+                            <Text style={styles.expandText}>
+                                {showFullDesc ? 'Show less' : 'Show more'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </>
             ) : null}
+
 
             <View style={styles.divider} />
 
@@ -190,14 +329,42 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </Text>
                 <Ionicons name={showActivity ? "chevron-up" : "chevron-down"} size={14} color={COLORS.primary} />
             </TouchableOpacity>
+            {showActivity && (
+                <View style={styles.activityLog}>
+                    {loadingTimings ? (
+                        <ActivityIndicator size="small" color={COLORS.primary} />
+                    ) : combinedLogs.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="information-circle-outline" size={20} color={COLORS.textTertiary} />
+                            <Text style={styles.emptyText}>No activity recorded yet</Text>
+                        </View>
+                    ) : (
+                        <View style={{ gap: 10 }}>
+                            {combinedLogs.map((item, idx) => (
+                                <View key={`${item._type}-${item.id || idx}`}>
+                                    {/* Render based on type */}
+                                    {item._type === 'reason'
+                                        ? renderReasonItem(item)
+                                        : renderTimingItem(item)
+                                    }
 
+                                    {/* Divider for all items except the last one */}
+                                    {idx < combinedLogs.length - 1 && <View style={styles.timingDivider} />}
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            )}
+
+            {/* 
             {showActivity && (
                 <View style={styles.activityLog}>
                     {loadingTimings ? (
                         <ActivityIndicator size="small" color={COLORS.primary} />
                     ) : timings.length > 0 ? (
                         <View style={{ gap: 10 }}>
-                            {timings.slice(-5).reverse().map((timing, idx) => (
+                            {timings.slice().reverse().map((timing, idx) => (
                                 <View key={timing.id || idx}>
                                     {renderTimingItem(timing)}
                                     {idx < Math.min(timings.length, 5) - 1 && <View style={styles.timingDivider} />}
@@ -211,7 +378,61 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                         </View>
                     )}
                 </View>
-            )}
+            )} */}
+
+            {/* {showActivity && (
+                <View style={styles.activityLog}>
+                    {loadingTimings ? (
+                        <ActivityIndicator size="small" color={COLORS.primary} />
+                    ) : (
+                        <>
+                            {timings.length > 0 && (
+                                <View style={{ gap: 10, marginBottom: TaskReasons.length ? 12 : 0 }}>
+                                    <Text style={styles.activitySectionTitle}>Start / Stop</Text>
+                                    {timings
+                                        .slice()
+                                        .reverse()
+                                        .map((timing, idx) => (
+                                            <View key={timing.id || idx}>
+                                                {renderTimingItem(timing)}
+                                                {idx < Math.min(timings.length, 5) - 1 && (
+                                                    <View style={styles.timingDivider} />
+                                                )}
+                                            </View>
+                                        ))}
+                                </View>
+                            )}
+
+                            {TaskReasons.length > 0 ? (
+                                <View style={{ gap: 10 }}>
+                                    <Text style={styles.activitySectionTitle}>Pause / Incomplete reasons</Text>
+                                    {TaskReasons.slice()
+                                        .reverse()
+                                        .map((reason, idx) => (
+                                            <View key={reason.id || `reason-${idx}`}>
+                                                {renderReasonItem(reason)}
+                                                {idx < TaskReasons.length - 1 && (
+                                                    <View style={styles.timingDivider} />
+                                                )}
+                                            </View>
+                                        ))}
+                                </View>
+                            ) : timings.length === 0 ? (
+                                <View style={styles.emptyState}>
+                                    <Ionicons
+                                        name="information-circle-outline"
+                                        size={20}
+                                        color={COLORS.textTertiary}
+                                    />
+                                    <Text style={styles.emptyText}>No activity recorded yet</Text>
+                                </View>
+                            ) : null}
+                        </>
+                    )}
+                </View>
+            )} */}
+
+
 
             <View style={styles.footer}>
                 <View style={styles.timerArea}>
@@ -223,28 +444,12 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </View>
 
                 <View style={styles.controls}>
-                    <TouchableOpacity
-                        style={styles.pickerWrapper}
-                        onPress={() => {
-                            Alert.alert(
-                                "Select Status",
-                                "Update the current status of this task",
-                                [
-                                    { text: "Pending", onPress: () => onStatusChange(task, 'Pending') },
-                                    { text: "In Progress", onPress: () => onStatusChange(task, 'In Progress') },
-                                    { text: "Completed", onPress: () => onStatusChange(task, 'Completed') },
-                                    { text: "Incomplete", onPress: () => onStatusChange(task, 'Incomplete') },
-                                    { text: "Paused", onPress: () => onStatusChange(task, 'Paused') },
-                                    { text: "Cancel", style: "cancel" }
-                                ]
-                            );
-                        }}
-                    >
-                        <Text style={styles.statusSelectText}>
+                    {/* Status selection removed as per user request */}
+                    <View style={styles.statusDisplayWrapper}>
+                        <Text style={[styles.statusSelectText, { color: statusConfig.color }]}>
                             {statusConfig.label}
                         </Text>
-                        <Ionicons name="chevron-down" size={12} color={COLORS.textTertiary} />
-                    </TouchableOpacity>
+                    </View>
 
                     <View style={styles.buttons}>
                         {!isRunning ? (
@@ -313,11 +518,21 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
     },
+    // descriptionScroll: {
+    //     maxHeight: 130,
+    //     marginBottom: 12,
+    // },
     description: {
         fontSize: 13,
         color: COLORS.textSecondary,
         marginBottom: 12,
         lineHeight: 18,
+    },
+    expandText: {
+        fontSize: 12,
+        color: COLORS.primary,
+        fontWeight: '600',
+        marginTop: 4,
     },
     divider: {
         height: 1,
@@ -396,6 +611,12 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: COLORS.border,
         marginLeft: 34,
+    },
+    activitySectionTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.textSecondary,
+        marginBottom: 4,
     },
     emptyState: {
         padding: 12,

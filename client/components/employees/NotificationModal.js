@@ -45,9 +45,9 @@ export default function NotificationModal({ visible, notifications, onClose, onN
                     >
                         <View style={styles.headerTop}>
                             <View>
-                                <Text style={styles.headerTitle}>Notifications</Text>
+                                <Text style={styles.headerTitle}>Notifications 🔔</Text>
                                 <Text style={styles.headerSubtitle}>
-                                    {notifications.length} {notifications.length === 1 ? 'Update' : 'Updates'} for you
+                                 {notifications.length} {notifications.length === 1 ? 'Update' : 'Updates'} for you ✨
                                 </Text>
                             </View>
                             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-        height: height * 0.8,
+        height: height * 0.92,
         backgroundColor: COLORS.background,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,

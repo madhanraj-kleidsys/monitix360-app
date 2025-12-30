@@ -94,7 +94,7 @@ const REASON_LABELS = {
 export default function ReasonModal({ visible, onClose, onSave, type }) {
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
-  const [completionStatus, setCompletionStatus] = useState('Completed');
+  const [completionStatus, setCompletionStatus] = useState('completed');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const handleSave = () => {
@@ -110,7 +110,7 @@ export default function ReasonModal({ visible, onClose, onSave, type }) {
 
     setSelectedReason('');
     setCustomReason('');
-    setCompletionStatus('Completed');
+    setCompletionStatus('completed');
     setPickerOpen(false);
   };
 
@@ -145,16 +145,16 @@ export default function ReasonModal({ visible, onClose, onSave, type }) {
                   <Text style={styles.label}>Final Task Status</Text>
                   <View style={styles.statusGroup}>
                     <TouchableOpacity
-                      style={[styles.statusOption, completionStatus === 'Completed' && styles.statusOptionActive]}
-                      onPress={() => setCompletionStatus('Completed')}
+                      style={[styles.statusOption, completionStatus === 'completed' && styles.statusOptionActive]}
+                      onPress={() => setCompletionStatus('completed')}
                     >
-                      <Text style={[styles.statusOptionText, completionStatus === 'Completed' && styles.statusOptionTextActive]}>Completed</Text>
+                      <Text style={[styles.statusOptionText, completionStatus === 'completed' && styles.statusOptionTextActive]}>completed</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.statusOption, completionStatus === 'Incomplete' && styles.statusOptionActive, completionStatus === 'Incomplete' && { borderColor: COLORS.danger, backgroundColor: COLORS.danger + '10' }]}
-                      onPress={() => setCompletionStatus('Incomplete')}
+                      style={[styles.statusOption, completionStatus === 'In complete' && styles.statusOptionActive, completionStatus === 'In complete' && { borderColor: COLORS.danger, backgroundColor: COLORS.danger + '10' }]}
+                      onPress={() => setCompletionStatus('In complete')}
                     >
-                      <Text style={[styles.statusOptionText, completionStatus === 'Incomplete' && { color: COLORS.danger }]}>Incomplete</Text>
+                      <Text style={[styles.statusOptionText, completionStatus === 'In complete' && { color: COLORS.danger }]}>In complete</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

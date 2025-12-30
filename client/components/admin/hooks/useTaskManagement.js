@@ -147,7 +147,7 @@ export const useTaskManagement = () => {
         priority: formData.priority === 'High' ? 1 :
           (formData.priority === 'Medium' ? 2 : 3),
         assigned_to: formData.assignUserId,
-        status: 'pending',
+        status: 'Pending',
         duration_minutes: totalDurationMinutes,
         start: formData.startTime,
         end_time: formData.endTime,

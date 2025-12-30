@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useWebSocket } from './hooks/useWebSocket'; // Adjust path if needed
 import api from '../../api/client';
 
 const { height, width } = Dimensions.get('window');
@@ -426,6 +427,27 @@ export default function AdminShiftPage() {
   useEffect(() => {
     fetchShifts();
   }, []);
+
+  const { socket, isConnected } = useWebSocket();
+
+  useEffect(() => {
+    if (socket && isConnected) {
+      const onShiftChange = () => {
+        // console.log('🔄 Shift update received via socket');
+        fetchShifts();
+      };
+
+      socket.on('shift:created', onShiftChange);
+      socket.on('shift:updated', onShiftChange);
+      socket.on('shift:deleted', onShiftChange);
+
+      return () => {
+        socket.off('shift:created', onShiftChange);
+        socket.off('shift:updated', onShiftChange);
+        socket.off('shift:deleted', onShiftChange);
+      };
+    }
+  }, [socket, isConnected]);
 
 
   // ========== FETCH SHIFTS WITH COMPREHENSIVE LOGGING ==========

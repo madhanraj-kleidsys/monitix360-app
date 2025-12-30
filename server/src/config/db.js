@@ -206,7 +206,7 @@ const Task = sequelize.define("tasks", {
   description: DataTypes.TEXT,
   project_title: DataTypes.TEXT,
   priority: DataTypes.INTEGER,
-  status: { type: DataTypes.STRING, defaultValue: "pending" },
+  status: { type: DataTypes.STRING, defaultValue: "Pending" },
   timer_start: DataTypes.DATE,
   elapsed_seconds: { type: DataTypes.INTEGER, defaultValue: 0 },
   start: DataTypes.DATE,
@@ -215,7 +215,7 @@ const Task = sequelize.define("tasks", {
   reason: DataTypes.TEXT,
   task_start: { type: DataTypes.BOOLEAN, defaultValue: false },
 
-  // ⬇ NEW COLUMNS FOR REASONS
+ // ⬇ NEW COLUMNS FOR REASONS
   start_early_reason: DataTypes.TEXT,
   start_late_reason: DataTypes.TEXT,
   pause_reason: DataTypes.TEXT,

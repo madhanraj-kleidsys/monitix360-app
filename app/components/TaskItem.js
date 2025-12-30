@@ -193,14 +193,14 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
   const getStatusConfig = (status) => {
     const s = (status || '').toLowerCase();
     if (s === 'completed')
-      return { color: COLORS.success, label: 'Completed', icon: 'check-all' };
+      return { color: COLORS.success, label: 'completed', icon: 'check-all' };
     if (s === 'in progress')
       return { color: COLORS.primary, label: 'In Progress', icon: 'play-circle' };
     if (s === 'pending')
       return { color: COLORS.warning, label: 'pending', icon: 'clock' };
     if (s === 'incomplete')
       return { color: COLORS.danger, label: 'Incomplete', icon: 'close-circle' };
-    if (s === 'paused')
+    if (s === 'Paused')
       return { color: COLORS.textTertiary, label: 'Paused', icon: 'pause-circle' };
     return { color: COLORS.textTertiary, label: 'Unknown', icon: 'help-circle' };
   };

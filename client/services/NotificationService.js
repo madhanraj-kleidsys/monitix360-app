@@ -81,11 +81,11 @@ export const scheduleTaskReminder = async (user, taskId, taskName, delaySeconds 
     try {
         console.log(`📅 Scheduling reminder for task ${taskId} in ${delaySeconds}s`);
         console.log(user.username);
-        
+
         return await Notifications.scheduleNotificationAsync({
             content: {
                 title: "⚠️Task Reminder 🤨",
-                body: `Hey ${user.username}, task "${taskName}" is still pending. When will you start?`,
+                body: `Hey ${user.username}, task "${taskName}" is still Pending. When will you start?`,
                 data: { taskId, type: 'reminder' },
                 sound: true,
                 priority: Notifications.AndroidImportance.HIGH,
@@ -111,7 +111,7 @@ export const scheduleActiveTaskReminder = async (user, taskId, taskName) => {
                 data: { taskId, type: 'active_reminder' },
                 sound: true,
                 priority: Notifications.AndroidImportance.HIGH,
-                android: { channelId: 'default' },
+                android: { channelId: 'default', sticky: true },
             },
             trigger: {
                 type: 'timeInterval',
