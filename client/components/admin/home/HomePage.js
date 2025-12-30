@@ -166,7 +166,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
 
     // Save to device
     await FileSystem.writeAsStringAsync(filePath, wbout, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Show success notification

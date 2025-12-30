@@ -12,8 +12,8 @@ const { Op } = require('sequelize');
 function startReminderTicker() {
     console.log('🔔 Reminder Ticker Started (Remote Push Mode)');
 
-    // 0. Every minute: Check for BREAK TIMES and AUTO-PAUSE tasks
-    cron.schedule('* * * * *', async () => {
+    // 0. Every minute: Run at second 0
+    cron.schedule('0 * * * * *', async () => {
         try {
             const now = new Date();
             const currentTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
@@ -123,8 +123,8 @@ function startReminderTicker() {
         }
     });
 
-    // 1. Every 5 minutes: Check for PENDING tasks that were assigned but not started
-    cron.schedule('*/30 * * * *', async () => {
+    // 1. Every 30 minutes (at second 15): Check for PENDING tasks that were assigned but not started
+    cron.schedule('15 */30 * * * *', async () => {
         try {
             const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
 
@@ -152,8 +152,8 @@ function startReminderTicker() {
         }
     });
 
-    // 2. Every 15 minutes: Check for ACTIVE tasks (Still Working?)
-    cron.schedule('*/15 * * * *', async () => {
+    // 2. Every 15 minutes (at second 30): Check for ACTIVE tasks (Still Working?)
+    cron.schedule('30 */15 * * * *', async () => {
         try {
             const activeTasks = await Task.findAll({
                 where: {
@@ -178,8 +178,8 @@ function startReminderTicker() {
         }
     });
 
-    // 3. Every 10 minutes: Check for PAUSED tasks (When will you resume?)
-    cron.schedule('*/10 * * * *', async () => {
+    // 3. Every 10 minutes (at second 45): Check for PAUSED tasks (When will you resume?)
+    cron.schedule('45 */10 * * * *', async () => {
         try {
             const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
 
