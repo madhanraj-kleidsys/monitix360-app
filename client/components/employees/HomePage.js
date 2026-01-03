@@ -217,8 +217,8 @@ export default function HomePage({ user }) {
       <View style={styles.contentPadding}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Tasks</Text>
-          <TouchableOpacity onPress={fetchStats}>
-            <Ionicons name="refresh" size={20} color={COLORS.primary} />
+          <TouchableOpacity onPress={() => { console.log('Refreshing stats...'); fetchStats(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="refresh" size={24} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>

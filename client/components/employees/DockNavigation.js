@@ -14,8 +14,11 @@ const COLORS = {
 export default function DockNavigation({ state, descriptors, navigation }) {
   const icons = {
     Home: { active: 'home', inactive: 'home-outline' },
-    Tasks: { active: 'list', inactive: 'list-outline' },
-    Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
+    // Tasks: { active: 'list', inactive: 'list-outline' },
+    // Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
+    Tasks: { active: 'checkmark-done', inactive: 'checkmark-done-outline' }, // task icon
+  Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
+  Chat: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },   
     Profile: { active: 'person', inactive: 'person-outline' },
   };
 

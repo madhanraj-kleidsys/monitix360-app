@@ -215,7 +215,7 @@ const Task = sequelize.define("tasks", {
   reason: DataTypes.TEXT,
   task_start: { type: DataTypes.BOOLEAN, defaultValue: false },
 
- // ⬇ NEW COLUMNS FOR REASONS
+  // ⬇ NEW COLUMNS FOR REASONS
   start_early_reason: DataTypes.TEXT,
   start_late_reason: DataTypes.TEXT,
   pause_reason: DataTypes.TEXT,

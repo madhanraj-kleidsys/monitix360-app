@@ -127,37 +127,50 @@ export default function TaskPage({ user, ListHeaderComponent }) {
     if (!breakWindows.length) return;
 
     const checkBreaks = async () => {
+      if (!breakWindows.length) return;
       const now = new Date();
-      const current = now.toTimeString().substring(0, 8);
-      const activeBreak = breakWindows.find(b => b.start <= current && b.end >= current);
-      const currentTasks = tasksRef.current;
+      const current = now.toTimeString().substring(0, 8); // "HH:MM:SS"
 
+      // Find active break
+      const activeBreak = breakWindows.find(b => {
+        // Normalize locally just in case
+        const bStart = b.start.length === 5 ? `${b.start}:00` : b.start;
+        const bEnd = b.end.length === 5 ? `${b.end}:00` : b.end;
+        return bStart <= current && bEnd >= current;
+      });
+
+      if (activeBreak) {
+        // console.log(`☕ Active Break Found: ${activeBreak.type} (${activeBreak.start}-${activeBreak.end}) vs ${current}`);
+      } else {
+        // console.log(`▶️ No Active Break. Current: ${current}`);
+      }
+
+      const currentTasks = tasksRef.current;
       let updatedPausedByBreak = { ...pausedByBreakTasks };
       let tasksChanged = false;
 
       for (const task of currentTasks) {
+        // ... (rest of logic)
         const isRunning = task.task_start && task.timer_start;
         const wasPausedByBreak = pausedByBreakTasks[task.id];
         const isAllowedDuringBreak = allowRunDuringBreakRef.current[task.id];
 
+        // 1. Auto-Pause if break started
         if (activeBreak && isRunning && !isAllowedDuringBreak) {
-          try {
-            await ApiService.submitReason(task.id, "pause_reason", {
-              reason: `${activeBreak.type} - Auto Paused`,
-            });
-            await executePause(task);
-            updatedPausedByBreak[task.id] = true;
-            tasksChanged = true;
-          } catch (err) { console.error("Auto pause API failed", err); }
+          console.log(`⏸️ Client Auto-Pausing Task ${task.id}`);
+          // ...
+          await executePause(task); // Calls API
+          updatedPausedByBreak[task.id] = true;
+          tasksChanged = true;
         }
 
+        // 2. Auto-Resume if break ended
         if (!activeBreak && wasPausedByBreak) {
-          try {
-            await executeStart(task);
-            delete updatedPausedByBreak[task.id];
-            allowRunDuringBreakRef.current[task.id] = false;
-            tasksChanged = true;
-          } catch (err) { console.error("Auto resume API failed", err); }
+          console.log(`▶️ Client Auto-Resuming Task ${task.id}`);
+          await executeStart(task); // Calls API
+          delete updatedPausedByBreak[task.id];
+          allowRunDuringBreakRef.current[task.id] = false;
+          tasksChanged = true;
         }
       }
 
@@ -198,27 +211,54 @@ export default function TaskPage({ user, ListHeaderComponent }) {
       };
 
       const onTaskUpdated = async (task) => {
+        console.log(`🏠 [TaskPage] Task Updated: ${task.id} Status: ${task.status} Started: ${task.task_start} Timer: ${task.timer_start}`);
+        // console.log('Full Task Payload:', JSON.stringify(task)); 
         if (String(task.assigned_to) !== String(user.id)) return;
-        setTasks(prev => prev.map(t => (t.id === task.id ? task : t)));
 
-        // If task is no longer in progress (e.g. auto-paused by server), cancel notifications
-        if (task.status !== 'In Progress') {
+        // Merge updates carefully
+        setTasks(prev => prev.map(t => {
+          if (String(t.id) === String(task.id)) {
+            // If status changed to Paused from server (Auto-Pause), reflect it
+            // Logic for stopping timer is derived from task status in TaskItem
+            return { ...t, ...task };
+          }
+          return t;
+        }));
+
+        // If status changed to Paused, cancel active notifications
+        if ((task.status || '').toLowerCase() === 'paused') {
           await cancelAllTaskNotifications(task.id);
         }
       };
 
       const onTaskDeleted = (taskId) => {
+        // ... 
         setTasks(prev => prev.filter(t => t.id !== taskId));
         cancelAllTaskNotifications(taskId).catch(console.error);
+      };
+
+      const onBreakStarted = (data) => {
+        console.log('🔄 Break started received:', data);
+        if (data.taskId) {
+          setTasks(prev => prev.map(t => {
+            if (String(t.id) === String(data.taskId)) {
+              return { ...t, status: 'Paused', task_start: false, timer_start: null };
+            }
+            return t;
+          }));
+        }
+        if (data.breaks || data.shift_breaks) loadShiftBreaks();
       };
 
       socket.on("task:created", onTaskAssigned);
       socket.on("task:updated", onTaskUpdated);
       socket.on("task:deleted", onTaskDeleted);
+      socket.on("break:started", onBreakStarted); // Add this
+      socket.on("shift:updated", onBreakStarted); // Re-use for shift updates that contain breaks
 
       // Listen for shift updates to refresh break windows
       socket.on("shift:created", loadShiftBreaks);
-      socket.on("shift:updated", loadShiftBreaks);
+      // socket.on("shift:updated", loadShiftBreaks); // covered above
       socket.on("shift:deleted", loadShiftBreaks);
 
       return () => {
@@ -250,15 +290,25 @@ export default function TaskPage({ user, ListHeaderComponent }) {
   const executeStart = useCallback(async (task) => {
     try {
       const now = new Date().toISOString();
+
+      // Record time log
       await ApiService.recordStartTask({ task_id: task.id, type: 1, time_logged: now });
-      // update status in db
-      await ApiService.markTaskInProgress(task.id);
+
+      // CRITICAL: Update task_start and timer_start in the database
+      // This is required for the server auto-pause cron to detect active tasks
+      await ApiService.updateTaskTimer(task.id, {
+        task_start: true,
+        timer_start: now,
+        status: 'In Progress'
+      });
 
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', task_start: true, timer_start: now } : t));
 
       // Cancel any pending start reminders before scheduling the active one
       await cancelAllTaskNotifications(task.id);
-    } catch (err) { console.error(err); }
+
+      console.log(`✅ Task ${task.id} started and saved to DB with task_start: true, timer_start: ${now}`);
+    } catch (err) { console.error('executeStart error:', err); }
   }, [user]);
 
   const executePause = useCallback(async (task) => {

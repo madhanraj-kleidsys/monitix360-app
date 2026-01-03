@@ -1,18 +1,9 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    useWindowDimensions,
-    ActivityIndicator,
-    ScrollView,
-    Animated,
-    Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, ActivityIndicator, ScrollView, Animated, Alert, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../../services/ApiService';
 import moment from 'moment';
+import { useWebSocket } from '../admin/hooks/useWebSocket';
 
 const COLORS = {
     primary: '#3B82F6',
@@ -93,7 +84,50 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
         setShowActivity(!showActivity);
     };
 
-    const isRunning = (task.task_start && task.timer_start) || (task.status === 'In Progress' && task.timer_start);
+    const { socket } = useWebSocket();
+
+    // Refresh log when socket notifies of task update
+    useEffect(() => {
+        if (!socket) return;
+
+        const onTaskUpdate = (updatedTask) => {
+            if (updatedTask.id === task.id) {
+                // Determine if we need to refresh logs.
+                // For simplicity, just refetch if the window is open or we want real-time accuracy.
+                // We could also optimistically append, but refetching ensures consistency.
+                if (showActivity) {
+                    fetchTimings();
+                    fetchTaskReasons();
+                }
+            }
+        };
+
+        const onTimeLogUpdate = (data) => {
+            if (data.taskId === task.id && showActivity) {
+                fetchTimings();
+                fetchTaskReasons();
+            }
+        };
+
+        socket.on('task:updated', onTaskUpdate);
+        socket.on('timelog:updated', onTimeLogUpdate); // Assuming server sends this
+
+        return () => {
+            socket.off('task:updated', onTaskUpdate);
+            socket.off('timelog:updated', onTimeLogUpdate);
+        };
+    }, [socket, task.id, showActivity, fetchTimings, fetchTaskReasons]);
+
+    useEffect(() => {
+        if (showActivity) {
+            fetchTimings();
+            fetchTaskReasons();
+        }
+    }, [showActivity, fetchTimings, fetchTaskReasons]);
+
+    const isRunning = (task.status !== 'Paused' && task.status !== 'paused') &&
+        ((task.task_start && task.timer_start) || (task.status === 'In Progress' && task.timer_start));
+    console.log(`[TaskItem ${task.id}] Render. Status: ${task.status}, Start: ${task.task_start}, Running: ${isRunning}`);
 
     useEffect(() => {
         if (intervalRef.current) {
@@ -152,7 +186,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
     //     if (s === 'incomplete') return { color: COLORS.danger, label: 'In complete', icon: 'close-circle' };
     //     return { color: COLORS.textTertiary, label: task.status, icon: 'help-circle' };
     // }, [task.status]);
-    
+
     const statusConfig = useMemo(() => {
         const s = (task.status || '').toLowerCase();
         if (s === 'completed') return { color: COLORS.success, label: 'Completed', icon: 'checkmark-circle' };
@@ -285,10 +319,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
 
             {task.description ? (
                 <>
-                    <Text
-                        style={styles.description}
-                        numberOfLines={showFullDesc ? 0 : 2}
-                    >
+                    <Text style={styles.description} numberOfLines={showFullDesc ? 0 : 2}>
                         {task.description}
                     </Text>
                     {task.description.length > 80 && (
@@ -301,6 +332,20 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </>
             ) : null}
 
+
+
+            {/* Socket Listener for Activity Log */}
+            {socket && (
+                <View style={{ display: 'none' }}>
+                    {/* Invisible component to manage socket logic for this specific item if needed, 
+                        but better to use useEffect inside the component body. 
+                        We will inject the useEffect logic via a separate edit or assume the edit above handles it.
+                        Wait, I am editing `TaskItem`. I should add the `useEffect` at the top level.
+                        This `replace_file_content` is targeting the render method. 
+                        I should target the top of the file to add `useWebSocket` and the effect.
+                     */}
+                </View>
+            )}
 
             <View style={styles.divider} />
 
@@ -329,6 +374,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </Text>
                 <Ionicons name={showActivity ? "chevron-up" : "chevron-down"} size={14} color={COLORS.primary} />
             </TouchableOpacity>
+
             {showActivity && (
                 <View style={styles.activityLog}>
                     {loadingTimings ? (
@@ -357,83 +403,6 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </View>
             )}
 
-            {/* 
-            {showActivity && (
-                <View style={styles.activityLog}>
-                    {loadingTimings ? (
-                        <ActivityIndicator size="small" color={COLORS.primary} />
-                    ) : timings.length > 0 ? (
-                        <View style={{ gap: 10 }}>
-                            {timings.slice().reverse().map((timing, idx) => (
-                                <View key={timing.id || idx}>
-                                    {renderTimingItem(timing)}
-                                    {idx < Math.min(timings.length, 5) - 1 && <View style={styles.timingDivider} />}
-                                </View>
-                            ))}
-                        </View>
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <Ionicons name="information-circle-outline" size={20} color={COLORS.textTertiary} />
-                            <Text style={styles.emptyText}>No activity recorded yet</Text>
-                        </View>
-                    )}
-                </View>
-            )} */}
-
-            {/* {showActivity && (
-                <View style={styles.activityLog}>
-                    {loadingTimings ? (
-                        <ActivityIndicator size="small" color={COLORS.primary} />
-                    ) : (
-                        <>
-                            {timings.length > 0 && (
-                                <View style={{ gap: 10, marginBottom: TaskReasons.length ? 12 : 0 }}>
-                                    <Text style={styles.activitySectionTitle}>Start / Stop</Text>
-                                    {timings
-                                        .slice()
-                                        .reverse()
-                                        .map((timing, idx) => (
-                                            <View key={timing.id || idx}>
-                                                {renderTimingItem(timing)}
-                                                {idx < Math.min(timings.length, 5) - 1 && (
-                                                    <View style={styles.timingDivider} />
-                                                )}
-                                            </View>
-                                        ))}
-                                </View>
-                            )}
-
-                            {TaskReasons.length > 0 ? (
-                                <View style={{ gap: 10 }}>
-                                    <Text style={styles.activitySectionTitle}>Pause / Incomplete reasons</Text>
-                                    {TaskReasons.slice()
-                                        .reverse()
-                                        .map((reason, idx) => (
-                                            <View key={reason.id || `reason-${idx}`}>
-                                                {renderReasonItem(reason)}
-                                                {idx < TaskReasons.length - 1 && (
-                                                    <View style={styles.timingDivider} />
-                                                )}
-                                            </View>
-                                        ))}
-                                </View>
-                            ) : timings.length === 0 ? (
-                                <View style={styles.emptyState}>
-                                    <Ionicons
-                                        name="information-circle-outline"
-                                        size={20}
-                                        color={COLORS.textTertiary}
-                                    />
-                                    <Text style={styles.emptyText}>No activity recorded yet</Text>
-                                </View>
-                            ) : null}
-                        </>
-                    )}
-                </View>
-            )} */}
-
-
-
             <View style={styles.footer}>
                 <View style={styles.timerArea}>
                     <Text style={styles.timerSub}>Time Elapsed</Text>
@@ -444,7 +413,6 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </View>
 
                 <View style={styles.controls}>
-                    {/* Status selection removed as per user request */}
                     <View style={styles.statusDisplayWrapper}>
                         <Text style={[styles.statusSelectText, { color: statusConfig.color }]}>
                             {statusConfig.label}
@@ -470,7 +438,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
                 </View>
             </View>
         </View>
-    );
+    )
 });
 
 const styles = StyleSheet.create({

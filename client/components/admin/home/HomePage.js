@@ -15,15 +15,16 @@ import {
   ActivityIndicator, Image, FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Octicons from '@expo/vector-icons/Octicons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy'; // Fix for deprecated writeAsStringAsync warning/error
 import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
-import * as MediaLibrary from 'expo-media-library';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 import useTaskManagement from '../hooks/useTaskManagement';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -90,6 +91,10 @@ const formatDateTime = (dateString) => {
 };
 
 const formatDateRange = (dateRange) => {
+  if (dateRange instanceof Date || typeof dateRange === 'string' || typeof dateRange === 'number') {
+    const d = new Date(dateRange);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/, /g, '_').replace(/ /g, '_');
+  }
   const startDate = new Date(dateRange.start).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric'
@@ -123,26 +128,14 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     });
 
     // Request storage permission
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    if (status !== 'granted') {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Permission Denied',
-          body: 'Storage permission is required to export files',
-          sound: 'default',
-        },
-        trigger: null,
-      });
-      alert('Storage permission denied. Cannot save file.');
-      return;
-    }
+    // MediaLibrary permission removed - using Sharing instead
 
     // Create data array
     const data = tasks.map(task => ({
       'Employee Name': task.employeeName,
-      'Task Name': task.name,
+      'Project / Task Name': task.name,
       'Status': task.status,
-      'Project': task.project,
+      // 'Project': task.project,
       'Description': task.description,
       'Start Date/Time': formatDateTime(task.startDate),
       'End Date/Time': formatDateTime(task.endDate),
@@ -265,7 +258,7 @@ function Header() {
 }
 
 // ========== FILTER BAR COMPONENT ==========
-function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline, setShowTimeline }) {
+function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline, setShowTimeline, isSmall }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleTodayPress = () => {
@@ -293,16 +286,41 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
             <Text style={styles.filterButtonText}>Today</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.dateRangeButton}
             onPress={() => setShowDatePicker(true)}
           >
             <Ionicons name="calendar" size={16} color={COLORS.secondary} />
             <Text style={styles.dateRangeText}>{dateText}</Text>
             <Ionicons name="chevron-down" size={16} color={COLORS.textLight} />
+          </TouchableOpacity> */}
+
+          <TouchableOpacity
+            style={[
+              styles.dateRangeButton,
+              isSmall && styles.dateRangeButtonSmall,
+            ]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar" size={16} color={COLORS.secondary} />
+            <Text
+              style={[
+                styles.dateRangeText,
+                isSmall && styles.dateRangeTextSmall,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {dateText}
+            </Text>
+            {!isSmall && (
+              <Ionicons
+                name="chevron-down"
+                size={16}
+                color={COLORS.textLight}
+              />
+            )}
           </TouchableOpacity>
-
-
 
           <CompactToggle isActive={showTimeline} onToggle={(val) => setShowTimeline(val)} />
 
@@ -2275,6 +2293,8 @@ export default function HomePage() {
       ]
     );
   };
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
   return (
     <View style={styles.container}>
       <Header />
@@ -2285,6 +2305,7 @@ export default function HomePage() {
         filteredTasks={filteredTasks}
         showTimeline={showTimeline}
         setShowTimeline={setShowTimeline}
+        isSmall={isSmall}
       />
 
       {/* VIEW MODE TOGGLE */}
@@ -2528,7 +2549,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    // marginBottom: 20,
   },
   greeting: {
     fontSize: isTablet ? 18 : 16,
@@ -2729,9 +2750,19 @@ const styles = StyleSheet.create({
     backgroundColor: `${COLORS.secondary}15`,
     gap: 6,
   },
+  dateRangeButtonSmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
+  },
   dateRangeText: {
     flex: 1,
     fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  dateRangeTextSmall: {
+    fontSize: 10,
     fontWeight: '600',
     color: COLORS.text,
   },

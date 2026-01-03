@@ -20,7 +20,7 @@
         {
             "label": "starting server with Bunuuh",
             "type": "shell",
-            "command": "bun start",
+            "command": "bun start --clear",
             "options": {
                 "cwd": "${workspaceFolder}/server"
             },

@@ -395,12 +395,12 @@ exports.getTimer = async (req, res) => {
 };
 
 // ------------------------------------------------------------
-// PUT /timer/:id → Update timer_start / timer_end
+// PUT /timer/:id → Update timer_start / timer_end / task_start / status / elapsed_seconds
 // ------------------------------------------------------------
 exports.putTimer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { timer_start, timer_end } = req.body;
+    const { timer_start, timer_end, task_start, status, elapsed_seconds } = req.body;
     const companyId = req.user.company_id;
 
     const task = await findCompanyTask(id, companyId);
@@ -409,6 +409,9 @@ exports.putTimer = async (req, res) => {
     const updateData = {};
     if (timer_start !== undefined) updateData.timer_start = timer_start;
     if (timer_end !== undefined) updateData.timer_end = timer_end;
+    if (task_start !== undefined) updateData.task_start = task_start;
+    if (status !== undefined) updateData.status = status;
+    if (elapsed_seconds !== undefined) updateData.elapsed_seconds = elapsed_seconds;
 
     if (Object.keys(updateData).length === 0)
       return res.status(400).json({ message: "Nothing to update" });
@@ -416,9 +419,18 @@ exports.putTimer = async (req, res) => {
     updateData.updated_at = new Date();
     await updateTask(task, updateData);
 
+    // Fetch updated task for accurate response
+    await task.reload();
+
     res.json({ message: "Timer updated successfully", task });
     try {
-      getIO().emit("task:updated", task);
+      const io = getIO();
+      const taskData = task.get({ plain: true });
+      console.log(`📡 Timer Updated - Task ${task.id}: status=${taskData.status}, task_start=${taskData.task_start}, timer_start=${taskData.timer_start}`);
+      io.emit("task:updated", taskData);
+      if (task.assigned_to) {
+        io.to(`user_${task.assigned_to}`).emit("task:updated", taskData);
+      }
     } catch (err) {
       console.error("Socket emit error:", err.message);
     }

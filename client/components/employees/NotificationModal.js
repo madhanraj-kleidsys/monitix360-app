@@ -47,7 +47,7 @@ export default function NotificationModal({ visible, notifications, onClose, onN
                             <View>
                                 <Text style={styles.headerTitle}>Notifications 🔔</Text>
                                 <Text style={styles.headerSubtitle}>
-                                 {notifications.length} {notifications.length === 1 ? 'Update' : 'Updates'} for you ✨
+                                    {notifications.length} {notifications.length === 1 ? 'Update' : 'Updates'} for you ✨
                                 </Text>
                             </View>
                             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>

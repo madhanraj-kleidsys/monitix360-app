@@ -27,8 +27,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.216:3000';
-
+const API_URL = 'http://192.168.0.216:3000';
+//  process.env.EXPO_PUBLIC_API_URL ||
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 

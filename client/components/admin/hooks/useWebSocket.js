@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Ensure this matches your backend IP and port
+// const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.216:3000';
 const SOCKET_URL = 'http://192.168.0.216:3000';
 
 let socketInstance = null;
