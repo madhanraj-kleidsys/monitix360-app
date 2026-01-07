@@ -32,6 +32,9 @@ import useProjects from '../hooks/useProjects';
 import HomeTimeline from './HomeTimeline';
 import api from '../../../api/client';
 import { CompactToggle } from './CompactToggle';
+import { isHolidayOrWeekend } from '../../../utils/holidayUtils';
+import HolidayAlert from '../../common/HolidayAlert';
+import StyledConfirmAlert from '../../common/StyledConfirmAlert';
 
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
@@ -175,7 +178,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     // Share the file
     await Sharing.shareAsync(filePath, {
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: 'Export Employee Tasks',
+      dialogTitle: 'Export Staff Tasks',
     });
 
   } catch (error) {
@@ -215,10 +218,10 @@ function Header() {
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>Admin Dashboard</Text>
-            <View style={styles.statusBadgenf}>
+            {/* <View style={styles.statusBadgenf}>
               <View style={styles.statusDotnf} />
               <Text style={styles.statusTextnf}>Online</Text>
-            </View>
+            </View> */}
           </View>
           <TouchableOpacity style={styles.notificationBtn}>
             <LinearGradient
@@ -710,7 +713,7 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
 }
 
 // ========== ASSIGN TASK MODAL ==========
-function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
+function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holidays }) {
   const [formData, setFormData] = useState({
     department: '',
     title: '',
@@ -734,6 +737,9 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [dateTimePickerMode, setDateTimePickerMode] = useState('date');
   const [currentPicker, setCurrentPicker] = useState(null); // 'startTime' or 'endTime'
+  const [showHolidayAlert, setShowHolidayAlert] = useState(false);
+  const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
+  const [assignUserSearchQuery, setAssignUserSearchQuery] = useState('');
   const scrollViewRef = useRef(null);
 
   // Dummy data for dropdowns
@@ -810,10 +816,13 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
 
       // Auto-set start and end times based on manual duration
       if (hours > 0 || minutes > 0) {
-        const now = new Date();
-        const endTime = new Date(now.getTime() + (hours * 60 + minutes) * 60 * 1000);
+        const currentStart = formData.startTime ? new Date(formData.startTime) : new Date();
+        const endTime = new Date(currentStart.getTime() + (hours * 60 + minutes) * 60 * 1000);
 
-        handleInputChange('startTime', now.toISOString());
+        // Only update startTime if it wasn't set before
+        if (!formData.startTime) {
+          handleInputChange('startTime', currentStart.toISOString());
+        }
         handleInputChange('endTime', endTime.toISOString());
         handleInputChange('durationInputMode', 'manual');
       }
@@ -891,14 +900,21 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
   const onDateTimeChange = (event, selectedDate) => {
     setShowDateTimePicker(false);
     if (selectedDate) {
-      const currentVal = formData[currentPicker] ? new Date(formData[currentPicker]) : new Date();
-
       if (dateTimePickerMode === 'date') {
+        const holidayCheck = isHolidayOrWeekend(selectedDate, holidays);
+        if (holidayCheck.isHoliday) {
+          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason || 'a non-working day'}. We don't assign tasks on holidays/weekends. Please pick another date!`);
+          setShowHolidayAlert(true);
+          return;
+        }
+
+        const currentVal = formData[currentPicker] ? new Date(formData[currentPicker]) : new Date();
         currentVal.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
         handleInputChange(currentPicker, currentVal.toISOString());
         // Automatically open time picker next
         setTimeout(() => openDateTimePicker(currentPicker, 'time'), 200);
       } else { // time
+        const currentVal = formData[currentPicker] ? new Date(formData[currentPicker]) : new Date();
         currentVal.setHours(selectedDate.getHours(), selectedDate.getMinutes());
         handleInputChange(currentPicker, currentVal.toISOString());
       }
@@ -944,7 +960,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
                 <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                   <Ionicons name="close" size={28} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Assign a Task</Text>
+                <Text style={styles.modalTitle}>Assign a Task ☺️</Text>
                 <View style={{ width: 44 }} />
               </LinearGradient>
 
@@ -987,10 +1003,27 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
 
                     {userOpen && (
                       <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
+                        <View style={styles.dropdownSearchContainer}>
+                          <Ionicons name="search" size={16} color={COLORS.textLight} />
+                          <TextInput
+                            style={styles.dropdownSearchInput}
+                            placeholder="Search user..."
+                            placeholderTextColor={COLORS.textLight}
+                            value={assignUserSearchQuery}
+                            onChangeText={setAssignUserSearchQuery}
+                          />
+                        </View>
                         {allUsers && allUsers.length > 0 ? (
-                          // FILTER: Show only users with role === 'user'
+                          // FILTER: role === 'user' AND matches search query
                           allUsers
-                            .filter(user => user.role === 'user')  // ONLY 'user' role
+                            .filter(user =>
+                              user.role === 'user' &&
+                              (
+                                (user.first_name || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase()) ||
+                                (user.last_name || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase()) ||
+                                (user.username || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase())
+                              )
+                            )
                             .map((user) => (
                               <TouchableOpacity
                                 key={user.id}
@@ -999,6 +1032,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
                                   handleInputChange('assignUserId', user.id);
                                   handleInputChange('assignUser', user.username);
                                   setUserOpen(false);
+                                  setAssignUserSearchQuery('');
                                 }}
                               >
                                 <Text style={styles.dropdownItemText}>
@@ -1011,6 +1045,10 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
                             ))
                         ) : (
                           <Text style={styles.dropdownItemText}>Loading users...</Text>
+                        )}
+                        {/* If filter results are empty but users exist */}
+                        {allUsers.length > 0 && allUsers.filter(user => user.role === 'user' && ((user.first_name || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase()) || (user.last_name || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase()) || (user.username || '').toLowerCase().includes(assignUserSearchQuery.toLowerCase()))).length === 0 && (
+                          <Text style={[styles.dropdownItemText, { textAlign: 'center', padding: 10 }]}>No users found</Text>
                         )}
                       </View>
                     )}
@@ -1333,12 +1371,18 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects }) {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <HolidayAlert
+        visible={showHolidayAlert}
+        message={holidayAlertMessage}
+        onConfirm={() => setShowHolidayAlert(false)}
+      />
     </Modal>
   );
 }
 
 // ========== COMPLETE EDIT TASK MODAL WITH ALL FEATURES ==========
-function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, projects }) {
+function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, projects, holidays }) {
   const [editedTask, setEditedTask] = useState({
     title: '',
     description: '',
@@ -1359,6 +1403,8 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [dateTimePickerMode, setDateTimePickerMode] = useState('date');
   const [currentPicker, setCurrentPicker] = useState(null);
+  const [showHolidayAlert, setShowHolidayAlert] = useState(false);
+  const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
 
   const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
   const projectOptions = ['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'];
@@ -1544,15 +1590,20 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
   const onDateTimeChange = (event, selectedDate) => {
     setShowDateTimePicker(false);
     if (selectedDate) {
-      const currentVal = editedTask[currentPicker]
-        ? new Date(editedTask[currentPicker])
-        : new Date();
-
       if (dateTimePickerMode === 'date') {
+        const holidayCheck = isHolidayOrWeekend(selectedDate, holidays);
+        if (holidayCheck.isHoliday) {
+          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason}. We don't assign tasks on non-working days. Please pick another date!`);
+          setShowHolidayAlert(true);
+          return;
+        }
+
+        const currentVal = editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date();
         currentVal.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
         handleInputChange(currentPicker, currentVal.toISOString());
         setTimeout(() => openDateTimePicker(currentPicker, 'time'), 200);
       } else {
+        const currentVal = editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date();
         currentVal.setHours(selectedDate.getHours(), selectedDate.getMinutes());
         handleInputChange(currentPicker, currentVal.toISOString());
         handleInputChange('durationInputMode', 'auto');
@@ -1984,13 +2035,88 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         </View>
 
       </KeyboardAvoidingView>
+      <HolidayAlert
+        visible={showHolidayAlert}
+        message={holidayAlertMessage}
+        onConfirm={() => setShowHolidayAlert(false)}
+      />
     </Modal >
   );
 }
 
+// ========== ADVANCED FILTER BAR ==========
+const AdvancedFilterBar = ({ filterUser, setFilterUser, filterDept, setFilterDept,
+  filterStatus, setFilterStatus, departments = [] }) => {
+  const statuses = ['Pending', 'In Progress', 'Paused', 'Completed', 'In Complete'];
+
+  return (
+    <View style={styles.advancedFilterWrapper}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.advancedFilterScroll}
+      >
+        {/* User Search Input */}
+        <View style={styles.filterItemSearch}>
+          <Ionicons name="search" size={14} color={COLORS.textLight} />
+          <TextInput
+            style={styles.filterSearchInput}
+            placeholder="Staff Name"
+            placeholderTextColor={COLORS.textLight}
+            value={filterUser}
+            onChangeText={setFilterUser}
+          />
+          {filterUser !== '' && (
+            <TouchableOpacity onPress={() => setFilterUser('')}>
+              <Ionicons name="close-circle" size={14} color={COLORS.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Dept & Status Filter Chips */}
+        <View style={styles.chipsSection}>
+          <TouchableOpacity
+            style={[styles.filterChip, filterDept === '' && styles.filterChipActive]}
+            onPress={() => setFilterDept('')}
+          >
+            <Text style={[styles.filterChipText, filterDept === '' && styles.filterChipTextActive]}>All Depts</Text>
+          </TouchableOpacity>
+          {departments.map((dept, idx) => (
+            <TouchableOpacity
+              key={`dept-${idx}`}
+              style={[styles.filterChip, filterDept === dept && styles.filterChipActive]}
+              onPress={() => setFilterDept(dept)}
+            >
+              <Text style={[styles.filterChipText, filterDept === dept && styles.filterChipTextActive]}>{dept}</Text>
+            </TouchableOpacity>
+          ))}
+
+          <View style={styles.chipDivider} />
+
+          <TouchableOpacity
+            style={[styles.filterChip, filterStatus === '' && styles.filterChipActive]}
+            onPress={() => setFilterStatus('')}
+          >
+            <Text style={[styles.filterChipText, filterStatus === '' && styles.filterChipTextActive]}>All Status</Text>
+          </TouchableOpacity>
+          {statuses.map((status, idx) => (
+            <TouchableOpacity
+              key={`status-${idx}`}
+              style={[styles.filterChip, filterStatus === status && styles.filterChipActive]}
+              onPress={() => setFilterStatus(status)}
+            >
+              <Text style={[styles.filterChipText, filterStatus === status && styles.filterChipTextActive]}>{status}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
 // ========== MAIN HOME SCREEN ==========
 
-export default function HomePage() {
+export default function HomePage({ user }) {
   const {
     allUsers = [],
     allTasks = [],
@@ -2030,11 +2156,37 @@ export default function HomePage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [filterPriority, setFilterPriority] = useState('');
   const [unplannedTasks, setUnplannedTasks] = useState([]);
-  const [tabValue, setTabValue] = useState(0); // 0: All, 1: My Tasks, 2: Unplanned
-  const [showChart, setShowChart] = useState(false);
-  const [deletedTask, setDeletedTask] = useState(null);
-
   const [undoTimeoutId, setUndoTimeoutId] = useState(null);
+  const [filterUser, setFilterUser] = useState('');
+  const [filterDept, setFilterDept] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [holidays, setHolidays] = useState([]);
+  const [showHolidayAlert, setShowHolidayAlert] = useState(false);
+  const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+
+  const fetchHolidays = React.useCallback(async () => {
+    try {
+      // Backend route is /api/declare-holiday, which automatically filters by company_id in the controller
+      const response = await api.get('/declare-holiday');
+      if (response.data && Array.isArray(response.data)) {
+        const holidayDates = response.data.map(h => {
+          const d = new Date(h.holiday_date);
+          return d.toISOString().split('T')[0];
+        });
+        setHolidays(holidayDates);
+        console.log('✅ Holidays fetched:', holidayDates.length);
+      }
+    } catch (error) {
+      console.error('Fetch holidays error:', error.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
 
 
   const fetchShifts = React.useCallback(async () => {
@@ -2176,31 +2328,25 @@ export default function HomePage() {
     }
   };
 
-  // convert backend tasks UI tasks for TaskCard
+  // convert backend tasks to UI tasks for TaskCard
   const uiTasks = useMemo(() => {
     if (!Array.isArray(allTasks)) return [];
 
     return allTasks.map(t => {
-      // Logic for user name fallback
-      let empName = t.assigned_to_name;
-      if (!empName && allUsers && allUsers.length > 0) {
-        const user = allUsers.find(u => u.id === t.assigned_to);
-        if (user) {
-          empName = user.username || user.first_name;
-        }
-      }
-      if (!empName) empName = 'Unassigned';
+      // Find full user info for searching
+      const assignedUser = allUsers.find(u => u.id === t.assigned_to);
 
       return {
         id: t.id,
-        employeeName: empName,
+        employeeName: assignedUser ? (assignedUser.username || assignedUser.first_name) : (t.assigned_to_name || 'Unassigned'),
+        firstName: assignedUser?.first_name || '',
+        lastName: assignedUser?.last_name || '',
+        username: assignedUser?.username || '',
         name: t.title,
         status: t.status === 'Pending' ? 'Pending' : t.status,
-        // Handle backend (project_title) vs frontend (Project_Title) mismatch
         Project_Title: t.project_title || t.Project_Title,
-        // priority: getPriorityLabel(t.priority),
-        priority: t.priority, // This was missing!
-        duration_minutes: t.duration_minutes, // This was missing!
+        priority: t.priority,
+        duration_minutes: t.duration_minutes,
         department: t.department,
         description: t.description,
         startDate: t.start,
@@ -2209,23 +2355,64 @@ export default function HomePage() {
     });
   }, [allTasks, allUsers]);
 
-  //  Filter tasks by date
+  //  Filter and Sort tasks
   const filteredTasks = useMemo(() => {
     const targetDateStart = new Date(selectedDate);
     const targetDateEnd = new Date(selectedDate);
-    // Set the time boundaries for the entire day (from 00:00:00 to 23:59:59)
     targetDateStart.setHours(0, 0, 0, 0);
     targetDateEnd.setHours(23, 59, 59, 999);
 
     const filtered = uiTasks.filter(task => {
+      // Date filter - Logic Change: If task is "In Progress", show it even if it started in past
+      const isRunning = (task.status || '').toLowerCase() === 'in progress';
+
       if (!task.startDate) return false;
       const taskDate = new Date(task.startDate);
+      const inDateRange = taskDate >= targetDateStart && taskDate <= targetDateEnd;
 
-      // Check if the task's date is >= start of the day AND <= end of the day
-      return taskDate >= targetDateStart && taskDate <= targetDateEnd;
+      // Rule: Show if it's in the date range OR if it's currently running (so admin can see what's active)
+      if (!inDateRange && !isRunning) return false;
+
+      // User filter (search by username, first name, last name, or employee display name)
+      if (filterUser) {
+        const query = filterUser.toLowerCase();
+        const match =
+          (task.username || '').toLowerCase().includes(query) ||
+          (task.firstName || '').toLowerCase().includes(query) ||
+          (task.lastName || '').toLowerCase().includes(query) ||
+          (task.employeeName || '').toLowerCase().includes(query);
+        if (!match) return false;
+      }
+
+      // Department filter
+      if (filterDept && task.name !== filterDept) return false;
+
+      // Status filter
+      if (filterStatus) {
+        const tStatus = (task.status || '').toLowerCase();
+        const fStatus = filterStatus.toLowerCase();
+        if (tStatus !== fStatus) {
+          // Special case for variations of In Progress
+          if (fStatus === 'in progress' && tStatus === 'in progress') return true;
+          return false;
+        }
+      }
+
+      return true;
     });
-    return filtered;
-  }, [uiTasks, selectedDate]);
+
+    // Premium Sorting: Running tasks at TOP, then sort by startDate desc
+    return [...filtered].sort((a, b) => {
+      const aRunning = (a.status || '').toLowerCase() === 'in progress';
+      const bRunning = (b.status || '').toLowerCase() === 'in progress';
+
+      if (aRunning && !bRunning) return -1;
+      if (!aRunning && bRunning) return 1;
+
+      // Secondary sort: Newest first
+      return new Date(b.startDate) - new Date(a.startDate);
+    });
+  }, [uiTasks, selectedDate, filterUser, filterDept, filterStatus]);
 
   //  In useEffect
   useEffect(() => {
@@ -2268,30 +2455,22 @@ export default function HomePage() {
 
   // if (isConnected) emit('task:deleted', id);
   const handleDeleteTask = (id) => {
-    Alert.alert(
-      "Delete Task",
-      "Are you sure you want to delete this task?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteTask(id);
-              setIsDetailVisible(false);
-              await fetchAllTasks();
-            } catch (err) {
-              if (err.message === 'SESSION_EXPIRED') return;
-              console.error("Delete failed:", err);
-            }
-          }
-        }
-      ]
-    );
+    setTaskToDelete(id);
+    setShowDeleteAlert(true);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
+    try {
+      await deleteTask(taskToDelete);
+      setIsDetailVisible(false);
+      await fetchAllTasks();
+      setShowDeleteAlert(false);
+      setTaskToDelete(null);
+    } catch (err) {
+      if (err.message === 'SESSION_EXPIRED') return;
+      console.error("Delete failed:", err);
+    }
   };
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
@@ -2308,54 +2487,12 @@ export default function HomePage() {
         isSmall={isSmall}
       />
 
-      {/* VIEW MODE TOGGLE */}
-      {/* <View style={styles.viewModeToggle}>
-        <TouchableOpacity
-          style={[
-            styles.viewToggleBtn,
-            showTimeline && styles.viewToggleBtnActive
-          ]}
-          onPress={() => setShowTimeline(true)}
-        >
-          <Ionicons
-            name="calendar"
-            size={18}
-            color={showTimeline ? '#fff' : COLORS.textLight}
-          />
-          <Text
-            style={[
-              styles.viewToggleText,
-              showTimeline && styles.viewToggleTextActive
-            ]}
-          >
-            Timeline
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.viewToggleBtn,
-            !showTimeline && styles.viewToggleBtnActive
-          ]}
-          onPress={() => setShowTimeline(false)}
-        >
-          <Ionicons
-            name="list"
-            size={18}
-            color={!showTimeline ? '#fff' : COLORS.textLight}
-          />
-          <Text
-            style={[
-              styles.viewToggleText,
-              !showTimeline && styles.viewToggleTextActive
-            ]}
-          >
-            Cards
-          </Text>
-        </TouchableOpacity>
-      </View> */}
-
-      {/* View Toggle Moved to FilterBar */}
+      <AdvancedFilterBar
+        filterUser={filterUser} setFilterUser={setFilterUser}
+        filterDept={filterDept} setFilterDept={setFilterDept}
+        filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+        departments={['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation']}
+      />
 
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
         <View
@@ -2363,6 +2500,7 @@ export default function HomePage() {
           pointerEvents={isDetailVisible ? 'none' : 'auto'}
         >
           <View style={[styles.tasksSection, { flex: 1 }]}>
+
             <View style={styles.filterContainer}>
               <Text style={styles.sectionTitle}>Total Tasks ({filteredTasks.length})</Text>
               <TouchableOpacity
@@ -2373,62 +2511,6 @@ export default function HomePage() {
                 <Text style={styles.assignButtonText}>Assign a Task</Text>
               </TouchableOpacity>
             </View>
-
-            {/* {loading ? (
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            ) : Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onPress={() => handleTaskPress(task)}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="mail-open-outline" size={48} color={COLORS.textLight} />
-                <Text style={styles.emptyText}>
-                  {loading ? 'Loading tasks...' : 'No tasks for today'}
-                </Text>
-              </View>
-            )} */}
-
-            {/* CARDS VIEW */}
-            {/* {!showDashboard && (
-              <>
-                {loading ? (
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                ) : Array.isArray(filteredTasks) && filteredTasks.length > 0 ? (
-                  filteredTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onPress={() => handleTaskPress(task)}
-                    />
-                  ))
-                ) : (
-                  <View style={styles.emptyState}>
-                    <Ionicons
-                      name="mail-open-outline"
-                      size={48}
-                      color={COLORS.textLight}
-                    />
-                    <Text style={styles.emptyText}>
-                      {loading ? 'Loading tasks...' : 'No tasks for today'}
-                    </Text>
-                  </View>
-                )}
-              </>
-            )} */}
-
-            {/* DASHBOARD VIEW */}
-            {/* {showDashboard && (
-              <HomeBarChart
-                tasks={filteredTasks}
-                selectedDate={selectedDate}
-                onTaskPress={(task) => handleTaskPress(task)}
-              />
-            )} */}
 
             {!showTimeline && (
               <>
@@ -2472,6 +2554,7 @@ export default function HomePage() {
                 selectedDate={selectedDate}
                 onTaskDragEnd={handleTaskDragEnd}
                 onTaskPress={(task) => handleTaskPress(task)}
+                holidays={holidays}
               />
             )}
 
@@ -2486,6 +2569,7 @@ export default function HomePage() {
         onSave={handleSaveTask}
         allUsers={allUsers}
         projects={projects}
+        holidays={holidays}
       />
 
       <TaskModal
@@ -2511,15 +2595,28 @@ export default function HomePage() {
         loading={loading}
         allUsers={allUsers}
         projects={projects}
+        holidays={holidays}
       />
 
-      {/* <UserSelector
-        users={allUsers}
-        selectedUser={selectedUser}
-        onSelectUser={setSelectedUser}
-      /> */}
+      <HolidayAlert
+        visible={showHolidayAlert}
+        message={holidayAlertMessage}
+        onConfirm={() => setShowHolidayAlert(false)}
+      />
 
-      {/* <TabSwitcher tabValue={tabValue} onTabChange={setTabValue} /> */}
+      <StyledConfirmAlert
+        visible={showDeleteAlert}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDeleteTask}
+        onCancel={() => {
+          setShowDeleteAlert(false);
+          setTaskToDelete(null);
+        }}
+      />
     </View>
   );
 }
@@ -2534,7 +2631,7 @@ const styles = StyleSheet.create({
 
   // ========== HEADER STYLES ==========
   headerGradient: {
-    paddingTop: isTablet ? 60 : 50,
+    paddingTop: isTablet ? 40 : 45,
     paddingBottom: isTablet ? 50 : 40,
     paddingHorizontal: isTablet ? 25 : 15,
     borderBottomLeftRadius: 32,
@@ -2561,7 +2658,7 @@ const styles = StyleSheet.create({
     fontSize: isTablet ? 36 : 32,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 8,
+    // marginBottom: 8,
   },
   employeeNameCenter: {
     fontSize: isTablet ? 28 : 24,
@@ -2572,31 +2669,28 @@ const styles = StyleSheet.create({
   },
 
   // ========== STATUS STYLES ==========
-  statusBadgenf: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  statusDotnf: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.success,
-    marginRight: 6,
-  },
-  statusTextnf: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-
-
-
+  // statusBadgenf: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  //   paddingHorizontal: 12,
+  //   paddingVertical: 6,
+  //   borderRadius: 20,
+  //   gap: 6,
+  //   alignSelf: 'flex-start',
+  // },
+  // statusDotnf: {
+  //   width: 8,
+  //   height: 8,
+  //   borderRadius: 4,
+  //   backgroundColor: COLORS.success,
+  //   marginRight: 6,
+  // },
+  // statusTextnf: {
+  //   fontSize: 12,
+  //   fontWeight: '600',
+  //   color: '#fff',
+  // },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2662,53 +2756,53 @@ const styles = StyleSheet.create({
   },
 
   // ========== STATS OVERVIEW ==========
-  statsOverviewCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    padding: isTablet ? 24 : 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  statsTitle: {
-    fontSize: isTablet ? 20 : 18,
-    fontWeight: '700',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  overviewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  overviewItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  overviewValue: {
-    fontSize: isTablet ? 28 : 24,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  overviewLabel: {
-    fontSize: isTablet ? 13 : 12,
-    color: COLORS.textLight,
-    fontWeight: '500',
-  },
-  overviewDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.border,
-  },
+  // statsOverviewCard: {
+  //   backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  //   borderRadius: 20,
+  //   padding: isTablet ? 24 : 20,
+  //   shadowColor: '#000',
+  //   shadowOffset: { width: 0, height: 10 },
+  //   shadowOpacity: 0.15,
+  //   shadowRadius: 20,
+  //   elevation: 10,
+  // },
+  // statsTitle: {
+  //   fontSize: isTablet ? 20 : 18,
+  //   fontWeight: '700',
+  //   color: COLORS.text,
+  //   textAlign: 'center',
+  //   marginBottom: 5,
+  // },
+  // statsContainer: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  // },
+  // overviewRow: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  // },
+  // overviewItem: {
+  //   flex: 1,
+  //   alignItems: 'center',
+  // },
+  // overviewValue: {
+  //   fontSize: isTablet ? 28 : 24,
+  //   fontWeight: '800',
+  //   color: COLORS.text,
+  //   marginBottom: 4,
+  // },
+  // overviewLabel: {
+  //   fontSize: isTablet ? 13 : 12,
+  //   color: COLORS.textLight,
+  //   fontWeight: '500',
+  // },
+  // overviewDivider: {
+  //   width: 1,
+  //   height: 40,
+  //   backgroundColor: COLORS.border,
+  // },
 
   // ========== FILTER BAR ==========
   filterBarContainer: {
@@ -2724,7 +2818,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    // marginBottom: 16,
   },
   filterButton: {
     flexDirection: 'row',
@@ -3594,212 +3688,88 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-
+  // Advanced Filter Bar Styles
+  advancedFilterWrapper: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingVertical: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+  },
+  advancedFilterScroll: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    display: 'flex',
+    flexDirection: 'row',
+  },
+  filterItemSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    height: 40,
+    minWidth: 160,
+    marginRight: 10,
+    gap: 8,
+  },
+  filterSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.text,
+    paddingVertical: 0,
+  },
+  chipsSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chipDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 2,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginRight: 6,
+  },
+  filterChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+  },
+  filterChipTextActive: {
+    color: '#fff',
+  },
+  // Dropdown Search
+  dropdownSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: '#F8FAFC',
+  },
+  dropdownSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+    marginLeft: 8,
+    paddingVertical: 4,
+  },
 });
-
-
-
-//  UserSelector component
-// const UserSelector = ({ users, selectedUser, onSelectUser }) => {
-//   const [showDropdown, setShowDropdown] = useState(false);
-
-//   return (
-//     <View style={styles.userSelectorContainer}>
-//       <TouchableOpacity
-//         style={styles.userSelectorButton}
-//         onPress={() => setShowDropdown(!showDropdown)}
-//       >
-//         <Text style={styles.userSelectorText}>
-//           {selectedUser ? selectedUser.username : 'All Users'}
-//         </Text>
-//         <Ionicons
-//           name={showDropdown ? 'chevron-up' : 'chevron-down'}
-//           size={18}
-//           color={COLORS.primary}
-//         />
-//       </TouchableOpacity>
-
-//       {showDropdown && (
-//         <ScrollView style={styles.userDropdown} nestedScrollEnabled>
-//           <TouchableOpacity
-//             onPress={() => {
-//               onSelectUser(null);
-//               setShowDropdown(false);
-//             }}
-//             style={styles.userOption}
-//           >
-//             <Text style={styles.userOptionText}>All Users</Text>
-//           </TouchableOpacity>
-
-//           {users.map(user => (
-//             <TouchableOpacity
-//               key={user.id}
-//               onPress={() => {
-//                 onSelectUser(user);
-//                 setShowDropdown(false);
-//               }}
-//               style={[
-//                 styles.userOption,
-//                 selectedUser?.id === user.id && styles.userOptionActive
-//               ]}
-//             >
-//               <View style={styles.userOptionContent}>
-//                 <View style={styles.avatar}>
-//                   <Text style={styles.avatarText}>
-//                     {user.username.charAt(0).toUpperCase()}
-//                   </Text>
-//                 </View>
-//                 <View>
-//                   <Text style={styles.userOptionText}>
-//                     {user.firstname} {user.lastname}
-//                   </Text>
-//                   <Text style={styles.userOptionUsername}>@{user.username}</Text>
-//                 </View>
-//               </View>
-//             </TouchableOpacity>
-//           ))}
-//         </ScrollView>
-//       )}
-//     </View>
-//   );
-// };
-
-// const TabSwitcher = ({ tabValue, onTabChange }) => {
-//   const tabs = ['All Tasks', 'My Tasks', 'Unplanned'];
-
-//   return (
-//     <View style={styles.tabContainer}>
-//       {tabs.map((tab, index) => (
-//         <TouchableOpacity
-//           key={index}
-//           onPress={() => onTabChange(index)}
-//           style={[
-//             styles.tab,
-//             tabValue === index && styles.tabActive
-//           ]}
-//         >
-//           <Text style={[
-//             styles.tabText,
-//             tabValue === index && styles.tabTextActive
-//           ]}>
-//             {tab}
-//           </Text>
-//         </TouchableOpacity>
-//       ))}
-//     </View>
-//   );
-// };
-
-// ========== TASK CARD COMPONENT ==========
-// function TaskCard({ task, onPress }) {
-//   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
-//   const PRIORITY_COLORS = {
-//     1: '#FF6B6B', // High - Red
-//     2: '#FFA726', // Medium - Orange
-//     3: '#4CAF50', // Low - Green
-//     'High': '#FF6B6B',
-//     'Medium': '#FFA726',
-//     'Low': '#4CAF50',
-//     'high': '#FF6B6B',
-//     'medium': '#FFA726',
-//     'low': '#4CAF50',
-//   };
-
-//   const getPriorityColor = (priority) => {
-//     const priorityLabel = getPriorityLabel(priority);
-//     return PRIORITY_COLORS[priorityLabel] || '#FFA726'; // Default to Medium orange
-//   };
-//   if (!task) return null;
-
-//   const getPriorityLabel = (priorityNum) => {
-//     if (priorityNum === null || priorityNum === undefined) return 'Medium';
-
-//     // Handle numeric values (1, 2, 3)
-//     if (typeof priorityNum === 'number') {
-//       if (priorityNum === 1) return 'High';
-//       if (priorityNum === 2) return 'Medium';
-//       if (priorityNum === 3) return 'Low';
-//     }
-
-//     // Handle string numbers ("1", "2", "3")
-//     if (typeof priorityNum === 'string') {
-//       const num = parseInt(priorityNum);
-//       if (!isNaN(num)) {
-//         if (num === 1) return 'High';
-//         if (num === 2) return 'Medium';
-//         if (num === 3) return 'Low';
-//       }
-
-//       // Handle string labels directly
-//       const lower = priorityNum.trim().toLowerCase();
-//       if (lower === 'high') return 'High';
-//       if (lower === 'medium') return 'Medium';
-//       if (lower === 'low') return 'Low';
-//     }
-
-//     console.warn('Unknown priority value:', priorityNum);
-//     return 'Medium'; // Default fallback
-//   };
-
-//   const priorityDisplay = getPriorityLabel(task.priority);
-//   const priorityColor = getPriorityColor(task.priority);
-
-//   return (
-//     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-//       <View style={styles.cardContent}>
-//         <View style={styles.employeeSection}>
-//           <Text style={styles.employeeName}>
-//             {task.employeeName || 'Unassigned'}
-//           </Text>
-//         </View>
-
-//         <View style={styles.taskSection}>
-//           <Text style={styles.taskName}>
-//             {task.name ? (task.name.length > 30 ? task.name.substring(0, 30) + '...' : task.name) : 'No Title'}
-//           </Text>
-//           <Text style={styles.projectText}>{task.Project_Title}</Text>
-//         </View>
-//         {/* <View style={[
-//           styles.priorityIndicator,
-//           { backgroundColor: PRIORITY_COLORS[task.priority] || '#64748B' }
-//         ]} /> */}
-//         <View style={styles.detailRow}>
-//           <View style={[
-//             styles.priorityBadge,
-//             {
-//               backgroundColor: `${priorityColor}15`,
-//               borderWidth: 1,
-//               borderColor: `${priorityColor}30`,
-//             }
-//           ]}>
-//             <Ionicons
-//               name={priorityDisplay === 'High' ? 'alert-circle' :
-//                 priorityDisplay === 'Medium' ? 'time' : 'checkmark-circle'}
-//               size={14}
-//               color={priorityColor}
-//               style={{ marginRight: 6 }}
-//             />
-//             <Text style={[
-//               styles.priorityBadgeText,
-//               {
-//                 color: priorityColor,
-//                 fontWeight: '800',
-//               }
-//             ]}>
-//               {priorityDisplay}
-//             </Text>
-//           </View>
-//         </View>
-
-//         <View style={styles.statusSection}>
-//           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-//           <Text style={[styles.statusText, { color: statusColor }]}>
-//             {task.status || 'Pending'}
-//           </Text>
-//         </View>
-
-//         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-//       </View>
-//     </TouchableOpacity>
-//   );
-// }

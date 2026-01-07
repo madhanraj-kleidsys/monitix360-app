@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
+import { isHolidayOrWeekend, isSecondOrFourthSaturday } from '../../utils/holidayUtils';
 import api from '../../api/client';
 
 const { width } = Dimensions.get('window');
@@ -78,6 +79,23 @@ function CalendarGrid({ month, year, holidays, onDateSelect }) {
     return holidays.some(h => h.holiday_date === dateString);
   };
 
+  const getNonWorkingStatus = (day) => {
+    if (!day) return null;
+    const date = new Date(year, month, day);
+    const dayOfWeek = date.getDay();
+
+    if (dayOfWeek === 0) return 'sunday';
+    if (isSecondOrFourthSaturday(date)) return 'nonWorkingSaturday';
+
+    const holidayDates = holidays.map(h => h.holiday_date);
+    const holidayCheck = isHolidayOrWeekend(date, holidayDates);
+    if (holidayCheck.isHoliday && holidayCheck.reason === 'a Declared Holiday') {
+      return 'declaredHoliday';
+    }
+
+    return null;
+  };
+
   const handleDayPress = (day) => {
     if (!day) return;
     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -95,40 +113,46 @@ function CalendarGrid({ month, year, holidays, onDateSelect }) {
       </View>
 
       <View style={styles.daysContainer}>
-        {days.map((day, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.dayCell,
-              day === null && styles.emptyCell,
-              day && isDateMarked(day) && styles.markedDay,
-            ]}
-            onPress={() => handleDayPress(day)}
-            disabled={day === null}
-            activeOpacity={0.7}
-          >
-            {day && (
-              <View
-                style={[
-                  styles.dayContent,
-                  isDateMarked(day) && styles.markedDayContent,
-                ]}
-              >
-                {isDateMarked(day) && (
-                  <View style={styles.markedDot} />
-                )}
-                <Text
+        {days.map((day, index) => {
+          const status = getNonWorkingStatus(day);
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.dayCell,
+                day === null && styles.emptyCell,
+                status === 'declaredHoliday' && styles.markedDay,
+                status === 'sunday' && styles.sundayCell,
+                status === 'nonWorkingSaturday' && styles.saturdayCell,
+              ]}
+              onPress={() => handleDayPress(day)}
+              disabled={day === null}
+              activeOpacity={0.7}
+            >
+              {day && (
+                <View
                   style={[
-                    styles.dayText,
-                    isDateMarked(day) && styles.markedDayText,
+                    styles.dayContent,
+                    status === 'declaredHoliday' && styles.markedDayContent,
                   ]}
                 >
-                  {day}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
+                  {status === 'declaredHoliday' && (
+                    <View style={styles.markedDot} />
+                  )}
+                  <Text
+                    style={[
+                      styles.dayText,
+                      status === 'declaredHoliday' && styles.markedDayText,
+                      (status === 'sunday' || status === 'nonWorkingSaturday') && styles.nonWorkingDayText,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -550,7 +574,7 @@ export default function AdminHolidayPage() {
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🗓️ Holidays</Text>
-          <Text style={styles.headerSubtitle}>Manage company holidays</Text>
+          <Text style={styles.headerSubtitle}>Manage company holidays !!</Text>
         </View>
       </LinearGradient>
 
@@ -562,9 +586,9 @@ export default function AdminHolidayPage() {
         {/* Calendar Info */}
         <View style={styles.infoSection}>
           <View style={styles.infoBadge}>
-            <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+            <Ionicons name="calendar" size={25} color={COLORS.success} />
             <Text style={styles.infoText}>
-              Total Holidays: <Text style={styles.infoBold}>{holidays.length}</Text>
+              Total Holidays : <Text style={styles.infoBold}>{holidays.length}</Text>
             </Text>
           </View>
         </View>
@@ -718,8 +742,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   infoText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '800',
     color: COLORS.textLight,
   },
   infoBold: {
@@ -834,6 +858,18 @@ const styles = StyleSheet.create({
   markedDayText: {
     fontWeight: '700',
     color: COLORS.danger,
+  },
+  sundayCell: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 18,
+  },
+  saturdayCell: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 18,
+  },
+  nonWorkingDayText: {
+    color: COLORS.danger,
+    fontWeight: '700',
   },
 
   // HOLIDAYS LIST

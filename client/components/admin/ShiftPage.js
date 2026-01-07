@@ -614,9 +614,10 @@ export default function AdminShiftPage() {
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            <Ionicons name="time" size={32} color="#fff" /> Shifts
+            {/* <Ionicons name="time" size={32} color="#da25b2ff" /> */}
+          ⌛Shifts
           </Text>
-          <Text style={styles.headerSubtitle}>Manage work shifts</Text>
+          <Text style={styles.headerSubtitle}>Manage Work Shift Hours !!</Text>
         </View>
       </LinearGradient>
 

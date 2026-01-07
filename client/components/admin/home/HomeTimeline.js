@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import HolidayAlert from '../../common/HolidayAlert';
 import Svg, { Defs, Pattern, Rect, Line as SvgLine } from 'react-native-svg';
+import { isHolidayOrWeekend } from '../../../utils/holidayUtils';
 
 const { width, height } = Dimensions.get('window');
 
@@ -147,9 +149,12 @@ export const DraggableTimeline = ({
   selectedDate,
   onTaskDragEnd,
   onTaskPress,
+  holidays = [],
 }) => {
   const horizontalScrollRef = useRef(null);
   const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const [showHolidayAlert, setShowHolidayAlert] = useState(false);
+  const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
 
   // Get shift times (default 9-5 if no shifts)
   const shiftTimes = useMemo(() => {
@@ -285,6 +290,14 @@ export const DraggableTimeline = ({
         const newStartIso = minToIsoDate(newStartMin);
         const newEndIso = minToIsoDate(newEndMin);
 
+        // Holiday Check
+        const holidayCheck = isHolidayOrWeekend(newStartIso, holidays);
+        if (holidayCheck.isHoliday) {
+          setHolidayAlertMessage(`Oops! You've scheduled a task on ${holidayCheck.reason}. We don't work on non-working days. Please pick another date!`);
+          setShowHolidayAlert(true);
+          return;
+        }
+
         console.log(`📝 ${changeType} result:`, {
           original: { s: task.startTime, e: task.endTime },
           new: { s: newStartIso, e: newEndIso }
@@ -376,7 +389,7 @@ export const DraggableTimeline = ({
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.employeeLabel}>
-          <Text style={styles.employeeLabelText}>Employee</Text>
+          <Text style={styles.employeeLabelText}>Staffs</Text>
         </View>
         <View style={styles.timelineInfo}>
           <Text style={styles.timelineInfoText}>
@@ -458,13 +471,17 @@ export const DraggableTimeline = ({
           )}
         </View>
       </ScrollView>
+      <HolidayAlert
+        visible={showHolidayAlert}
+        message={holidayAlertMessage}
+        onConfirm={() => setShowHolidayAlert(false)}
+      />
     </View>
   );
 };
 
-/**
- * ResizableTaskBar - Task bar with drags and resize handles
- */
+//  ResizableTaskBar - Task bar with drags and resize handles
+
 function ResizableTaskBar({
   task,
   left,
