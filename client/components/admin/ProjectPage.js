@@ -229,7 +229,9 @@ function ProjectModal({ visible, project, onClose, onSave }) {
 }
 
 // ========== MAIN PROJECTS PAGE ==========
-export default function AdminProjectPage() {
+export default function AdminProjectPage({
+  setFilteredProjectCount,
+}) {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -245,6 +247,10 @@ export default function AdminProjectPage() {
         (p.code && p.code.toLowerCase().includes(lower))
     );
   }, [projects, searchQuery]);
+
+   useEffect(() => {
+    setFilteredProjectCount(filteredProjects.length); // Update parent
+  }, [filteredProjects.length, setFilteredProjectCount]);
 
   const fetchProjects = async () => {
     try {
@@ -341,8 +347,8 @@ export default function AdminProjectPage() {
         style={styles.headerGradient}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Projects</Text>
-          <Text style={styles.headerSubtitle}>Manage all projects</Text>
+          <Text style={styles.headerTitle}>📃 Projects</Text>
+          <Text style={styles.headerSubtitle}>Manage all projects !!</Text>
         </View>
       </LinearGradient>
 
@@ -368,7 +374,8 @@ export default function AdminProjectPage() {
 
           <View style={styles.projectsSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Projects ({filteredProjects.length})</Text>
+              <Text style={styles.sectionTitle}>
+            <Ionicons name="briefcase" size={28} color={COLORS.warning} /> All Projects ({filteredProjects.length})</Text>
               <View style={styles.searchContainer}>
                 <Ionicons name="search" size={16} color={COLORS.textLight} />
                 <TextInput
@@ -413,11 +420,6 @@ export default function AdminProjectPage() {
     </View>
   );
 }
-// { id: 1, name: 'Admin Portal', code: 'AP-001' },
-// { id: 2, name: 'Mobile App Backend', code: 'MAB-002' },
-// { id: 3, name: 'Performance Enhancement', code: 'PE-003' },
-
-
 
 // ========== STYLES ==========
 const styles = StyleSheet.create({

@@ -33,7 +33,7 @@ class ApiService {
         return client.get(`/time_update/time_get/${taskId}`);
     }
 
-    getTaskReasons(taskId){
+    getTaskReasons(taskId) {
         return client.get(`/taskReasons/${taskId}`);
     }
 
@@ -79,6 +79,14 @@ class ApiService {
 
     updatePushToken(token) {
         return client.post('/users/push-token', { token });
+    }
+
+    getCompanyEmailSettings(companyId) {
+        return client.get(`/companyDetails/${companyId}/email-settings`);
+    }
+
+    updateCompanyEmailSettings(data) {
+        return client.post("/companyDetails/email-settings", data);
     }
 }
 

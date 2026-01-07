@@ -57,7 +57,7 @@ const COLORS = {
 
 // ========== VALIDATION SCHEMA ==========
 
-const DEPARTMENTS = ['Development', 'Marketing', 'Sales', 'HR', 'Finance', 'Production'];
+const DEPARTMENTS = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation', 'Marketing', 'Sales', 'HR', 'Finance', 'Production'];
 
 const validationSchema = Yup.object({
   first_name: Yup.string()
@@ -425,7 +425,7 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
                     <Ionicons name="close" size={28} color="#fff" />
                   </TouchableOpacity>
                   <Text style={styles.modalTitle}>
-                    {employee ? 'Edit Employee' : 'Add Employee'}
+                    {employee ? 'Edit Staff' : 'Add Staff'}
                   </Text>
                   <View style={{ width: 44 }} />
                 </LinearGradient>
@@ -799,8 +799,8 @@ export default function AdminEmployeePage() {
 
   const handleDeleteEmployee = employeeId => {
     Alert.alert(
-      'Delete Employee',
-      'Are you sure you want to delete this employee?',
+      'Delete Staff Member',
+      'Are you sure you want to delete this Staff member ?',
       [
         { text: 'Cancel', onPress: () => { } },
         {
@@ -813,8 +813,8 @@ export default function AdminEmployeePage() {
               await fetchEmployees();
               Alert.alert('Success', 'Employee deleted successfully');
             } catch (err) {
-              console.error('Error deleting employee', err);
-              Alert.alert('Error', 'failed to delete Employee');
+              console.error('Error deleting Staff Member', err);
+              Alert.alert('Error', 'failed to delete Staff Member');
             }
           },
         },
@@ -871,7 +871,7 @@ export default function AdminEmployeePage() {
       await fetchEmployees();
     }
     catch (err) {
-      console.error('Error saving employee', err);
+      console.error('Error saving Staff Member', err);
       const msg = getErrorMessage(err);
       // err.response?.data?.error || err.response?.data?.errors?.email || 'failed to save employee';
       Alert.alert('Error', msg);
@@ -887,8 +887,8 @@ export default function AdminEmployeePage() {
         style={styles.headerGradient}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Employees</Text>
-          <Text style={styles.headerSubtitle}>Manage all employees</Text>
+          <Text style={styles.headerTitle}>⚕️Staffs</Text>
+          <Text style={styles.headerSubtitle}>Manage all Your Staff Members !!</Text>
         </View>
       </LinearGradient>
 
@@ -900,12 +900,14 @@ export default function AdminEmployeePage() {
         <View style={styles.topSection}>
           <TouchableOpacity style={styles.addButton} onPress={handleAddEmployee}>
             <Ionicons name="add-circle" size={24} color="#fff" />
-            <Text style={styles.addButtonText}>Add New Employee</Text>
+            <Text style={styles.addButtonText}>Add New Staff</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.employeesSection}>
-          <Text style={styles.sectionTitle}>All Employees ({filteredEmployees.length})</Text>
+          <Text style={styles.sectionTitle}>
+            <Ionicons name="people" size={30} color={COLORS.danger} />  All Staffs ({filteredEmployees.length})
+          </Text>
 
           {/* FILTER & SEARCH BAR */}
           <View style={styles.filterSearchContainer}>
@@ -916,10 +918,7 @@ export default function AdminEmployeePage() {
                 style={[styles.filterChip, selectedDept && styles.filterChipActive]}
                 onPress={() => setFilterVisible(!filterVisible)} // Simple toggle for now, or custom modal
               >
-                {/* For simplicity relying on a custom picker UI below or just cycling? 
-                     User asked for "filter bar". Let's make a horizontal ScrollView of properties? 
-                     Better: Dropdown style. But to keep it simple inline:
-                 */}
+
                 <Text style={[styles.filterChipText, selectedDept && styles.filterChipTextActive]}>
                   {selectedDept || 'All Departments'}
                 </Text>
@@ -989,8 +988,8 @@ export default function AdminEmployeePage() {
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="people-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No employees yet</Text>
-              <Text style={styles.emptySubtext}>Click "Add New Employee" to create one</Text>
+              <Text style={styles.emptyText}>No Staff members yet</Text>
+              <Text style={styles.emptySubtext}>Click "Add New Staff" to create one</Text>
             </View>
           )}
         </View>

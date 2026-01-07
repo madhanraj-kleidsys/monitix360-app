@@ -1,0 +1,725 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  Alert, Image,Modal,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+// import ApiService from '../../services/ApiService';
+import api from '../../../api/client';
+import companyServices from '../services/CompanyService';
+import StyledConfirmAlert from '../../common/StyledConfirmAlert';
+import EmailSettings from './EmailSettings';
+const { width } = Dimensions.get('window');
+
+const COLORS = {
+  primary: '#0099FF',
+  secondary: '#00D4FF',
+  accent: '#6366F1',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  background: '#F8FAFC',
+  cardBg: '#FFFFFF',
+  text: '#0F172A',
+  textLight: '#64748B',
+  border: '#E2E8F0',
+};
+
+// ========== PROFILE MENU ITEM COMPONENT ==========
+function ProfileMenuItem({ icon, label, onPress, isDanger = false }) {
+  return (
+    <TouchableOpacity
+      style={styles.menuItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.menuItemLeft}>
+        <View
+          style={[
+            styles.menuIconContainer,
+            isDanger && styles.menuIconContainerDanger,
+          ]}
+        >
+          <Ionicons
+            name={icon}
+            size={20}
+            color={isDanger ? COLORS.danger : COLORS.primary}
+          />
+        </View>
+        <Text style={[styles.menuItemLabel, isDanger && styles.menuItemLabelDanger]}>
+          {label}
+        </Text>
+      </View>
+      <Ionicons
+        name="chevron-forward"
+        size={20}
+        color={isDanger ? COLORS.danger : COLORS.textLight}
+      />
+    </TouchableOpacity>
+  );
+}
+
+// ========== PROFILE STAT COMPONENT ==========
+function ProfileStat({ label, value }) {
+  return (
+    <View style={styles.statItem}>
+      <Text style={[
+        styles.statValue,
+        value === '—' && styles.statValueLoading
+      ]}>
+        {value}
+      </Text>
+      {/* <Text style={styles.statValue}>{value}</Text> */}
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ========== MAIN ADMIN PROFILE PAGE ==========
+export default function AdminProfilePage({ onLogout, user }) {
+
+  const [projectsCount, setProjectsCount] = useState(0);
+  const [employeesCount, setEmployeesCount] = useState(0);
+  const [shiftsCount, setShiftsCount] = useState(0);
+  const [holidaysCount, setHolidaysCount] = useState(0);
+  const [companyData, setCompanyData] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [emailSettingsVisible, setEmailSettingsVisible] = useState(false);
+  const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchAllStats = async () => {
+      try {
+        setLoadingStats(true);
+
+        // Fetch projects
+        const projectsRes = await api.get('/projects');
+        setProjectsCount(projectsRes.data.length);
+
+        // Fetch employees
+        const employeesRes = await api.get('/users');
+        setEmployeesCount(employeesRes.data.length);
+
+        // Fetch shifts
+        const shiftsRes = await api.get('/shifts');
+        setShiftsCount(shiftsRes.data.length);
+
+        // Fetch holidays
+        const holidaysRes = await api.get('/declare-holiday');
+        setHolidaysCount(holidaysRes.data.length);
+
+      } catch (err) {
+        console.log('Stats fetch error:', err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchAllStats();
+  }, []);
+
+
+  // ✅ Fetch company using companyServices
+  useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        if (user?.company_id) {
+          const company = await companyServices.getCompanyById(user.company_id);
+          console.log('Company fetched:', company);
+          setCompanyData({
+            name: company?.company_name || 'N/A',
+            code: company?.company_code || '—',
+          });
+        }
+      } catch (err) {
+        console.log('Company fetch error:', err);
+      }
+    };
+
+    fetchCompany();
+  }, [user?.company_id]);
+
+
+  const adminData = {
+    id: user?.id || 'N/A',
+    name: user?.username || 'Unknown',
+    email: user?.email || 'N/A',
+    role: user?.role || 'User',
+    profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'Um',
+    status: 'Active',
+    CompanyName: companyData?.name || 'Loading...',
+    CompanyCode: companyData?.code || '_',
+  }
+
+  const stats = useMemo(() => ({
+    employees: loadingStats ? '—' : employeesCount,
+    projects: loadingStats ? '—' : projectsCount,
+    shifts: loadingStats ? '—' : shiftsCount,
+    holidays: loadingStats ? '—' : holidaysCount,
+  }), [loadingStats, projectsCount, employeesCount, shiftsCount, holidaysCount]);
+
+  // console.log('Stats object:', stats);
+  // console.log('Company data:', companyData);
+ 
+  const handleEmailSettings = () => {
+    setEmailSettingsVisible(true);
+  };
+  const handleEditProfile = () => {
+    Alert.alert('Edit Profile', 'Coming in next update !');
+  };
+
+  const handleNotifications = () => {
+    Alert.alert('Notifications', 'No new notifications');
+  };
+
+  const handleSettings = () => {
+    Alert.alert('Settings', 'Version 1.0.0');
+  };
+
+  const handleHelpSupport = () => {
+    Alert.alert(
+      'Help & Support',
+      'Contact: support@kleidsys.com\nPhone: +91-9876543210'
+    );
+  };
+
+  const handleLogout = () => {
+    setLogoutAlertVisible(true);
+    // Alert.alert(
+    //   'Logout',
+    //   'Are you sure you want to logout?',
+    //   [
+    //     { text: 'Cancel', onPress: () => { } },
+    //     {
+    //       text: 'Logout',
+    //       onPress: () => {
+    //         onLogout();
+    //       },
+    //       style: 'destructive',
+    //     },
+    //   ]
+    // );
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Profile Header */}
+        <LinearGradient
+          colors={['#00D4FF', '#0099FF', '#667EEA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.profileHeader}>
+            {/* Avatar */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                {/* <Text style={styles.avatarText}>{adminData.profileInitial}</Text> */}
+                <Image
+                  source={require('../../../assets/admin.png')}
+                  resizeMode="cover"
+                  style={styles.priorityCircle}
+                />
+              </View>
+            </View>
+
+            {/* Profile Info */}
+            <Text style={styles.profileName}>{adminData.name}</Text>
+            <Text style={styles.profileRole}>{adminData.CompanyName}</Text>
+
+            {/* Status Badge */}
+            {/* <View style={styles.statusBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>{adminData.status}</Text>
+            </View> */}
+          </View>
+
+          {/* Profile Stats */}
+          <View style={styles.statsContainer}>
+            <ProfileStat label="Employees" value={stats.employees} />
+            <ProfileStat label="Projects" value={stats.projects} />
+            <ProfileStat label="Shifts" value={stats.shifts} />
+            <ProfileStat label="Holidays" value={stats.holidays} />
+          </View>
+        </LinearGradient>
+
+
+
+        {/* Admin Info Card */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoCardTitle}>Admin Information</Text>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="id-card" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Admin ID</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.id}</Text>
+          </View>
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="card" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Company Code</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.CompanyCode}</Text>
+          </View>
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="business-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Company Name</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.CompanyName}</Text>
+          </View>
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="mail" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Email Id</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.email}</Text>
+          </View>
+          <View style={styles.divider} />
+          {/* <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="briefcase" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Department</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.department}</Text>
+          </View> */}
+
+          {/* <View style={styles.divider} /> */}
+
+          {/* <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="calendar" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Join Date</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.joinDate}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="lock-closed" size={16} color={COLORS.primary} />
+              <Text style={styles.infoLabelText}>Permissions</Text>
+            </View>
+            <Text style={styles.infoValue}>{adminData.permissions}</Text>
+          </View> */}
+        </View>
+
+        {/* Menu Section */}
+        <View style={styles.menuSection}>
+          <ProfileMenuItem
+            icon="mail"
+            label="Email Settings"
+            onPress={handleEmailSettings}
+            isDanger={false}
+          />
+
+          <ProfileMenuItem
+            icon="person-circle"
+            label="Edit Profile"
+            onPress={handleEditProfile}
+          />
+
+          <ProfileMenuItem
+            icon="notifications"
+            label="Notifications"
+            onPress={handleNotifications}
+          />
+
+          <ProfileMenuItem
+            icon="settings"
+            label="Settings"
+            onPress={handleSettings}
+          />
+
+          <ProfileMenuItem
+            icon="help-circle"
+            label="Help & Support"
+            onPress={handleHelpSupport}
+          />
+
+          <ProfileMenuItem
+            icon="log-out"
+            label="Logout"
+            onPress={handleLogout}
+            isDanger={true}
+          />
+
+          <StyledConfirmAlert
+            visible={logoutAlertVisible}
+            title="Logout"
+            message="Are you sure !! you want to logout from your account?"
+            confirmText="Logout"
+            cancelText="Cancel"
+            type="danger"
+            onConfirm={() => {
+              setLogoutAlertVisible(false);
+              if (onLogout) onLogout();
+            }}
+            onCancel={() => setLogoutAlertVisible(false)}
+          />
+
+        </View>
+
+        {/* Version Info */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionSubtext}>© 2025 Kleidsys Technologies</Text>
+        </View>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      {/* ✅ Email Settings Modal - Built-in Modal */}
+      {/* <Modal
+        animationType="slide"
+        visible={emailSettingsVisible}
+        transparent={true}
+        onRequestClose={() => setEmailSettingsVisible(false)}
+        style={styles.emailModal}
+      >
+        <View style={styles.modalOverlay}>
+        
+          <View style={styles.emailModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Oc</Text>
+              <TouchableOpacity
+                onPress={() => setEmailSettingsVisible(false)}
+                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              >
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+          
+          </View>
+          
+        </View>
+      </Modal> */}
+
+        <EmailSettings
+              companyId={user?.company_id}
+              onClose={() => setEmailSettingsVisible(false)}
+            />
+
+    </View>
+  );
+}
+
+// ========== STYLES ==========
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  // SCROLL CONTENT
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
+  },
+
+  // HEADER GRADIENT
+  headerGradient: {
+    paddingTop: 40,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileHeader: {
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  // AVATAR
+  avatarContainer: {
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 3,
+    borderColor: '#ffffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatarText: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  priorityCircle: {
+    width: 110,
+    height: 100,
+    borderRadius: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+
+  // PROFILE INFO
+  profileName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginBottom: 8,
+  },
+  profileRole: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+    // marginBottom: 12,
+  },
+
+  // STATUS BADGE
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.success,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // STATS CONTAINER
+  statsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 20,
+    // marginBottom: 24,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    padding: 13,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  statValueLoading: {
+    opacity: 0.6,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    textAlign: 'center',
+  },
+
+  // INFO CARD
+  infoCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 10,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoCardTitle: {
+    alignItems: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  infoLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoLabelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+
+  // MENU SECTION
+  menuSection: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  menuIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: `${COLORS.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuIconContainerDanger: {
+    backgroundColor: `${COLORS.danger}15`,
+  },
+  menuItemLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  menuItemLabelDanger: {
+    color: COLORS.danger,
+  },
+
+  // VERSION INFO
+  versionContainer: {
+    alignItems: 'center',
+    marginBottom: 60,
+  },
+  versionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+  },
+  versionSubtext: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textLight,
+    marginTop: 4,
+  },
+
+  emailModal: {
+    justifyContent: 'flex-end',
+    margin: 0,
+  },
+  emailModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+    paddingTop: 12,
+  },
+  modalOverlay: {
+    // flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  emailModalContent: {
+    backgroundColor: COLORS.cardBg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+
+});

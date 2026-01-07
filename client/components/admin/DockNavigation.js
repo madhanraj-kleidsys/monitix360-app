@@ -21,7 +21,7 @@ const COLORS = {
 const DOCK_ITEMS = [
   { id: 'AdminHome', label: 'Home', icon: 'home' },
   { id: 'AdminProjects', label: 'Projects', icon: 'briefcase' },
-  { id: 'AdminEmployees', label: 'Employees', icon: 'people' },
+  { id: 'AdminEmployees', label: 'Staffs', icon: 'people' },
   { id: 'AdminHolidays', label: 'Holidays', icon: 'calendar' },
   { id: 'AdminShift', label: 'Shift', icon: 'time' },
   { id: 'AdminProfile', label: 'Profile', icon: 'person-circle' },

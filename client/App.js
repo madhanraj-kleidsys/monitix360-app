@@ -19,7 +19,8 @@ import AdminProjectPage from './components/admin/ProjectPage';
 import AdminEmployeePage from './components/admin/EmployeePage';
 import AdminHolidayPage from './components/admin/HolidayPage';
 import AdminShiftPage from './components/admin/ShiftPage';
-import AdminProfilePage from './components/admin/ProfilePage';
+import AdminProfilePage from './components/admin/profile/ProfilePage';
+import PremiumAlert from './components/common/PremiumAlert';
 
 
 // employees pages 
@@ -35,7 +36,7 @@ const Tab = createBottomTabNavigator();
 // ========== ADMIN MAIN TABS ==========
 function AdminMainTabs({ onLogout, user, userCompany }) {
   const [activeScreen, setActiveScreen] = useState('home');
-
+  const [filteredProjectCount, setFilteredProjectCount] = useState(0);
   const handleTabPress = (id) => {
     setActiveScreen(id);
   };
@@ -45,19 +46,29 @@ function AdminMainTabs({ onLogout, user, userCompany }) {
         tabBar={(props) => <AdminDockNavigation {...props} onLogout={onLogout}
           activeScreen={activeScreen}
           onTabPress={handleTabPress}
+          filteredProjectCount={filteredProjectCount}
         />}
         screenOptions={{ headerShown: false }}
       >
 
         <Tab.Screen name="AdminHome" component={AdminHomePage} />
-        <Tab.Screen name="AdminProjects" component={AdminProjectPage} />
+        <Tab.Screen name="AdminProjects">
+          {(props) => (
+            <AdminProjectPage
+              {...props}
+              setFilteredProjectCount={setFilteredProjectCount} // Pass setter function as a prop
+            />
+          )}
+        </Tab.Screen>
         <Tab.Screen name="AdminEmployees" component={AdminEmployeePage} />
         <Tab.Screen name="AdminHolidays" component={AdminHolidayPage} />
         <Tab.Screen name="AdminShift" component={AdminShiftPage} />
         <Tab.Screen name="AdminProfile">
           {(props) => <AdminProfilePage {...props} onLogout={onLogout}
             user={user}
-            userCompany={userCompany} />}
+            userCompany={userCompany} 
+            filteredProjectCount={filteredProjectCount}
+            />}
         </Tab.Screen>
       </Tab.Navigator>
 
@@ -67,7 +78,7 @@ function AdminMainTabs({ onLogout, user, userCompany }) {
 }
 
 // ========== EMPLOYEE MAIN TABS ==========
-function EmployeeMainTabs({ onLogout, user }) {
+function EmployeeMainTabs({ onLogout, user, userCompany }) {
   const [activeScreen, setActiveScreen] = useState('home');
 
   const handleTabPress = (id) => {
@@ -75,25 +86,26 @@ function EmployeeMainTabs({ onLogout, user }) {
   };
   return (
     <>
-    <Tab.Navigator
-      tabBar={(props) => <DockNavigation {...props}
-        activeScreen={activeScreen}
-        onTabPress={handleTabPress}
-      />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tab.Screen name="Home" >
-        {(props) => <HomePage {...props} user={user} />}
-      </Tab.Screen>
-      <Tab.Screen name="Tasks">
-        {(props) => <TaskScreen {...props} user={user} />}
-      </Tab.Screen>
-      <Tab.Screen name="Progress" component={ProgressPage} />
-      <Tab.Screen name="Profile">
-        {(props) => <ProfilePage {...props} onLogout={onLogout}
-          user={user} />}
-      </Tab.Screen>
-    </Tab.Navigator>
+      <Tab.Navigator
+        tabBar={(props) => <DockNavigation {...props}
+          activeScreen={activeScreen}
+          onTabPress={handleTabPress}
+        />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Home" >
+          {(props) => <HomePage {...props} user={user} />}
+        </Tab.Screen>
+        <Tab.Screen name="Tasks">
+          {(props) => <TaskScreen {...props} user={user} />}
+        </Tab.Screen>
+        <Tab.Screen name="Progress" component={ProgressPage} />
+        <Tab.Screen name="Profile">
+          {(props) => <ProfilePage {...props} onLogout={onLogout}
+            user={user}
+            userCompany={userCompany} />}
+        </Tab.Screen>
+      </Tab.Navigator>
     </>
   );
 }
@@ -107,6 +119,7 @@ export default function App() {
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userCompany, setUserCompany] = useState(null);
+  const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info' });
 
   // Check for saved token + user on app start
   useEffect(() => {
@@ -153,7 +166,12 @@ export default function App() {
     const sub = DeviceEventEmitter.addListener('logout', () => {
       setUser(null);      // existing state
       setToken(null);
-      Alert.alert('Logged out', 'Your session has expired. Please log in again.');
+      setAlertConfig({
+        visible: true,
+        title: 'Session Expired 🔒',
+        message: 'Your session has timed out for your security. Please log in again to continue.',
+        type: 'warning'
+      });
     });
     return () => sub.remove();
   }, []);
@@ -187,7 +205,6 @@ export default function App() {
                     // Save BOTH token AND user data
                     await AsyncStorage.setItem('authToken', jwt);
                     await AsyncStorage.setItem('userData', JSON.stringify(userData));
-
                     setUser(userData);
                     setToken(jwt);
                   }}
