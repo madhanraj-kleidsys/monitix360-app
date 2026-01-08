@@ -124,6 +124,30 @@ export const scheduleActiveTaskReminder = async (user, taskId, taskName) => {
     }
 };
 
+export const showStickyTaskNotification = async (user, taskId, taskName) => {
+    try {
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: `Task in Progress: ${taskName} 🚀`,
+                body: `Hey ${user.username}, your timer is running. Keep up the good work!`,
+                data: { taskId, type: 'sticky_timer' },
+                sound: false,
+                priority: Notifications.AndroidImportance.HIGH,
+                android: {
+                    channelId: 'default',
+                    sticky: true,
+                    autoDismiss: false,
+                    ongoing: true,
+                    color: '#1E5A8E'
+                },
+            },
+            trigger: null,
+        });
+    } catch (err) {
+        console.error('❌ showStickyTaskNotification Error:', err);
+    }
+};
+
 export const cancelNotification = async (id) => {
     if (!id) return;
     try {
@@ -135,12 +159,17 @@ export const cancelNotification = async (id) => {
 
 export const cancelAllTaskNotifications = async (taskId) => {
     try {
+        // Cancel scheduled ones
         const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         for (const notif of scheduled) {
             if (notif.content.data?.taskId === taskId) {
                 await Notifications.cancelScheduledNotificationAsync(notif.identifier);
             }
         }
+        // Dismiss already shown ones (including sticky ones)
+        await Notifications.dismissAllNotificationsAsync();
+        // Note: dismissal is collective here as expo doesn't easily let us find by taskId in dismissed
+        // But for this app, it's usually one active task at a time.
     } catch (err) {
         console.error('❌ cancelAllTaskNotifications Error:', err);
     }
