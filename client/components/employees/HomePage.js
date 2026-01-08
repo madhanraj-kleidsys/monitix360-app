@@ -78,6 +78,8 @@ export default function HomePage({ user }) {
     setupNotifications();
   }, [fetchStats]);
 
+  const [currentStatusFilter, setCurrentStatusFilter] = useState('');
+
   // WebSocket for live notifications list
   useEffect(() => {
     console.log('🏠 HomePage Socket Effect:', { socket: !!socket, isConnected, userId: user?.id });
@@ -137,14 +139,14 @@ export default function HomePage({ user }) {
     return 'Good Evening! 👋🏻';
   };
 
-  const statsDisplay = [
-    { label: 'Total Tasks', value: taskStats.total, icon: 'list', color: COLORS.primary, bgColor: '#1E5A8E15' },
-    { label: 'Pending', value: taskStats.pending, icon: 'alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
-    { label: 'completed', value: taskStats.completed, icon: 'checkmark-circle', color: COLORS.success, bgColor: '#10B98115' },
-    { label: 'In Progress', value: taskStats.inProgress, icon: 'time', color: COLORS.warning, bgColor: '#F59E0B15' },
-    { label: 'Paused', value: taskStats.paused, icon: 'pause-circle', color: COLORS.danger, bgColor: '#EF444415' },
-    { label: 'In complete', value: taskStats.incomplete, icon: 'close-alert-circle', color: COLORS.danger, bgColor: '#EF444415' },
-  ];
+  const statsDisplay = useMemo(() => [
+    { label: 'Total', value: taskStats.total, icon: 'list', color: COLORS.primary, key: '' },
+    { label: 'Pending', value: taskStats.pending, icon: 'alert-circle', color: COLORS.danger, key: 'Pending' },
+    { label: 'completed', value: taskStats.completed, icon: 'checkmark-circle', color: COLORS.success, key: 'completed' },
+    { label: 'In Progress', value: taskStats.inProgress, icon: 'time', color: COLORS.warning, key: 'In Progress' },
+    { label: 'Paused', value: taskStats.paused, icon: 'pause-circle', color: COLORS.danger, key: 'Paused' },
+    { label: 'In complete', value: taskStats.incomplete, icon: 'close-alert-circle', color: COLORS.danger, key: 'In complete' },
+  ], [taskStats]);
 
   const headerComponent = useMemo(() => (
     <View>
@@ -159,10 +161,6 @@ export default function HomePage({ user }) {
             <View>
               <Text style={styles.greeting}>{getGreeting()}</Text>
               <Text style={styles.userName}>{user?.username || 'Unknown'} </Text>
-              {/* <View style={styles.statusBadge}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Online</Text>
-              </View> */}
             </View>
             <TouchableOpacity style={styles.profileContainer} onPress={() => setNotifVisible(true)}>
               <LinearGradient colors={['#FFFFFF', '#F0F9FF']} style={styles.avatar}>
@@ -176,38 +174,26 @@ export default function HomePage({ user }) {
             </TouchableOpacity>
           </View>
 
-          {/* <View style={styles.statsOverviewCard}>
-            <Text style={styles.statsTitle}> Today Stats</Text>
-            <View style={styles.overviewRow}>
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>75%</Text>
-                <Text style={styles.overviewLabel}>Completion</Text>
-              </View>
-              <View style={styles.overviewDivider} />
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>1hrs</Text>
-                <Text style={styles.overviewLabel}>Time Saved</Text>
-              </View>
-              <View style={styles.overviewDivider} />
-              <View style={styles.overviewItem}>
-                <Text style={styles.overviewValue}>98%</Text>
-                <Text style={styles.overviewLabel}>Efficiency</Text>
-              </View>
-            </View>
-          </View> */}
-
           <View style={styles.statsOverviewCard}>
             <Text style={styles.statsTitle}>Today Stats</Text>
             <View style={styles.overviewRow}>
               {statsDisplay.map((stat, index) => (
-                <View key={index} style={styles.overviewItemWrapper}>
-                  <View style={styles.overviewItem}>
+                <TouchableOpacity
+                  key={index}
+                  style={styles.overviewItemWrapper}
+                  onPress={() => setCurrentStatusFilter(stat.key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.overviewItem,
+                    currentStatusFilter === stat.key && { backgroundColor: `${stat.color}15`, borderRadius: 12 }
+                  ]}>
                     <Text style={[styles.overviewValue, { color: stat.color }]}>
                       {stat.value}
                     </Text>
-                    <Text style={styles.overviewLabel}>{stat.label}</Text>
+                    <Text style={[styles.overviewLabel, { fontSize: 9 }]}>{stat.label}</Text>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -216,20 +202,34 @@ export default function HomePage({ user }) {
 
       <View style={styles.contentPadding}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My Tasks</Text>
-          <TouchableOpacity onPress={() => { console.log('Refreshing stats...'); fetchStats(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="refresh" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>
+            {currentStatusFilter ? `${currentStatusFilter} Tasks` : 'My Tasks'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 15, alignItems: 'center' }}>
+            {currentStatusFilter !== '' && (
+              <TouchableOpacity onPress={() => setCurrentStatusFilter('')} style={{ backgroundColor: COLORS.danger + '20', padding: 4, borderRadius: 12 }}>
+                <Ionicons name="close" size={16} color={COLORS.danger} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => {
+              console.log('Refreshing stats...');
+              fetchStats();
+            }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="refresh" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
-  ), [taskStats, notifications.length, user, fetchStats]);
+  ), [taskStats, notifications.length, user, fetchStats, currentStatusFilter]);
 
   return (
     <View style={styles.container}>
       <TaskPage
         user={user}
         ListHeaderComponent={headerComponent}
+        initialFilter={currentStatusFilter}
       />
 
       <NotificationModal

@@ -185,7 +185,20 @@ const User = sequelize.define("users", {
     type: DataTypes.STRING,
     allowNull: true
   },
+  is_admin: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
 
+  reset_token: {
+  type: DataTypes.STRING,
+  allowNull: true,
+},
+
+reset_token_expiry: {
+  type: DataTypes.DATE,
+  allowNull: true,
+},
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
+import StyledConfirmAlert from '../common/StyledConfirmAlert';
 
 const COLORS = {
   primary: '#1E5A8E',
+  secondary: '#0099FF',
   background: '#f8fafc',
   // cardBg: '#a00404ff',
   cardBg: '#FFFFFF',
@@ -14,10 +17,12 @@ const COLORS = {
   danger: '#EF4444',
 };
 
-export default function ProfilePage({ onLogout, user }) {
+export default function ProfilePage({ onLogout, user, userCompany }) {
+  const [logoutAlertVisible, setLogoutAlertVisible] = React.useState(false);
+
   const menuItems = [
     { icon: 'person-outline', label: 'Edit Profile', color: COLORS.primary, action: () => { } },
-    { icon: 'notifications-outline', label: 'Notifications', color: COLORS.primary, action: () => { } },
+    // { icon: 'notifications-outline', label: 'Notifications', color: COLORS.primary, action: () => { } },
     { icon: 'settings-outline', label: 'Settings', color: COLORS.primary, action: () => { } },
     { icon: 'help-circle-outline', label: 'Help & Support', color: COLORS.primary, action: () => { } },
     {
@@ -25,42 +30,22 @@ export default function ProfilePage({ onLogout, user }) {
       label: 'Logout',
       color: COLORS.danger,
       action: () => {
-        Alert.alert(
-          'Logout',
-          "Are you sure you want to logout?",
-          [
-            {
-              text: 'Cancel',
-              onPress: () => { },
-              style: 'cancel',
-            },
-            {
-              text: 'Logout',
-              onPress: () => {
-                if (onLogout) { onLogout(); }
-              },
-              style: 'destructive',
-            }
-          ]
-        )
-        // if (onLogout) {
-        //   onLogout();   // This will set isLoggedIn(false) in App.js and show Login ----------/\-------
-        // }
+        setLogoutAlertVisible(true);
       },
     },
   ];
 
   const employeeData = {
-    id: user?.id || 'N/A',
-    name: user?.username || 'Unknown',
+    id: user?.user_code || 'N/A',
+    name: `${user?.username || 'Unknown'} ${user?.last_name || ''}`.trim(),
     email: user?.email || 'N/A',
     role: user?.role || 'User',
     profileInitial: user?.username?.charAt(0)?.toUpperCase() || 'U',
-    department: 'Management',
-    joinDate: 'Jan 2024',
-    permissions: 'Full Access',
+    department: user?.department || 'General',
+    contact_number: user?.contact_no || 'N/A',
     status: 'Active',
-    Company: user?.company_id || 'N/A',
+    CompanyName: userCompany?.company_name || 'N/dA',
+    CompanyCode: userCompany?.company_code || 'N/dA',
   };
 
   const handleEditProfile = () => {
@@ -73,7 +58,7 @@ export default function ProfilePage({ onLogout, user }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
+{/*   <LinearGradient
         // colors={['#00D4FF', '#0099FF', '#4facfe']}
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
@@ -82,39 +67,93 @@ export default function ProfilePage({ onLogout, user }) {
       >
         <View style={styles.header}>
           <View style={styles.avatarLarge}>
-            {/* <Text style={styles.avatarLargeText}>{employeeData.profileInitial}</Text> */}
+            <Text style={styles.avatarLargeText}>{employeeData.profileInitial}</Text>
             <Image
-              source={
-                employeeData.email === 'madhanraj@kleidsys.com'
-                  ? require('../../assets/user!.jpg')
-                  : require('../../assets/pic.jpg')
-              }
+              source={require('../../assets/usericon.png')}
               resizeMode="cover"
               style={styles.priorityCircle}
             />
           </View>
           <Text style={styles.profileName}>{employeeData.name}</Text>
-          <Text style={styles.profileEmail}>Email : {employeeData.email}</Text>
-          <Text style={styles.profileRole}>Role : {employeeData.role}</Text>
-        </View>
-      </LinearGradient>
+          <Text style={styles.profileRole}>{employeeData.CompanyName}</Text>
 
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>10</Text>
+              <Text style={styles.statLabel}>Tasks</Text>
+            </View>
+            <View style={styles.dividing} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>8</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+            <View style={styles.dividing} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>156h</Text>
+              <Text style={styles.statLabel}>Total Time</Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient> */}
+      
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>10</Text>
-            <Text style={styles.statLabel}>Tasks</Text>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoCardTitle}>Your Information</Text>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="id-card" size={16} color={COLORS.secondary} />
+              <Text style={styles.infoLabelText}>Staff ID</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.id}</Text>
           </View>
           <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>8</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+
+          {/* <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="card" size={16} color={COLORS.secondary} />
+              <Text style={styles.infoLabelText}>Company Code</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.CompanyCode}</Text>
+          </View>
+          <View style={styles.divider} /> */}
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="business-outline" size={16} color={COLORS.secondary} />
+              <Text style={styles.infoLabelText}>Company Name</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.CompanyName}</Text>
           </View>
           <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>156h</Text>
-            <Text style={styles.statLabel}>Total Time</Text>
+
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="mail" size={16} color={COLORS.secondary} />
+              <Text style={styles.infoLabelText}>Email Id</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.email}</Text>
           </View>
+
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <Ionicons name="briefcase" size={16} color={COLORS.secondary} />
+              <Text style={styles.infoLabelText}>Department</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.department}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <View style={styles.infoLabel}>
+              <FontAwesome name="phone" size={18} color={COLORS.secondary} />
+              {/* <Ionicons name="phone-portrait-outline" size={16} color={COLORS.secondary} /> */}
+              <Text style={styles.infoLabelText}>Contact Number</Text>
+            </View>
+            <Text style={styles.infoValue}>{employeeData.contact_number}</Text>
+          </View>
+
+          <View style={styles.divider} />
         </View>
 
         <View style={styles.menuSection}>
@@ -136,6 +175,20 @@ export default function ProfilePage({ onLogout, user }) {
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      <StyledConfirmAlert
+        visible={logoutAlertVisible}
+        title="Logout"
+        message="Are you sure !! you want to logout from your account?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={() => {
+          setLogoutAlertVisible(false);
+          if (onLogout) onLogout();
+        }}
+        onCancel={() => setLogoutAlertVisible(false)}
+      />
     </View>
   );
 }
@@ -163,8 +216,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
   },
   avatarLarge: {
-    width: 100,
-    height: 100,
+    width: 90,
+    height: 90,
     borderRadius: 50,
     // backgroundColor: COLORS.primary,
     backgroundColor: '#00d5ffe1',
@@ -181,7 +234,7 @@ const styles = StyleSheet.create({
   },
   priorityCircle: {
     width: 120,
-    height: 120,
+    height: 130,
     borderRadius: 80,
     justifyContent: 'center',
     alignItems: 'center',
@@ -206,18 +259,70 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   profileRole: {
-    fontSize: 10,
+    fontSize: 15,
     // color: COLORS.primary,
     color: '#fff',
-    fontWeight: '400',
+    fontWeight: '700',
   },
   content: {
     flex: 1,
     marginTop: 20,
   },
+
+  // INFO CARD
+  infoCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 10,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoCardTitle: {
+    alignItems: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  infoLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoLabelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+
+  // STATS ROW
   statsRow: {
     flexDirection: 'row',
     backgroundColor: COLORS.cardBg,
+    marginTop: 20,
     marginHorizontal: 20,
     borderRadius: 16,
     padding: 20,
@@ -241,7 +346,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textLight,
   },
-  divider: {
+  dividing: {
     width: 1,
     backgroundColor: COLORS.border,
   },
