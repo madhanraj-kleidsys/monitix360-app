@@ -131,19 +131,48 @@ function startReminderTicker() {
                         }
                     }
 
-                    console.log(`⏱️ Companies on break: ${Object.keys(companyBreakMap).length}`);
+                    // Check for Shift End
+                    const shiftEndMap = {};
+                    for (const shift of shifts) {
+                        const sEnd = norm(shift.shift_end);
+                        if (shift.shift_end && currentHM >= sEnd) {
+                            shiftEndMap[shift.company_id] = true;
+                            console.log(`🛑 Shift Ended for Company ${shift.company_id}`);
+                        }
+                    }
+
+                    console.log(`⏱️ Companies on break: ${Object.keys(companyBreakMap).length}, Shift Ended: ${Object.keys(shiftEndMap).length}`);
 
                     // Process tasks for auto-pause
                     for (const task of activeTasks) {
                         const activeBreak = companyBreakMap[task.company_id];
+                        const shiftEnded = shiftEndMap[task.company_id];
 
                         // Skip if already processed or already paused
                         if (processedPauseTasks.has(task.id)) continue;
                         if (task.status === 'Paused') continue;
-                        if (!activeBreak) continue;
+
+                        let pauseReason = null;
+                        if (shiftEnded) pauseReason = "Shift Ended";
+                        else if (activeBreak) pauseReason = activeBreak.break_type || 'Break';
+
+                        if (!pauseReason) continue;
 
                         // Mark as processed
                         processedPauseTasks.add(task.id);
+
+                        // Check for duplicate reason in last 2 minutes
+                        const duplicateReason = await TaskReason.findOne({
+                            where: {
+                                task_id: task.id,
+                                reason: pauseReason,
+                                createdAt: { [Op.gt]: new Date(Date.now() - 2 * 60 * 1000) }
+                            }
+                        });
+                        if (duplicateReason) {
+                            console.log(`⚠️ Skipping duplicate pause reason for task ${task.id}: ${pauseReason}`);
+                            continue;
+                        }
 
                         const start = new Date(task.timer_start);
                         const sessionElapsed = Math.floor((now - start) / 1000);
@@ -152,8 +181,9 @@ function startReminderTicker() {
                         // Create TaskReason with proper fields
                         await TaskReason.create({
                             task_id: task.id,
+                            task_id: task.id,
                             reason_type: 3, // 3 = pause_reason
-                            reason: activeBreak.break_type || 'Break',
+                            reason: pauseReason,
                             company_id: task.company_id,
                             user_id: task.assigned_to
                         });
@@ -167,7 +197,7 @@ function startReminderTicker() {
                         }, { where: { id: task.id }, hooks: false });
 
                         const updatedTask = await Task.findByPk(task.id);
-                        console.log(`⏸️ Auto-paused task ${task.id} for ${activeBreak.break_type}`);
+                        console.log(`⏸️ Auto-paused task ${task.id} for ${pauseReason}`);
 
                         // Emit socket event
                         try {
@@ -175,7 +205,7 @@ function startReminderTicker() {
                             if (io) {
                                 const taskData = updatedTask.get({ plain: true });
                                 io.to(`user_${task.assigned_to}`).emit('task:updated', taskData);
-                                io.to(`user_${task.assigned_to}`).emit('break:started', { break: activeBreak, taskId: task.id });
+                                io.to(`user_${task.assigned_to}`).emit('break:started', { break: activeBreak || { break_type: pauseReason }, taskId: task.id });
                             }
                         } catch (e) { console.error("Socket error:", e); }
 
@@ -198,7 +228,7 @@ function startReminderTicker() {
             });
 
             // Manual pause reasons that should NOT auto-resume unless it's a designated break
-            const manualPauseReasons = ['Call', 'Technical issue', 'Meeting', 'Shift over', 'Other', 'Personal Break'];
+            const manualPauseReasons = ['Call', 'Technical issue', 'Meeting', 'Shift over', 'Other', 'Personal Break', 'Shift Ended'];
 
             if (pausedTasks.length > 0) {
                 const companyIds = [...new Set(pausedTasks.map(t => t.company_id).filter(id => !!id))];
@@ -481,7 +511,9 @@ function startReminderTicker() {
                 const lastSent = lastNotificationSent.get(`paused_user_${userId}`);
                 if (lastSent && (now - lastSent) < NOTIFICATION_COOLDOWN_MS) continue;
 
-                const displayTitle = tasks.length > 1 ? `${tasks.length} Paused Tasks` : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+                const displayTitle = tasks.length > 1
+                    ? tasks.map(t => t.title || t.project_title || t.Project_Title).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '')
+                    : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
 
                 await sendPushNotification(
                     user.expo_push_token,

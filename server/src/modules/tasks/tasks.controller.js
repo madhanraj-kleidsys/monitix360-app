@@ -18,10 +18,19 @@ const {
   findUnplannedTask,
   updateUnplanned,
   deleteUnplanned,
+  insertUserTask,
+  getPendingTasks,
+  updateApprovalStatus,
+  getApprovedTasks,
+  getUserNotificationsQuery,
+  deleteUserNotificationQuery,
+  updateTaskReason,
+  getLastEndTimeByUser
 } = require("../tasks/tasks.model");
 
 const { sendTaskEmail } = require("../tasks/utils/emailTamplate");
 const { getIO } = require("../../socket/socket");
+const { Company } = require("../../config/db");
 
 // ---------------------------------------------
 // CREATE TASK
@@ -62,19 +71,76 @@ exports.createNewTask = async (req, res) => {
     const assignedUser = await findUserById(assigned_to, req.user.company_id);
 
     if (assignedUser?.email) {
+      // 1. Fetch Company Credentials
+      let companyCredentials = null;
+      try {
+        const company = await Company.findByPk(req.user.company_id);
+        if (company && company.email_user && company.email_pass) {
+          companyCredentials = {
+            email_user: company.email_user,
+            email_pass: company.email_pass
+          };
+        }
+      } catch (e) { console.warn("Could not fetch company creds for task email", e); }
+
+      // 2. Format Priority
+      let priorityText = "Unknown";
+      if (Number(priority) === 1) priorityText = "High";
+      if (Number(priority) === 2) priorityText = "Medium";
+      if (Number(priority) === 3) priorityText = "Low";
+
       const subject = `New Task Assigned: ${title}`;
+
+      // 3. Professional HTML Template
       const html = `
-          <h3>Hello ${assignedUser.username},</h3>
-          <p>You have been assigned a new task:</p>
-          <ul>
-            <li><strong>Project:</strong> ${Project_Title}</li>
-            <li><strong>Designation:</strong> ${title}</li>
-            <li><strong>Description:</strong> ${description}</li>
-            <li><strong>Priority:</strong> ${priority}</li>
-            <li><strong>Schedule:</strong> ${start} to ${end_time}</li>
-          </ul>
-        `;
-      await sendTaskEmail(assignedUser.email, subject, html);
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #0099FF; padding: 20px; text-align: center;">
+                <h2 style="color: #ffffff; margin: 0; font-size: 24px;">New Task Assignment</h2>
+            </div>
+            
+            <div style="padding: 30px;">
+                <p style="font-size: 16px; color: #333;">Hello <strong>${assignedUser.username}</strong>,</p>
+                <p style="font-size: 16px; color: #555; line-height: 1.5;">You have been assigned a new task. Please review the details below:</p>
+                
+                <div style="background-color: #f8f9fa; border-left: 4px solid #0099FF; padding: 15px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 10px 0; color: #0099FF; font-size: 18px;">${title}</h3>
+                    <p style="margin: 0; color: #666; font-size: 14px;">${Project_Title}</p>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; width: 140px; color: #666; font-weight: bold;">Priority</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">
+                            <span style="background-color: ${priorityText === 'High' ? '#ffebee' : priorityText === 'Medium' ? '#fff3e0' : '#e3f2fd'}; color: ${priorityText === 'High' ? '#c62828' : priorityText === 'Medium' ? '#ef6c00' : '#1565c0'}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                                ${priorityText}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Description</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">${description}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Schedule</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">
+                            <div>Start: ${new Date(start).toLocaleString()}</div>
+                            <div>End: ${new Date(end_time).toLocaleString()}</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="${process.env.FRONTEND_URL || '#'}" style="background-color: #0099FF; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">View Task in App</a>
+                </div>
+            </div>
+            
+            <div style="background-color: #f1f3f4; padding: 15px; text-align: center; font-size: 12px; color: #888;">
+                <p style="margin: 0;">&copy; ${new Date().getFullYear()} Kleidsys Planning Tool. All rights reserved.</p>
+            </div>
+        </div>
+      `;
+
+      await sendTaskEmail(assignedUser.email, subject, html, companyCredentials);
     }
 
     try {
@@ -477,6 +543,41 @@ async function handleReason(req, res, fieldName) {
   }
 }
 
+exports.savePauseReason = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const userId = req.user.id;
+    const companyId = req.user.company_id;
+
+    if (!reason || reason.trim() === "") {
+      return res.status(400).json({ error: "Reason is required" });
+    }
+
+    // Check task belongs to logged-in user
+    const task = await findUserTask(id, userId, companyId);
+
+    if (!task) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Update pause reason
+    await updateTaskReason(task, reason);
+
+    res.json({
+      message: "Pause reason saved",
+      task_id: id,
+    });
+  } catch (err) {
+    console.error("Error saving pause reason:", err);
+    res.status(500).json({
+      error: "Server error",
+      details: err.message,
+    });
+  }
+};
+
 // ------------------------------------------------------------
 // EXPORT INDIVIDUAL REASON HANDLERS
 // ------------------------------------------------------------
@@ -491,6 +592,180 @@ exports.pauseReason = (req, res) =>
 
 exports.stopReason = (req, res) =>
   handleReason(req, res, "stop_reason");
+
+
+// USER: Insert new task (pending)
+exports.userAddTask = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      Project_Title,
+      start,
+      end_time,
+      priority,
+      duration_minutes
+    } = req.body;
+
+    const { id: userId, company_id: companyId, is_admin, username } = req.user;
+
+    // Save task
+    const result = await insertUserTask(
+      title,
+      description,
+      Project_Title,
+      start,
+      end_time,
+      userId,
+      priority,
+      duration_minutes,
+      companyId,
+      is_admin
+    );
+
+    // ---- REALTIME EMIT TO ADMINS ----
+    if (global.io) {
+      global.io.to("admin").emit("newUserTaskRequest", {
+        task: result,
+        message: `New Task Submitted by User ${username}`
+      });
+    }
+
+    // Success response
+    res.status(201).json({
+      message: "Task sent for admin approval",
+      task: result,
+    });
+
+  } catch (err) {
+    console.error("User Add Task Error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
+// ADMIN: Get pending task requests
+exports.getPendingUserRequests = async (req, res) => {
+  try {
+    const tasks = await getPendingTasks(req.user);
+    res.status(200).json(tasks);
+  } catch (err) {
+    console.error("Get pending approvals error:", err);
+
+    if (err.message === "DEPARTMENT_MISSING") {
+      return res.status(400).json({ message: "User department not found in token" });
+    }
+
+    if (err.message === "COMPANY_MISSING") {
+      return res.status(400).json({ message: "User company not found in token" });
+    }
+
+    if (err.message === "NOT_AUTHORIZED") {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    res.status(500).json({ message: "Failed to fetch pending approvals" });
+  }
+};
+
+// ADMIN: Update approval status
+exports.updateTaskApproval = async (req, res, statusFromRoute) => {
+  try {
+    const adminId = req.user.id;
+    const taskId = req.params.id;
+    const approval_status = statusFromRoute; // ← Take status from route
+
+    const allowed = ["approved", "rejected"];
+    if (!allowed.includes(approval_status)) {
+      return res.status(400).json({ error: "Invalid approval status" });
+    }
+
+    const updatedTask = await updateApprovalStatus(
+      approval_status,
+      taskId,
+      adminId
+    );
+
+    // Emit event for real-time updates
+    try {
+      const io = getIO();
+      io.to(`user_${updatedTask.assigned_to}`).emit("task:updated", updatedTask);
+      // Also emit to admin room to update dashboards if needed
+      io.emit("task:updated", updatedTask);
+    } catch (e) {
+      console.error("Socket emit error on approval:", e);
+    }
+
+    res.status(200).json({
+      message: `Task ${approval_status}`,
+      task: updatedTask,
+    });
+
+  } catch (err) {
+    console.error("Approval update error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// USER: Get approved tasks
+exports.getUserApprovedTasks = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const tasks = await getApprovedTasks(userId);
+    res.status(200).json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Added APIs to fetch and delete Approval/Reject task notifications for the user dashboard 
+exports.getUserNotifications = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const tasks = await getUserNotificationsQuery(userId);
+
+    res.status(200).json(tasks);
+  } catch (err) {
+    console.error("Get notifications error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+exports.deleteUserNotification = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const taskId = req.params.id;
+
+    const deleted = await deleteUserNotificationQuery(taskId, userId);
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    res.status(200).json({ message: "Notification deleted", task: deleted });
+  } catch (err) {
+    console.error("Delete notification error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// GET latest end_time of a user
+exports.getLastTaskEndTime = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const companyId = req.user.company_id;
+
+    const lastTask = await getLastEndTimeByUser(userId, companyId);
+
+    res.json({
+      end_time: lastTask ? lastTask.end_time : null,
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch last end time:", err);
+    res.status(500).json({ error: "Failed to fetch end time" });
+  }
+};
 
 // ------------------------------------------------------------
 // GET all unplanned tasks

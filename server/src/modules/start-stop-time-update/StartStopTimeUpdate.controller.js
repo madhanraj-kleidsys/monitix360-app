@@ -3,7 +3,26 @@ const {
   findTaskByCompany,
   createTimeUpdate,
   getTimeUpdates,
+  getBulkTimeUpdates,
 } = require("../start-stop-time-update/StartStopTimeUpdate.model");
+
+exports.getBulkTimeUpdates = async (req, res) => {
+  try {
+    const { taskIds } = req.body;
+    if (!taskIds || !Array.isArray(taskIds)) return res.status(400).json({ error: "Invalid taskIds" });
+    const updates = await getBulkTimeUpdates(taskIds);
+    // Group by task_id
+    const grouped = {};
+    updates.forEach(u => {
+      if (!grouped[u.task_id]) grouped[u.task_id] = [];
+      grouped[u.task_id].push(u);
+    });
+    res.json(grouped);
+  } catch (err) {
+    console.error("Bulk time updates error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
 // ------------------------------------------------------------
 // Start OR Stop Task  (type = 1 start, 2 stop)

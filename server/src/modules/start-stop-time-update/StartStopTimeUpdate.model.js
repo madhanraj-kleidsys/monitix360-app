@@ -21,8 +21,17 @@ const getTimeUpdates = async (task_id) => {
   });
 };
 
+// Get Bulk updates
+const getBulkTimeUpdates = async (taskIds) => {
+  return await TimeUpdate.findAll({
+    where: { task_id: taskIds },
+    order: [["time_logged", "ASC"]],
+  });
+};
+
 module.exports = {
   findTaskByCompany,
   createTimeUpdate,
   getTimeUpdates,
+  getBulkTimeUpdates,
 };

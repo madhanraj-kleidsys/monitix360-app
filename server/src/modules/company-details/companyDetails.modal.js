@@ -26,9 +26,15 @@ const createCompany = async (data) => {
   return await Company.create(data);
 };
 
+// Update company email settings
+const updateCompanyEmail = async (id, data) => {
+  return await Company.update(data, { where: { id } });
+};
+
 module.exports = {
   getCompanyByPk,
   getAllCompanies,
   findCompanyByCode,
   createCompany,
+  updateCompanyEmail,
 };

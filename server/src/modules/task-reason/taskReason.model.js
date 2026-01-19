@@ -1,4 +1,3 @@
-// models/taskReasonModel.js
 const { Task, TaskReason, User } = require("../../config/db");
 
 // Map reasonKey → type
@@ -10,6 +9,20 @@ const reasonTypeMap = {
   conflict_pause_reason: 5,
   conflict_stop_reason: 6,
   conflict_runboth_reason: 7,
+};
+
+// Get all reasons for a company
+const getAllReasonsByCompany = async (companyId) => {
+  return await TaskReason.findAll({
+    where: { company_id: companyId },
+    include: [
+      {
+        model: User,
+        attributes: ["username"],
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
 };
 
 // Validate task belongs to company
@@ -38,9 +51,24 @@ const getReasonsByTask = async (taskId, companyId) => {
   });
 };
 
+const getBulkReasonsByTaskIds = async (taskIds, companyId) => {
+  return await TaskReason.findAll({
+    where: {
+      task_id: taskIds,
+      company_id: companyId,
+    },
+    include: [
+      { model: User, attributes: ["username"] }
+    ],
+    order: [["createdAt", "ASC"]],
+  });
+};
+
 module.exports = {
+  getAllReasonsByCompany,
   reasonTypeMap,
   findTaskByCompany,
   createTaskReason,
   getReasonsByTask,
+  getBulkReasonsByTaskIds,
 };

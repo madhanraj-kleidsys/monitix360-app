@@ -4,7 +4,28 @@ const {
   findTaskByCompany,
   createTaskReason,
   getReasonsByTask,
+  getBulkReasonsByTaskIds,
 } = require("../task-reason/taskReason.model");
+
+exports.getBulkTaskReasons = async (req, res) => {
+  try {
+    const { taskIds } = req.body;
+    const companyId = req.user.company_id;
+    if (!taskIds || !Array.isArray(taskIds)) return res.status(400).json({ error: "Invalid taskIds" });
+
+    const reasons = await getBulkReasonsByTaskIds(taskIds, companyId);
+    // Group by task_id
+    const grouped = {};
+    reasons.forEach(r => {
+      if (!grouped[r.task_id]) grouped[r.task_id] = [];
+      grouped[r.task_id].push(r);
+    });
+    res.json(grouped);
+  } catch (err) {
+    console.error("Bulk task reasons error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
 // ------------------------------------------------------------
 // ADD a task reason

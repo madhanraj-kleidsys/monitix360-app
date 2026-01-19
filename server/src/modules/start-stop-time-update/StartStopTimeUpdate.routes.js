@@ -1,7 +1,7 @@
 // routes/timeRoutes.js
 const express = require("express");
 const router = express.Router();
-const authenticateJWT  = require("../../middlewares/auth");
+const authenticateJWT = require("../../middlewares/auth");
 
 const {
   startOrStopTask,
@@ -17,5 +17,8 @@ router.post("/stop-task", authenticateJWT, stopTask);
 
 // Get Time Updates for a task
 router.get("/time_get/:task_id", authenticateJWT, getTaskTimeUpdates);
+
+const { getBulkTimeUpdates } = require("../start-stop-time-update/StartStopTimeUpdate.controller");
+router.post("/bulkTimeUpdate", authenticateJWT, getBulkTimeUpdates);
 
 module.exports = router;

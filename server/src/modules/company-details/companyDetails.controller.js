@@ -4,6 +4,7 @@ const {
   getAllCompanies,
   findCompanyByCode,
   createCompany,
+  updateCompanyEmail,
 } = require("../company-details/companyDetails.modal");
 
 // get compay by id
@@ -15,11 +16,15 @@ exports.getCompanyById = async (req, res) => {
     if (!company) {
       return res.status(404).json({ error: 'company not found for the provideed id' });
     }
-    // console.log(company.company_name);
-    res.status(200).json(company);
+    const companyRes = {
+      ...company.toJSON(),
+      email_pass: undefined,
+      hasEmailConfig: !!company.email_pass
+    };
+    res.status(200).json(companyRes);
   }
   catch (err) {
-    res.status(500).json({ "error in fetching company name": err.message });
+    res.status(500).json({ error: "error in fetching company name: " + err.message });
     console.error(`${err.name} : ${err.message}`);
   }
 };
@@ -69,5 +74,37 @@ exports.addCompany = async (req, res) => {
   } catch (error) {
     console.error("Error adding company:", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ----------------------- EMAIL SETTINGS -----------------------
+
+exports.updateEmailSettings = async (req, res) => {
+  try {
+    const { company_id, email_user, email_pass } = req.body;
+    if (!company_id) return res.status(400).json({ error: "Company ID is required" });
+
+    await updateCompanyEmail(company_id, { email_user, email_pass });
+    res.json({ message: "Email settings updated successfully" });
+  } catch (err) {
+    console.error("Email update error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+exports.getEmailSettings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const company = await getCompanyByPk(id);
+    if (!company) return res.status(404).json({ error: "Company not found" });
+
+    res.json({
+      company: {
+        email_user: company.email_user,
+        hasPassword: !!company.email_pass
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
   }
 };

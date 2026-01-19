@@ -2,9 +2,9 @@
 const express = require("express");
 const router = express.Router();
 const authenticateJWT = require("../../middlewares/auth");
-const authorizeRoles  = require("../../middlewares/role");  
+const authorizeRoles = require("../../middlewares/role");
 const {
-   createNewTask,
+  createNewTask,
   getMyTasks,
   getAllTasks,
   getBasicUserTasks,
@@ -13,7 +13,7 @@ const {
   assignTask,
   deleteTask,
   updateUserTask,
-   patchTimer,
+  patchTimer,
   getTimer,
   putTimer,
   startEarlyReason,
@@ -24,6 +24,14 @@ const {
   createUnplannedTask,
   updateUnplannedTask,
   deleteUnplannedTask,
+  userAddTask,
+  getUserApprovedTasks,
+  getPendingUserRequests,
+  updateTaskApproval,
+  getUserNotifications,
+  deleteUserNotification,
+  savePauseReason,
+  getLastTaskEndTime
 } = require("../tasks/tasks.controller");
 
 
@@ -76,5 +84,18 @@ router.put("/unplanned/:id", authenticateJWT, updateUnplannedTask);
 
 // DELETE unplanned task
 router.delete("/unplanned/:id", authenticateJWT, deleteUnplannedTask);
+
+// 26-11-2025 - Changes by Priyanka
+// Added routers for add task by user in the user dash board and aprove the task by admin
+router.post("/user/add-task-by-user", authenticateJWT, userAddTask);
+router.get("/admin/getPendingUserTaskRequests", authenticateJWT, getPendingUserRequests);
+router.patch("/admin/:id/task-approved", authenticateJWT, (req, res) => updateTaskApproval(req, res, "approved"));
+router.patch("/admin/:id/task-rejected", authenticateJWT, (req, res) => updateTaskApproval(req, res, "rejected"));
+router.get("/user/:userId/approved", getUserApprovedTasks);
+router.get("/user/userTaskUpdates", authenticateJWT, getUserNotifications);
+router.delete("/user/:id/deleteUserTaskUpdates", authenticateJWT, deleteUserNotification);
+router.get("/last-end-time/:userId", authenticateJWT, getLastTaskEndTime);
+
+router.post("/:id/pause_reason", authenticateJWT, savePauseReason);
 
 module.exports = router;

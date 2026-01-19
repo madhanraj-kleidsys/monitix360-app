@@ -14,4 +14,7 @@ router.post("/:taskId/:reasonKey", authenticateJWT, addReason);
 // Get all reasons for a task
 router.get("/:taskId", authenticateJWT, getTaskReasons);
 
+const { getBulkTaskReasons } = require("../task-reason/taskReason.controller");
+router.post("/bulkTaskReasons", authenticateJWT, getBulkTaskReasons);
+
 module.exports = router;
