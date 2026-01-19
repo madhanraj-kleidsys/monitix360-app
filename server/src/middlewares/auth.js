@@ -14,7 +14,8 @@ const authenticateJWT = (req, res, next) => {
   jwt.verify(token, process.env.ACCESS_SECRET, (err, decoded) => {
     if (err) {
       console.error('❌ JWT verification failed:', err.message);
-      return res.status(403).json({ error: 'Forbidden - Invalid or expired token' });
+      // MUST return 401 so the client knows to refresh the token
+      return res.status(401).json({ error: 'Unauthorized - Invalid or expired token' });
     }
 
     // console.log("✅ Authenticated User Payload:", decoded);

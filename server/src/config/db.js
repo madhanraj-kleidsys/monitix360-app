@@ -38,6 +38,14 @@ const Company = sequelize.define("companies", {
     allowNull: false,
     unique: "UQ_company_code",
   },
+  email_user: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  email_pass: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 });
 
 // const User = sequelize.define("users", {
@@ -191,14 +199,14 @@ const User = sequelize.define("users", {
   },
 
   reset_token: {
-  type: DataTypes.STRING,
-  allowNull: true,
-},
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
 
-reset_token_expiry: {
-  type: DataTypes.DATE,
-  allowNull: true,
-},
+  reset_token_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
@@ -243,6 +251,12 @@ const Task = sequelize.define("tasks", {
   approval_status: {
     type: DataTypes.STRING,
     defaultValue: "pending"
+  },
+
+  // Added a new column to fetch approval tasks based on role in the Pending Approval page
+  is_admin_added_task: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 });
 
@@ -315,6 +329,72 @@ const DeclaredHoliday = sequelize.define("declared_holidays", {
   holiday_date: DataTypes.DATEONLY,
   description: DataTypes.TEXT,
 });
+
+// HOLIDAY OVERRIDES (for deleting auto holidays permanently)
+const HolidayOverride = sequelize.define("holiday_overrides", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true
+  },
+  date: {
+    type: DataTypes.DATEONLY,
+    allowNull: false
+  },
+  company_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
+  }
+}, {
+  timestamps: false
+});
+
+
+// Introduced a new table to configure and control page-level access for IsAdmin users
+const IsAdminPageRight = sequelize.define(
+  "isadmin_page_rights",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+
+    isadmin_user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+
+    page_key: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+    },
+
+    is_enabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+
+    created_at: {
+      type: DataTypes.DATE,
+      defaultValue: Sequelize.literal("SYSDATETIME()"),
+    },
+
+    updated_at: {
+      type: DataTypes.DATE,
+      defaultValue: Sequelize.literal("SYSDATETIME()"),
+    },
+  },
+  {
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["isadmin_user_id", "page_key"],
+      },
+    ],
+  }
+);
 
 const AddedTaskByUser = sequelize.define("added_task_by_user", {
   id: {
@@ -392,6 +472,19 @@ AddedTaskByUser.belongsTo(User, { foreignKey: "user_id" });
 Company.hasMany(AddedTaskByUser, { foreignKey: "company_id" });
 AddedTaskByUser.belongsTo(Company, { foreignKey: "company_id" });
 
+Company.hasMany(HolidayOverride, { foreignKey: "company_id" });
+HolidayOverride.belongsTo(Company, { foreignKey: "company_id" });
+
+// IsAdminPageRight
+User.hasMany(IsAdminPageRight, {
+  foreignKey: "isadmin_user_id",
+  onDelete: "CASCADE",
+});
+
+IsAdminPageRight.belongsTo(User, {
+  foreignKey: "isadmin_user_id",
+});
+
 
 // ----------------------------
 // EXPORT + SYNC
@@ -419,4 +512,6 @@ module.exports = {
   ShiftBreak,
   DeclaredHoliday,
   AddedTaskByUser,
+  HolidayOverride,
+  IsAdminPageRight,
 };

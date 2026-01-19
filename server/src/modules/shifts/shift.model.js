@@ -5,7 +5,11 @@ const { Shift, ShiftBreak } = require("../../config/db");
 const getAllShifts = async (companyId) => {
   return await Shift.findAll({
     where: { company_id: companyId },
-    include: [{ model: ShiftBreak }],
+    include: [{
+      model: ShiftBreak,
+      where: { company_id: companyId },
+      required: false
+    }],
     order: [
       ["id", "ASC"],
       [ShiftBreak, "id", "ASC"],

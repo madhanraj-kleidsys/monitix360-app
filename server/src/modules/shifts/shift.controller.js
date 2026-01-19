@@ -15,6 +15,9 @@ const { getIO } = require("../../socket/socket");
 exports.getShifts = async (req, res) => {
   try {
     const companyId = req.user.company_id;
+    if (!companyId) {
+      return res.status(400).json({ error: "Company ID missing from token" });
+    }
 
     const shifts = await getAllShifts(companyId);
 
@@ -36,7 +39,7 @@ exports.addShift = async (req, res) => {
       return res.status(400).json({ error: "Required fields missing" });
     }
 
-    const companyId = req.user.company_id;
+    const companyId = req.company_id;
 
     const newShift = await createShift({
       shift_name,
@@ -76,7 +79,7 @@ exports.updateShift = async (req, res) => {
     const { id } = req.params;
     const { shift_name, shift_start, shift_end, breaks = [] } = req.body;
 
-    const companyId = req.user.company_id;
+    const companyId = req.company_id;
 
     const shift = await findShiftById(id, companyId);
     if (!shift) {
@@ -124,7 +127,7 @@ exports.deleteShift = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const companyId = req.user.company_id;
+    const companyId = req.company_id;
 
     const shift = await findShiftById(id, companyId);
     if (!shift) {

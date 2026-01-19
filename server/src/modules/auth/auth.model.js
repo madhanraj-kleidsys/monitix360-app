@@ -33,6 +33,27 @@ const findUserByRefreshToken = async (refreshToken) => {
   return await User.findOne({ where: { refresh_token: refreshToken } });
 };
 
+const saveResetToken = async (userId, hashedToken, expiry) => {
+  await User.update({
+    reset_token: hashedToken,
+    reset_token_expiry: expiry
+  }, { where: { id: userId } });
+};
+
+const findUserByResetToken = async (token) => {
+  const { Op } = require('sequelize');
+  return await User.findOne({
+    where: {
+      reset_token: token,
+      reset_token_expiry: { [Op.gt]: new Date() }
+    }
+  });
+};
+
+const findUserByUsername = async (username) => {
+  return await User.findOne({ where: { username } });
+};
+
 module.exports = {
   findUserByEmail,
   findCompanyByCode,
@@ -41,6 +62,9 @@ module.exports = {
   createCompany,
   createUser,
   saveRefreshToken,
-  findUserByRefreshToken
+  findUserByRefreshToken,
+  saveResetToken,
+  findUserByResetToken,
+  findUserByUsername,
 };
 
