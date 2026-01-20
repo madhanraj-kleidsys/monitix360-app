@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, StyleSheet, FlatList, Alert, ActivityIndicator, Text, Platform, AppState } from 'react-native';
 import ApiService from '../../services/ApiService';
 import { useWebSocket } from '../admin/hooks/useWebSocket';
@@ -11,7 +11,8 @@ import {
   scheduleTaskReminder,
   scheduleActiveTaskReminder,
   cancelNotification,
-  cancelAllTaskNotifications
+  cancelAllTaskNotifications,
+  showStickyTaskNotification
 } from '../../services/NotificationService';
 
 const COLORS = {
@@ -20,7 +21,7 @@ const COLORS = {
   text: '#1E293B',
 };
 
-export default function TaskPage({ user, ListHeaderComponent }) {
+export default function TaskPage({ user, ListHeaderComponent, initialFilter }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [breakWindows, setBreakWindows] = useState([]);
@@ -211,19 +212,32 @@ export default function TaskPage({ user, ListHeaderComponent }) {
       };
 
       const onTaskUpdated = async (task) => {
-        console.log(`🏠 [TaskPage] Task Updated: ${task.id} Status: ${task.status} Started: ${task.task_start} Timer: ${task.timer_start}`);
+        // console.log(`🏠 [TaskPage] Task Updated: ${task.id} Status: ${task.status} Started: ${task.task_start} Timer: ${task.timer_start}`);
         // console.log('Full Task Payload:', JSON.stringify(task)); 
         if (String(task.assigned_to) !== String(user.id)) return;
 
         // Merge updates carefully
-        setTasks(prev => prev.map(t => {
-          if (String(t.id) === String(task.id)) {
-            // If status changed to Paused from server (Auto-Pause), reflect it
-            // Logic for stopping timer is derived from task status in TaskItem
-            return { ...t, ...task };
+        setTasks(prev => {
+          const exists = prev.find(t => String(t.id) === String(task.id));
+
+          // Rule: If task is now approved but wasn't in list, ADD IT
+          if (!exists && task.approval_status === 'approved') {
+            // Add to top or correct sort position? Top is fine.
+            return [task, ...prev];
           }
-          return t;
-        }));
+
+          // If task exists, update it
+          if (exists) {
+            return prev.map(t => {
+              if (String(t.id) === String(task.id)) {
+                return { ...t, ...task };
+              }
+              return t;
+            });
+          }
+
+          return prev;
+        });
 
         // If status changed to Paused, cancel active notifications
         if ((task.status || '').toLowerCase() === 'paused') {
@@ -306,6 +320,9 @@ export default function TaskPage({ user, ListHeaderComponent }) {
 
       // Cancel any pending start reminders before scheduling the active one
       await cancelAllTaskNotifications(task.id);
+
+      // SHOW STICKY NOTIFICATION
+      await showStickyTaskNotification(user, task.id, task.name || task.title);
 
       console.log(`✅ Task ${task.id} started and saved to DB with task_start: true, timer_start: ${now}`);
     } catch (err) { console.error('executeStart error:', err); }
@@ -403,13 +420,23 @@ export default function TaskPage({ user, ListHeaderComponent }) {
     />
   ), [handleStartRequest, handlePauseRequest, handleStopRequest, handleStatusChange]);
 
+  const filteredTasks = useMemo(() => {
+    if (!initialFilter) return tasks;
+    return tasks.filter(t => {
+      const tStatus = (t.status || '').toLowerCase();
+      const fStatus = initialFilter.toLowerCase();
+      if (fStatus === 'in complete') return ['in complete', 'incomplete'].includes(tStatus);
+      return tStatus === fStatus;
+    });
+  }, [tasks, initialFilter]);
+
   return (
     <View style={styles.container}>
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
       ) : (
         <FlatList
-          data={tasks}
+          data={filteredTasks}
           keyExtractor={(item) => String(item.id)}
           ListHeaderComponent={ListHeaderComponent}
           renderItem={renderItem}

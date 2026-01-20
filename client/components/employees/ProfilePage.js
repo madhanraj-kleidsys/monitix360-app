@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import StyledConfirmAlert from '../common/StyledConfirmAlert';
+import companyServices from '../admin/services/CompanyService';
+import ChangePasswordModal from '../common/ChangePasswordModal';
+import { useTheme } from '../../utils/ThemeContext';
+import { Switch } from 'react-native';
 
 const COLORS = {
   primary: '#1E5A8E',
@@ -18,10 +22,33 @@ const COLORS = {
 };
 
 export default function ProfilePage({ onLogout, user, userCompany }) {
+  const [companyData, setCompanyData] = useState(null);
   const [logoutAlertVisible, setLogoutAlertVisible] = React.useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
+
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        if (user?.company_id) {
+          const company = await companyServices.getCompanyById(user.company_id);
+          setCompanyData({
+            name: company?.company_name || 'n/a',
+            code: company?.company_code || 'n/a',
+          });
+        }
+      }
+      catch (err) {
+        console.error('company fetc er staff:', err.message);
+      }
+    };
+    fetchCompany();
+  }, [user?.company_id]);
 
   const menuItems = [
     { icon: 'person-outline', label: 'Edit Profile', color: COLORS.primary, action: () => { } },
+    { icon: 'lock-closed-outline', label: 'Change Password', color: COLORS.primary, action: () => { setChangePasswordVisible(true) } },
     // { icon: 'notifications-outline', label: 'Notifications', color: COLORS.primary, action: () => { } },
     { icon: 'settings-outline', label: 'Settings', color: COLORS.primary, action: () => { } },
     { icon: 'help-circle-outline', label: 'Help & Support', color: COLORS.primary, action: () => { } },
@@ -44,8 +71,8 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
     department: user?.department || 'General',
     contact_number: user?.contact_no || 'N/A',
     status: 'Active',
-    CompanyName: userCompany?.company_name || 'N/dA',
-    CompanyCode: userCompany?.company_code || 'N/dA',
+    CompanyName: companyData?.name || 'N/dA',
+    CompanyCode: companyData?.code || 'N/dA',
   };
 
   const handleEditProfile = () => {
@@ -56,9 +83,10 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
     Alert.alert('Notifications', 'No new notifications');
   }
 
+
   return (
     <View style={styles.container}>
-{/*   <LinearGradient
+      <LinearGradient
         // colors={['#00D4FF', '#0099FF', '#4facfe']}
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
@@ -67,7 +95,7 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
       >
         <View style={styles.header}>
           <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>{employeeData.profileInitial}</Text>
+            {/* <Text style={styles.avatarLargeText}>{employeeData.profileInitial}</Text> */}
             <Image
               source={require('../../assets/usericon.png')}
               resizeMode="cover"
@@ -77,7 +105,7 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
           <Text style={styles.profileName}>{employeeData.name}</Text>
           <Text style={styles.profileRole}>{employeeData.CompanyName}</Text>
 
-          <View style={styles.statsRow}>
+          {/* <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>10</Text>
               <Text style={styles.statLabel}>Tasks</Text>
@@ -92,10 +120,10 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
               <Text style={styles.statValue}>156h</Text>
               <Text style={styles.statLabel}>Total Time</Text>
             </View>
-          </View>
+          </View> */}
         </View>
-      </LinearGradient> */}
-      
+      </LinearGradient>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Text style={styles.infoCardTitle}>Your Information</Text>
@@ -147,7 +175,6 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
           <View style={styles.infoRow}>
             <View style={styles.infoLabel}>
               <FontAwesome name="phone" size={18} color={COLORS.secondary} />
-              {/* <Ionicons name="phone-portrait-outline" size={16} color={COLORS.secondary} /> */}
               <Text style={styles.infoLabelText}>Contact Number</Text>
             </View>
             <Text style={styles.infoValue}>{employeeData.contact_number}</Text>
@@ -157,6 +184,20 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
         </View>
 
         <View style={styles.menuSection}>
+          {/* Custom Dark Mode Item */}
+          <View style={styles.menuItem}>
+            <View style={[styles.menuIcon, { backgroundColor: isDarkMode ? '#334155' : '#E0F2FE' }]}>
+              <Ionicons name="moon" size={22} color={COLORS.primary} />
+            </View>
+            <Text style={styles.menuLabel}>Dark Mode</Text>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#767577', true: COLORS.primary }}
+              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -182,12 +223,17 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
         message="Are you sure !! you want to logout from your account?"
         confirmText="Logout"
         cancelText="Cancel"
-        type="danger"
+        type="logout"
         onConfirm={() => {
           setLogoutAlertVisible(false);
           if (onLogout) onLogout();
         }}
         onCancel={() => setLogoutAlertVisible(false)}
+      />
+
+      <ChangePasswordModal
+        visible={changePasswordVisible}
+        onClose={() => setChangePasswordVisible(false)}
       />
     </View>
   );
@@ -210,7 +256,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 20,
     // backgroundColor: COLORS.cardBg,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
@@ -351,7 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
   menuSection: {
-    marginTop: 24,
+    marginTop: 10,
     marginHorizontal: 20,
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,

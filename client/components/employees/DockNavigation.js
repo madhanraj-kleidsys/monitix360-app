@@ -14,11 +14,10 @@ const COLORS = {
 export default function DockNavigation({ state, descriptors, navigation }) {
   const icons = {
     Home: { active: 'home', inactive: 'home-outline' },
-    // Tasks: { active: 'list', inactive: 'list-outline' },
-    // Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
-    Tasks: { active: 'checkmark-done', inactive: 'checkmark-done-outline' }, // task icon
-  Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
-  Chat: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },   
+    Tasks: { active: 'checkmark-done-circle', inactive: 'checkmark-done-circle-outline' },
+    Action: { active: 'add-circle', inactive: 'add-circle-outline' },
+    Progress: { active: 'stats-chart', inactive: 'stats-chart-outline' },
+    // Chat: { active: 'chatbubbles', inactive: 'chatbubbles-outline' },
     Profile: { active: 'person', inactive: 'person-outline' },
   };
 
@@ -42,6 +41,21 @@ export default function DockNavigation({ state, descriptors, navigation }) {
             }
           };
 
+          if (label === 'Action') {
+            return (
+              <TouchableOpacity
+                key={index}
+                onPress={onPress}
+                style={styles.actionButtonContainer}
+                activeOpacity={0.9}
+              >
+                <View style={[styles.actionButton, isFocused && styles.activeActionButton]}>
+                  <Ionicons name="add" size={32} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            );
+          }
+
           return (
             <TouchableOpacity
               key={index}
@@ -52,9 +66,9 @@ export default function DockNavigation({ state, descriptors, navigation }) {
             >
               <View style={[styles.iconContainer, isFocused && styles.activeIconContainer]}>
                 <Ionicons
-                  name={isFocused ? icons[label].active : icons[label].inactive}
+                  name={isFocused ? icons[label]?.active : icons[label]?.inactive}
                   size={24}
-                  color={isFocused ?'#0082d9ff': COLORS.textLight}
+                  color={isFocused ? '#0082d9ff' : COLORS.textLight}
                 />
                 {isFocused && <View style={styles.activeIndicator} />}
               </View>
@@ -125,4 +139,28 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '700',
   },
+  actionButtonContainer: {
+    top: -20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  actionButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 4,
+    borderColor: '#fff',
+  },
+  activeActionButton: {
+    backgroundColor: COLORS.accent,
+  }
 });

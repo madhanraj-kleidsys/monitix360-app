@@ -1,6 +1,4 @@
-/**
- * Centralized Holiday and Weekend Validation Utilities
- */
+//  * Centralized Holiday and Weekend Validation Utilities
 
 /**
  * Checks if a date is the 2nd or 4th Saturday of the month.
@@ -39,10 +37,21 @@ export const isHolidayOrWeekend = (dateOrStr, holidays = []) => {
         return { isHoliday: true, reason: 'the 2nd/4th Saturday' };
     }
 
-    // Ensure holidays is an array and check for the date string
+    // Ensure holidays is an array
     const holidayList = Array.isArray(holidays) ? holidays : [];
-    if (holidayList.includes(dateStr)) {
-        return { isHoliday: true, reason: 'a Declared Holiday' };
+
+    // Check if it matches any holiday
+    // Support both ["2025-01-01"] and [{ holiday_date: "2025-01-01", holiday_name: "New Year" }]
+    const foundHoliday = holidayList.find(h => {
+        const hDate = (typeof h === 'string') ? h : h.holiday_date;
+        return hDate === dateStr;
+    });
+
+    if (foundHoliday) {
+        const reason = (typeof foundHoliday === 'object' && foundHoliday.holiday_name)
+            ? foundHoliday.holiday_name
+            : 'a Declared Holiday';
+        return { isHoliday: true, reason };
     }
 
     return { isHoliday: false, reason: null };

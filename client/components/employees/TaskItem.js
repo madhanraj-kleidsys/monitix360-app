@@ -127,7 +127,7 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
 
     const isRunning = (task.status !== 'Paused' && task.status !== 'paused') &&
         ((task.task_start && task.timer_start) || (task.status === 'In Progress' && task.timer_start));
-    console.log(`[TaskItem ${task.id}] Render. Status: ${task.status}, Start: ${task.task_start}, Running: ${isRunning}`);
+    // console.log(`[TaskItem ${task.id}] Render. Status: ${task.status}, Start: ${task.task_start}, Running: ${isRunning}`);
 
     useEffect(() => {
         if (intervalRef.current) {
@@ -337,12 +337,10 @@ const TaskItem = React.memo(({ task, onStart, onPause, onStop, onStatusChange })
             {/* Socket Listener for Activity Log */}
             {socket && (
                 <View style={{ display: 'none' }}>
-                    {/* Invisible component to manage socket logic for this specific item if needed, 
-                        but better to use useEffect inside the component body. 
-                        We will inject the useEffect logic via a separate edit or assume the edit above handles it.
-                        Wait, I am editing `TaskItem`. I should add the `useEffect` at the top level.
-                        This `replace_file_content` is targeting the render method. 
-                        I should target the top of the file to add `useWebSocket` and the effect.
+                    {/* Invisible component to manage socket logic for this specific item ======== >>
+                       { but better to use useEffect => inside the component body.
+                        
+                        also need to add ::::::  `useWebSocket` and the effect. }}
                      */}
                 </View>
             )}
