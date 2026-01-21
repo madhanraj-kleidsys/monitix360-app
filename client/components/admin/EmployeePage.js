@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform, ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFormik } from 'formik';
@@ -172,17 +173,40 @@ function EmployeeCard({ employee, onEdit, onDelete }) {
             {employee.first_name} {employee.last_name}
           </Text>
           <Text style={styles.employeeDetail}>
-            <Text style={styles.label}>Code:</Text> {employee.user_code}
+            <Text style={styles.label}>Code: </Text>
+            <Text style={employee.user_code ? styles.label : styles.notFoundText}>
+              {employee.user_code ? employee.user_code : " Not Found"}
+            </Text>
           </Text>
           <Text style={styles.employeeDetail}>
-            <Text style={styles.label}>Email:</Text> {employee.email}
+            <Text style={styles.label}>Email: </Text>
+            <Text style={employee.email ? styles.label : styles.notFoundText}>
+              {employee.email ? employee.email : " Not Found"}
+            </Text>
           </Text>
           <Text style={styles.employeeDetail}>
-            <Text style={styles.label}>Department:</Text> {employee.department}
+            <Text style={styles.label}>Department: </Text>
+            <Text style={employee.department ? styles.label : styles.notFoundText}>
+              {employee.department ? employee.department : " Not Found"}
+            </Text>
           </Text>
           <Text style={styles.employeeDetail}>
-            <Text style={styles.label}>Role:</Text>{' '}
-            {employee.role === 'admin' ? 'Admin' : 'Employee'}
+            <Text style={styles.label}>Contact no: </Text>
+            <Text style={employee.contact_no ? styles.label : styles.notFoundText}>
+              {employee.contact_no ? employee.contact_no : " Not Found"}
+            </Text>
+          </Text>
+          <Text style={styles.employeeDetail}>
+            <Text style={styles.label}>Role: </Text>{' '}
+            <Text
+              style={[
+                styles.roleValue,
+                employee.role === 'admin' ? styles.roleAdmin : styles.roleStaff
+              ]}
+            >
+              {employee.role === 'admin' ? 'Admin' : 'Staff'}
+            </Text>
+
           </Text>
         </View>
 
@@ -559,8 +583,6 @@ function EmployeeModal({ visible, employee, onClose, onSave }) {
                     )}
 
                     {/* Department Dropdown */}
-
-                    {/* Department Dropdown */}
                     <View style={styles.fieldWrapper}>
                       <Text style={[styles.fieldLabel, formik.errors.department && formik.touched.department && styles.errorLabel]}>
                         Department {formik.errors.department && formik.touched.department && <Text style={styles.requiredStar}>*</Text>}
@@ -741,6 +763,7 @@ export default function AdminEmployeePage() {
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [filterVisible, setFilterVisible] = useState(false);
+  const navigation = useNavigation();
 
   // Filtered Employees
   const filteredEmployees = React.useMemo(() => {
@@ -785,7 +808,6 @@ export default function AdminEmployeePage() {
   useEffect(() => {
     fetchEmployees();
   }, []);
-
 
   const handleAddEmployee = () => {
     setSelectedEmployee(null);
@@ -844,7 +866,7 @@ export default function AdminEmployeePage() {
         // setEmployees(prev =>
         //   prev.map(e => (e.id === selectedEmployee.id ? { ...employeeData, id: e.id } : e)),
         // );
-        Alert.alert('✅ Success', 'Employee updated successfully');
+        Alert.alert('✅ Success', 'Staff Member updated successfully');
       }
       else {
         // create
@@ -884,8 +906,14 @@ export default function AdminEmployeePage() {
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
+        style={[styles.headerGradient, { paddingTop: 40 }]}
       >
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.header}>
           <Text style={styles.headerTitle}>⚕️Staffs</Text>
           <Text style={styles.headerSubtitle}>Manage all Your Staff Members !!</Text>
@@ -1023,6 +1051,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 10,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
   header: {
     paddingHorizontal: 10,
   },
@@ -1120,6 +1152,20 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: '700',
     color: COLORS.text,
+  },
+  notFoundText: {
+    color: '#FF4D4F',
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  roleValue: {
+    fontWeight: '700',
+  },
+  roleAdmin: {
+    color: '#10B981',
+  },
+  roleStaff: {
+    color: '#0a7fd3',
   },
 
   cardActions: {

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useWebSocket } from './hooks/useWebSocket'; // Adjust path if needed
 import api from '../../api/client';
@@ -416,6 +417,7 @@ function ShiftModal({ visible, shift, onClose, onSave }) {
 
 // ========== MAIN SHIFT PAGE ==========
 export default function AdminShiftPage() {
+  const navigation = useNavigation();
   const [shifts, setShifts] = useState([]);
 
   const [loading, setLoading] = useState(false);
@@ -606,20 +608,44 @@ export default function AdminShiftPage() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient
+      {/* <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 50, left: 20, zIndex: 20 }}>
+          <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
-            {/* <Ionicons name="time" size={32} color="#da25b2ff" /> */}
-          ⌛Shifts
+            ⌛Shifts
           </Text>
           <Text style={styles.headerSubtitle}>Manage Work Shift Hours !!</Text>
         </View>
-      </LinearGradient>
+      </LinearGradient> */}
+       <LinearGradient
+                    colors={['#00D4FF', '#0099FF', '#667EEA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.headerGradient}
+                  >
+                    <View style={styles.header}>
+                      {/* Centered Text Container */}
+                      <View style={styles.titleContainer}>
+                        <Text style={styles.headerTitle}>⌛Shifts</Text>
+                        <Text style={styles.headerSubtitle}>Manage Work Shift Hours !!</Text>
+                      </View>
+            
+                      {/* Absolutely Positioned Button on the Right */}
+                      <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButtonRight}
+                      >
+                        <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
 
       <ScrollView
         style={styles.content}
@@ -692,27 +718,37 @@ const styles = StyleSheet.create({
 
   // HEADER STYLES
   headerGradient: {
-    paddingTop: 50,
+    paddingTop: 55,
     paddingBottom: 30,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    zIndex: 10,
-    elevation: 10,
   },
   header: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
+  backButtonRight: {
+    position: 'absolute',
+    left: 20,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   // CONTENT STYLES

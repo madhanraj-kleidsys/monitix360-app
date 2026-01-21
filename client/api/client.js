@@ -1,14 +1,13 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter, Alert, Platform } from 'react-native';
+import { DeviceEventEmitter } from 'react-native';
+import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from '../utils/tokenStorage';
 
-const BASE_URL ='http://192.168.0.216:3000/api';
-// 'https://9dpv1qxv-5000.inc1.devtunnels.ms';
+const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL}/api`;
 
-const axiosInstance = axios.create({ baseURL: BASE_URL, timeout: 10000 });
+const axiosInstance = axios.create({ baseURL: BASE_URL, timeout: 15000 });
 
-let isRefreshing = false;   // prevents multiple parallel refreshes
-let failedQueue = [];       // stores failed requests while refreshing
+let isRefreshing = false;
+let failedQueue = [];
 
 const processQueue = (error, token = null) => {
   failedQueue.forEach(p => {
@@ -18,18 +17,18 @@ const processQueue = (error, token = null) => {
 };
 
 axiosInstance.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('accessToken');
+  const token = await getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
-});
+}, (error) => Promise.reject(error));
 
 axiosInstance.interceptors.response.use(
   res => res,
   async (err) => {
     const originalRequest = err.config;
-    if (err.response?.status === 403 && !originalRequest._retry) {
-      originalRequest._retry = true;
 
+    // Handle 401 Unauthorized (Token expired)
+    if (err.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -39,45 +38,29 @@ axiosInstance.interceptors.response.use(
         }).catch(e => Promise.reject(e));
       }
 
-      console.log('🔄 Access token expired. Attempting refresh...');
+      originalRequest._retry = true;
       isRefreshing = true;
-      const refreshToken = await AsyncStorage.getItem('refreshToken');
-
-      if (!refreshToken) {
-        console.log('❌ No refresh token found in storage. Logging out.');
-        isRefreshing = false;
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userData']);
-        DeviceEventEmitter.emit('logout');
-
-        return Promise.reject(err);
-      }
 
       try {
-        console.log('📤 Sending refresh request...');
-        // ✅ FIX: Endpoint must match server route (/api/auth/refresh)
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
-        console.log('✅ Refresh successful. New access token received.');
-        console.log(data.accessToken);
-        console.log(data);
+        const refreshToken = await getRefreshToken();
+        if (!refreshToken) throw new Error('No refresh token');
 
-        await AsyncStorage.setItem('accessToken', data.accessToken);
+        console.log('🔄 Session expired. Rotating tokens...');
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+
+        // Save BOTH new access and refresh tokens (Rotation)
+        await saveTokens(data.accessToken, data.refreshToken);
+
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
         processQueue(null, data.accessToken);
 
-        // 🔁 Update the header for the *original* failed request before retrying
-        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshErr) {
-        // console.error('❌ Refresh failed:', refreshErr.message);
         processQueue(refreshErr, null);
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'userData']);
+        await clearTokens();
         DeviceEventEmitter.emit('logout');
-
-        // Show alert only once
-
-
-        // Return a specific error object or suppress further error handling if possible
-        return Promise.reject(new Error('SESSION_EXPIRED'));
+        return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
       }

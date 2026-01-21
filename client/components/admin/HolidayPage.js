@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import { isHolidayOrWeekend, isSecondOrFourthSaturday } from '../../utils/holidayUtils';
 import api from '../../api/client';
@@ -448,6 +449,7 @@ function YearPickerModal({ visible, currentYear, onYearSelect, onClose }) {
 
 // ========== MAIN HOLIDAYS PAGE ==========
 export default function AdminHolidayPage() {
+  const navigation = useNavigation();
   // const currentYear = new Date().getFullYear();
   // const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -566,6 +568,21 @@ export default function AdminHolidayPage() {
   return (
     <View style={styles.container}>
       {/* Header */}
+      {/* <LinearGradient
+        colors={['#00D4FF', '#0099FF', '#667EEA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerRow}>
+            <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>🗓️ Holidays</Text>
+          <Text style={styles.headerSubtitle}>Manage company holidays !!</Text>
+        </View>
+      </LinearGradient> */}
+
       <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
@@ -573,10 +590,22 @@ export default function AdminHolidayPage() {
         style={styles.headerGradient}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🗓️ Holidays</Text>
-          <Text style={styles.headerSubtitle}>Manage company holidays !!</Text>
+          {/* Centered Text Container */}
+          <View style={styles.titleContainer}>
+            <Text style={styles.headerTitle}>🗓️ Holidays</Text>
+            <Text style={styles.headerSubtitle}>Manage company holidays !!</Text>
+          </View>
+
+          {/* Absolutely Positioned Button on the Right */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButtonRight}
+          >
+            <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
+
 
       <ScrollView
         style={styles.content}
@@ -697,23 +726,37 @@ const styles = StyleSheet.create({
 
   // HEADER
   headerGradient: {
-    paddingTop: 50,
+    paddingTop: 55,
     paddingBottom: 30,
+    paddingHorizontal: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
   header: {
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
+  backButtonRight: {
+    position: 'absolute',
+    left: 20,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   // CONTENT

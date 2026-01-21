@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { TouchableWithoutFeedback } from 'react-native';
 const { height } = Dimensions.get('window');
@@ -232,6 +233,7 @@ function ProjectModal({ visible, project, onClose, onSave }) {
 export default function AdminProjectPage({
   setFilteredProjectCount,
 }) {
+  const navigation = useNavigation();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -248,7 +250,7 @@ export default function AdminProjectPage({
     );
   }, [projects, searchQuery]);
 
-   useEffect(() => {
+  useEffect(() => {
     setFilteredProjectCount(filteredProjects.length); // Update parent
   }, [filteredProjects.length, setFilteredProjectCount]);
 
@@ -340,17 +342,43 @@ export default function AdminProjectPage({
 
   return (
     <View style={styles.container}>
-      <LinearGradient
+      {/* <LinearGradient
         colors={['#00D4FF', '#0099FF', '#667EEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 50, left: 20, zIndex: 20 }}>
+          <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>📃 Projects</Text>
           <Text style={styles.headerSubtitle}>Manage all projects !!</Text>
         </View>
-      </LinearGradient>
+      </LinearGradient> */}
+
+       <LinearGradient
+                    colors={['#00D4FF', '#0099FF', '#667EEA']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.headerGradient}
+                  >
+                    <View style={styles.header}>
+                      {/* Centered Text Container */}
+                      <View style={styles.titleContainer}>
+                        <Text style={styles.headerTitle}> 📃 Projects </Text>
+                        <Text style={styles.headerSubtitle}>Manage all projects !!</Text>
+                      </View>
+            
+                      {/* Absolutely Positioned Button on the Right */}
+                      <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButtonRight}
+                      >
+                        <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
 
       {loading && projects.length === 0 ? (
         <View style={styles.loadingContainer}>
@@ -375,7 +403,8 @@ export default function AdminProjectPage({
           <View style={styles.projectsSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-            <Ionicons name="briefcase" size={28} color={COLORS.warning} /> All Projects ({filteredProjects.length})</Text>
+                <Ionicons name="briefcase" size={28} color={COLORS.warning} /> All Projects - {filteredProjects.length}
+              </Text>
               <View style={styles.searchContainer}>
                 <Ionicons name="search" size={16} color={COLORS.textLight} />
                 <TextInput
@@ -431,27 +460,37 @@ const styles = StyleSheet.create({
 
   // HEADER STYLES
   headerGradient: {
-    paddingTop: 50,
+    paddingTop: 55,
     paddingBottom: 30,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
-    zIndex: 10,
-    elevation: 10,
   },
   header: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
+  backButtonRight: {
+    position: 'absolute',
+    left: 20,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    marginTop: 2,
   },
 
   // CONTENT STYLES
@@ -696,7 +735,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-    paddingHorizontal: 16,
+    // paddingHorizontal: 16,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -705,9 +744,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    width: 220,
-    height: 36,
+    paddingHorizontal: 12,
+    width: 200,
+    height: 40,
   },
   searchIcon: {
     marginRight: 6,
