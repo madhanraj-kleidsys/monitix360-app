@@ -6,16 +6,14 @@
             "type": "shell",
             "command": "bun expo start --clear",
             "options": {
-                "cwd": "${workspaceFolder}/client",
+                "cwd": "${workspaceFolder}/client"
             },
             "group": "build",
             "presentation": {
                 "reveal": "always",
-                "panel": "new",
-                // "focus": true,
-                // "showReuseMessage": true,
-                // "clear": true
+                "panel": "new"
             },
+            "problemMatcher": []
         },
         {
             "label": "starting server with Bunuuh",

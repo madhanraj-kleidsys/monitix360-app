@@ -42,3 +42,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Android keystores and Gradle secrets
+android/app/*.keystore
+android/gradle.properties

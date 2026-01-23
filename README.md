@@ -6,9 +6,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white" />
-  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
   <img src="https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Bun-fbf0df?style=for-the-badge&logo=bun&logoColor=darkgreen" />
+  <img src="https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white" />
 </p>
 
 ---
@@ -17,7 +18,7 @@
 
 ## 🌐 Overview
 
-**Monitix 360** is a smart, modern task planning and monitoring system built with **Expo**, **Node.js**, and **PostgreSQL**.
+**Monitix 360** is a smart, modern task planning and monitoring system built with **Expo Go**, **React Native**, **Node.js**, & **MSSQL**.
 
 **✔ Assign tasks**  
 **✔ Monitor user activity**  
@@ -55,11 +56,12 @@
 - JWT-based secure authentication
 - Session management
 - Encrypted user passwords with Bcrypt
+- Encrypted Company Mail passwords with Bcrypt
 
 ### 📱 **Cross-Platform Mobile App**
 - Built with **Expo** and **React Native**
 - Works seamlessly on **Android** and **iOS**
-- Responsive design for tablets and phones
+- Responsive design for tablets and All phones
 
 
 - ✅ Cross-platform support (Android & iOS)
@@ -75,30 +77,12 @@
 
 | Layer | Technology | Badge |
 |-------|-----------|-------|
-| **Frontend (Mobile)** | Expo / React Native | ![Expo](https://img.shields.io/badge/Expo-000020?logo=expo&logoColor=white) |
-| **Backend (API)** | Node.js + Express | ![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white) |
-| **Database** | PostgreSQL | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?logo=postgresql&logoColor=white) |
-| **ORM** | Prisma | ![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white) |
-| **Authentication** | JWT + Bcrypt | 🔐 |
-| **Version Control** | Git & GitHub | 🐙 |
-
----
-
-## 📁 Project Structure
-
-monitix-360/
-├── app/ # 📱 Expo (React Native) mobile app
-│ ├── screens/ # 🔑 Login, Register, Tasks, Dashboard screens
-│ ├── components/ # 🧩 Reusable UI components
-│ └── services/ # 🔌 API calls and authentication logic
-├── server/ # 🖥️ Node.js backend (Express API)
-│ ├── routes/ # 🚦 API endpoints
-│ ├── controllers/ # ⚙️ Business logic
-│ ├── middleware/ # 🛡️ Auth and validation
-│ └── prisma/ # 🗄️ Prisma schema & migrations
-├── .env # 🔐 Environment variables
-├── README.md # 📄 Project documentation (this file)
-└── package.json # 📦 Project dependencies
+| **Frontend (Mobile)** | Expo & React Native | ![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white) ![React_Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB) |
+| **Backend (API)** | Node.js + Express | ![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white) ![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge) |
+| **Package Manager** | Bun | ![Bun](https://img.shields.io/badge/Bun-fbf0df?style=for-the-badge&logo=bun&logoColor=darkgreen) |
+| **Database** | MSSQL | ![MSSQL](https://img.shields.io/badge/Microsoft%20SQL%20Server-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white) |
+| **Authentication** | JWT | ![JWT](https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=JSON%20web%20tokens&logoColor=white) |
+| **Version Control** | Git & GitHub | ![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white) |
 
 ---
 
@@ -109,6 +93,8 @@ Before you start, ensure you have the following installed:
 ### Minimum Requirements
 
 - **Node.js**: v18 or higher
+- **Bun**: v1.3.6
+- **OR**
 - **pnpm**: v8 or higher (or npm/yarn)
 - **Git**: For version control
 - **Expo Account**: Free at [expo.dev](https://expo.dev)
@@ -125,10 +111,13 @@ git clone https://github.com/madhanraj-kleidsys/monitix360-app.git
 
 #### ▶️ Install Dependencies
 
+```bash
 cd client
 
-```bash
-# Using pnpm (recommended)
+# Using bun (recommended)
+bun install
+
+# Using pnpm
 pnpm install
 
 # Or using npm
@@ -141,10 +130,10 @@ yarn install
 
 #### ▶️ Start the Expo Development Server
 
-
 ```bash
 
 # For Android Emulator
+bunx expo start --android
 npx expo start --android
 
 # For iOS Simulator (Mac only)
@@ -165,50 +154,62 @@ npx expo start
 
 ---
 
-### 🖥️ **3. Backend Setup (Node.js Server)**
-
-#### ▶️ Install Dependencies
-
-cd server
-npm install
+#### 3. Backend Setup (Node.js Server)
 
 #### ▶️ Setup Environment Variables
 
 Create a `.env` file in the `server/` directory:
 
-DATABASE_URL=postgresql://user:password@localhost:5432/monitix360
-JWT_SECRET=your_super_secret_jwt_key
+```bash
 PORT=3000
+HOST=LOCAL IP ADDRESS (eg: 198.162.1.1)
+NODE_ENV=DEVELOPMENT
 
+DB_USER=sa
+DB_PASSWORD=password@123
+DB_HOST=HOST
+DB_NAME=DB NAME
+DB_PORT=1433
+
+# JWT Secret generate command
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+JWT_SECRET=
+ACCESS_SECRET=
+REFRESH_SECRET=
+JWT_EXPIRES = 1d
+
+# MSSQL OPTIONS
+DB_ENCRYPT=false
+DB_TRUSTSERVERCERTIFICATE=true
+
+EMAIL_USER=kleidsys@gmail.com
+EMAIL_PASS=glor mand yjoy iigm
+
+```
 ---
 
-### 🗄️ **4. Database Setup (Prisma)**
+### 🖥️ **4. Backend Setup (Node.js Server)**
 
-#### ▶️ Generate Prisma Client
+#### ▶️ Install Dependencies
 
-npx prisma generate
+```bash
 
+cd server
 
+# Using bun (recommended)
+bun install
 
-#### ▶️ Run Database Migrations
-
-npx prisma migrate dev --name init
-
-
-#### ▶️ (Optional) Open Prisma Studio
-
-npx prisma studio
-
-> Opens a visual database editor at `http://localhost:5555`
-
----
+```
 
 ### 🚀 **5. Start the Backend Server**
+```bash
 
-npm start
+bun start ||
+bun --hot server.js
 
-
-✅ **API is now running at:** `http://localhost:3000`
+```
+✅ **API is now running at:** `http://198.162.1.1:3000`
 
 ---
 
@@ -218,22 +219,105 @@ npm start
 
 #### Android APK
 
-cd app
-npx expo build:android
+```bash
 
+cd client
+
+bunx expo prebuild --platform android
 
 #### iOS IPA
 
-npx expo build:ios
+cd client
 
+bunx expo prebuild --platform ios
+
+```
+
+### **Code Signing:**
+
+```bash
+
+create a Digital Signature (Keystore) for your app :
+
+keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.keystore -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000
+
+move that into : client\android\app\my-release-key.keystore
+
+
+Step 2: Create a Secret File (Security Best Practice)
+
+Do not hardcode passwords in your code. Create a file named android/gradle.properties 
+(or edit the existing one) and add these lines:
+
+MYAPP_RELEASE_STORE_FILE=my-release-key.keystore
+MYAPP_RELEASE_KEY_ALIAS=my-key-alias
+MYAPP_RELEASE_STORE_PASSWORD=your_keystore_password
+MYAPP_RELEASE_KEY_PASSWORD=your_key_password
+
+Step 3: Edit android/app/build.gradle
+
+Open android/app/build.gradle (the one inside the app folder, not the root one) and find the android { ... } block. 
+
+Update the signingConfigs and buildTypes:
+
+
+android {
+    signingConfigs {
+        release {
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
+                storeFile file(MYAPP_RELEASE_STORE_FILE)
+                storePassword MYAPP_RELEASE_STORE_PASSWORD
+                keyAlias MYAPP_RELEASE_KEY_ALIAS
+                keyPassword MYAPP_RELEASE_KEY_PASSWORD
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Link the signing config here
+            signingConfig signingConfigs.release
+            
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+```
+
+```bash
+
+cd android
+./gradlew assembleRelease
+
+```
+
+**if forgotten keytool**
+
+```bash
+keytool -list -v -keystore android/app/my-release-key.keystore
+```
+---
+
+#### iOS IPA
+
+bunx expo build:ios
+
+**Code Signing:**
+Open the generated ios folder in Xcode.
+Need Apple Developer Account, go to the "Signing & Capabilities" tab, 
+select your "Team," and Xcode will automatically generate the required provisioning profiles.
+
+**Export IPA:** 
+*In Xcode*, go to Product > Archive. 
+Once finished, use the "Distribute App" wizard to export the .ipa file. 
 ---
 
 ### 🌍 **Production Backend Deployment**
 
 cd server
-npm run build
-npm run start:prod
-
+bun start
 
 ---
 
@@ -250,19 +334,16 @@ npm run start:prod
 - Monitor requests and responses
 
 ### 🗄 **Database**
-- Use **Prisma Studio**: `npx prisma studio`
-- Or connect via PostgreSQL client:
-    psql -U postgres -d monitix360
-
+- Use **MSSQL**
 ---
 
 # 📱 Building ( Eas cloud & offline ) :
 
-We provide comprehensive guides for building app in Eas cloud & offline :
+Here is the comprehensive guides for building app in Eas cloud & offline :
 
 ## Build Guides
 - **[Building APK & IPA](Buildapk.md)** - Step-by-step guide for creating app packages
-  - Build with EAS Cloud (recommended)
+  - Build with EAS Offline (recommended) for keeping IP's safely offline
   - Local build with Android SDK & Xcode
   - Testing before publishing
 
@@ -272,41 +353,12 @@ We provide comprehensive guides for building app in Eas cloud & offline :
 
 # 📱 Full Publishing Guide 🚩🐦‍🔥
 
-We provide a comprehensive, up-to-date guide for publishing your app on Android and iOS:
+Here is the comprehensive, up-to-date guide for publishing your app on Android and iOS:
 
-👉 **[See the complete publishing guide (app-publish-guide.md)](app-publi sh-guide.md)**
+👉 **[See the complete publishing guide (app-publish-guide.md)](app-publish-guide.md)**
 
 Or jump to:
 - [Google Play Store Publishing Steps](app-publish-guide.md#part-1-google-play-store-android)
 - [Apple App Store Publishing Steps](app-publish-guide.md#part-2-apple-app-store-ios)
-
----
-
-## 🎨 Branding
-
-**Name:** Monitix 360  
-**Tagline:** *One Platform. Total Control.*  
-**Colors:**  
-- Primary: `#1E5A8E` (Blue)  
-- Secondary: `#2E7AB8` (Light Blue)  
-- Accent: `#3E9AD8` (Sky Blue)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! 🎉
-
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Commit** your changes: `git commit -m 'Add amazing feature'`
-4. **Push** to the branch: `git push origin feature/amazing-feature`
-5. **Open** a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License**.
 
 ---

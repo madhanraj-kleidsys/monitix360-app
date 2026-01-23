@@ -18,5 +18,6 @@
         "titleBar.inactiveBackground": "#00000099",
         "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.color": "#0000"
+    "peacock.color": "#0000",
+    "cmake.sourceDirectory": "E:/gamrgn/taskapp/client/node_modules/expo-modules-core/android"
 }
