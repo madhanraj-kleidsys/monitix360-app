@@ -1,25 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  Dimensions,
-  Modal,
-  KeyboardAvoidingView,
-  TextInput,
-  Alert,
-  Platform,
-  ActivityIndicator, Image, FlatList,
-} from 'react-native';
+import {View,Text,StyleSheet,ScrollView,TouchableOpacity,TouchableWithoutFeedback,Dimensions,Modal,KeyboardAvoidingView,TextInput,Alert, Platform, ActivityIndicator, Image, FlatList,} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Octicons from '@expo/vector-icons/Octicons';
-import * as FileSystem from 'expo-file-system/legacy'; // Fix for deprecated writeAsStringAsync warning/error
+import * as FileSystem from 'expo-file-system/legacy'; // using fs for deprecated writeAsStringAsync warnings-error
 import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
 import * as XLSX from 'xlsx';
@@ -35,6 +21,10 @@ import { CompactToggle } from './CompactToggle';
 import { isHolidayOrWeekend } from '../../../utils/holidayUtils';
 import HolidayAlert from '../../common/HolidayAlert';
 import StyledConfirmAlert from '../../common/StyledConfirmAlert';
+import PremiumAlert from '../../common/PremiumAlert';
+import ExportModal from './ExportModal';
+import CustomCalendarModal from '../../common/CustomCalendarModal';
+import NotificationModal from '../../employees/NotificationModal';
 
 const { width, height } = Dimensions.get('window');
 const isTablet = width > 600;
@@ -51,6 +41,10 @@ const COLORS = {
   text: '#0F172A',
   textLight: '#64748B',
   border: '#E2E8F0',
+  textDark: '#000000',
+  bgLight: '#F2F2F7',
+  white: '#FFFFFF',
+  border: '#C7C7CC'
 };
 
 const STATUS_COLORS = {
@@ -118,6 +112,22 @@ const exportTasksToExcel = async (tasks, dateRange) => {
       return;
     }
 
+    // Filter tasks by date range
+    const filteredExportTasks = tasks.filter(task => {
+      const taskDate = new Date(task.date || task.start || task.createdAt);
+      const start = new Date(dateRange.start);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateRange.end);
+      end.setHours(23, 59, 59, 999);
+
+      return taskDate >= start && taskDate <= end;
+    });
+
+    if (filteredExportTasks.length === 0) {
+      alert('No tasks found within the selected date range.');
+      return;
+    }
+
     const fileName = `Employee_Tasks_${formatDateRange(dateRange)}.xlsx`;
 
     // Show loading notification
@@ -130,19 +140,15 @@ const exportTasksToExcel = async (tasks, dateRange) => {
       trigger: null,
     });
 
-    // Request storage permission
-    // MediaLibrary permission removed - using Sharing instead
-
     // Create data array
-    const data = tasks.map(task => ({
-      'Employee Name': task.employeeName,
-      'Project / Task Name': task.name,
+    const data = filteredExportTasks.map(task => ({
+      'Employee Name': task.assigned_to_name || task.assigned_to_username || task.employeeName || 'Unknown',
+      'Project / Task Name': task.title || task.name || 'Untitled',
       'Status': task.status,
-      // 'Project': task.project,
-      'Description': task.description,
-      'Start Date/Time': formatDateTime(task.startDate),
-      'End Date/Time': formatDateTime(task.endDate),
-      'Total Duration': calculateDuration(task.startDate, task.endDate),
+      'Description': task.description ? task.description.substring(0, 30000) : '',
+      'Start Date/Time': formatDateTime(task.start || task.startDate),
+      'End Date/Time': formatDateTime(task.end_time || task.endDate),
+      'Total Duration': calculateDuration(task.start || task.startDate, task.end_time || task.endDate),
     }));
 
     // Create workbook
@@ -169,7 +175,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Export Successful ✅',
-        body: `${fileName}\nTotal Tasks: ${tasks.length}`,
+        body: `${fileName}\nTotal Tasks: ${filteredExportTasks.length}`,
         sound: 'default',
       },
       trigger: null,
@@ -198,7 +204,7 @@ const exportTasksToExcel = async (tasks, dateRange) => {
 };
 
 // ========== HEADER COMPONENT ==========
-function Header() {
+function Header({ onNotificationPress, notificationCount }) {
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning! 👋🏻';
@@ -218,50 +224,38 @@ function Header() {
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.userName}>Admin Dashboard</Text>
-            {/* <View style={styles.statusBadgenf}>
-              <View style={styles.statusDotnf} />
-              <Text style={styles.statusTextnf}>Online</Text>
-            </View> */}
           </View>
-          <TouchableOpacity style={styles.notificationBtn}>
+          <TouchableOpacity style={styles.notificationBtn} onPress={onNotificationPress}>
             <LinearGradient
               colors={['#FFFFFF', '#F0F9FF']}
               style={styles.avatar}
             >
               <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
             </LinearGradient>
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>3</Text>
-            </View>
+            {notificationCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
-
-        {/* <View style={styles.statsOverviewCard}>
-          <Text style={styles.statsTitle}>Today Stats</Text>
-          <View style={styles.overviewRow}>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewValue}>75%</Text>
-              <Text style={styles.overviewLabel}>Completion</Text>
-            </View>
-            <View style={styles.overviewDivider} />
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewValue}>1hrs</Text>
-              <Text style={styles.overviewLabel}>Time Saved</Text>
-            </View>
-            <View style={styles.overviewDivider} />
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewValue}>98%</Text>
-              <Text style={styles.overviewLabel}>Efficiency</Text>
-            </View>
-          </View>
-        </View> */}
       </View>
     </LinearGradient>
   );
 }
 
 // ========== FILTER BAR COMPONENT ==========
-function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline, setShowTimeline, isSmall }) {
+function FilterBar({
+  selectedDate,
+  setSelectedDate,
+  filteredTasks,
+  showTimeline,
+  setShowTimeline,
+  isSmall,
+  holidays,
+  onShowHolidayAlert,
+  onExportPress
+}) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleTodayPress = () => {
@@ -269,12 +263,16 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
     setSelectedDate(today);
   };
 
-  const handleDateChange = (event, date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
+  const handleDateChange = (date) => {
+    setShowDatePicker(false);
     if (date) {
       setSelectedDate(date);
+    }
+  };
+
+  const handleHolidayPress = (holiday) => {
+    if (onShowHolidayAlert) {
+      onShowHolidayAlert(`Holiday: ${holiday.description || holiday.reason || 'No description available'}`);
     }
   };
 
@@ -289,15 +287,6 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
             <Text style={styles.filterButtonText}>Today</Text>
           </TouchableOpacity>
 
-          {/* <TouchableOpacity
-            style={styles.dateRangeButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar" size={16} color={COLORS.secondary} />
-            <Text style={styles.dateRangeText}>{dateText}</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.textLight} />
-          </TouchableOpacity> */}
-
           <TouchableOpacity
             style={[
               styles.dateRangeButton,
@@ -310,6 +299,7 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
               style={[
                 styles.dateRangeText,
                 isSmall && styles.dateRangeTextSmall,
+                { color: COLORS.danger, fontWeight: '800' }
               ]}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -329,7 +319,7 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
 
           <TouchableOpacity
             style={styles.exportButton}
-            onPress={() => exportTasksToExcel(filteredTasks, selectedDate)}
+            onPress={onExportPress}
           >
             <Ionicons name="download" size={16} color="#fff" />
             <Text style={styles.exportButtonText}>Export Data</Text>
@@ -337,20 +327,19 @@ function FilterBar({ selectedDate, setSelectedDate, filteredTasks, showTimeline,
         </View>
       </View >
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleDateChange}
-        />
-      )
-      }
+      <CustomCalendarModal
+        visible={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        selectedDate={selectedDate}
+        onDateSelect={handleDateChange}
+        holidays={holidays}
+        onHolidayPress={handleHolidayPress}
+      />
     </>
   );
 }
 
-const TaskCard = React.memo(({ task, onPress }) => {
+const TaskCard = React.memo(({ task, onPress, onLongPress }) => {
   const statusColor = STATUS_COLORS[task.status] || COLORS.textLight;
 
   const PRIORITY_COLORS = {
@@ -421,6 +410,7 @@ const TaskCard = React.memo(({ task, onPress }) => {
     <TouchableOpacity
       style={[styles.card, styles.cuteCard]}
       onPress={onPress}
+      onLongPress={onLongPress}
       activeOpacity={0.8}
     >
       <LinearGradient
@@ -462,6 +452,9 @@ const TaskCard = React.memo(({ task, onPress }) => {
           <Text style={styles.taskTitleText} numberOfLines={2}>
             {task.name || 'No Title'}
           </Text>
+          <Text style={styles.taskDescriptionText} numberOfLines={2}>
+            {task.description?.length > 100 ? task.description.substring(0, 100) + '...' : task.description}
+          </Text>
         </View>
 
         <View style={styles.rightSection}>
@@ -491,11 +484,9 @@ const TaskCard = React.memo(({ task, onPress }) => {
 
 function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeletePress }) {
 
-  // Add this with your other constants at the top
-  // Replace your PRIORITY_COLORS and getPriorityColor function with:
   const PRIORITY_COLORS = {
     1: '#FF6B6B', // High - Red
-    2: '#FFA726', // Medium - Orange  
+    2: '#FFA726', // Medium - Orange
     3: '#4CAF50', // Low - Green
     'High': '#FF6B6B',
     'Medium': '#FFA726',
@@ -507,7 +498,7 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
 
   const getPriorityColor = (priority) => {
     const priorityLabel = getPriorityLabel(priority);
-    return PRIORITY_COLORS[priorityLabel] || '#FFA726'; // Default to Medium orange
+    return PRIORITY_COLORS[priorityLabel] || '#FFA726';
   };
   if (!task) return null;
 
@@ -539,7 +530,7 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
     }
 
     console.warn('Unknown priority value:', priorityNum);
-    return 'Medium'; // Default fallback
+    return 'Medium'; // Default fallback to medium
   };
 
   const priorityDisplay = getPriorityLabel(task.priority);
@@ -599,16 +590,6 @@ function TaskModal({ visible, task, onClose, modalHeight, onEditPress, onDeleteP
                     </Text>
                   </View>
                 </View>
-
-                {/* <View style={styles.detailRow}>
-                <Text style={styles.label}>Priority:</Text>
-                <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
-                  <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-                  <Text style={[styles.priorityBadgeText, { color: priorityColor }]}>
-                    {priorityDisplay}
-                  </Text>
-                </View>
-              </View> */}
 
                 <View style={styles.detailRow}>
                   <Text style={styles.label}>Priority:</Text>
@@ -736,7 +717,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
   const [projectTitleOpen, setProjectTitleOpen] = useState(false);
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [dateTimePickerMode, setDateTimePickerMode] = useState('date');
-  const [currentPicker, setCurrentPicker] = useState(null); // 'startTime' or 'endTime'
+  const [currentPicker, setCurrentPicker] = useState(null);
   const [showHolidayAlert, setShowHolidayAlert] = useState(false);
   const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
   const [assignUserSearchQuery, setAssignUserSearchQuery] = useState('');
@@ -745,7 +726,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
   // Dummy data for dropdowns
   const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
   const priorities = ['Low', 'Medium', 'High'];
-  // const users = ['Madhaneeh J', 'Arun', 'Patel'];
+  // const users = ['kavi', 'Madhaneeh', 'Arun', 'Patel'];
   // const {allUsers} = useTaskManagement;
 
   useEffect(() => {
@@ -864,7 +845,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
         department: formData.department || '',           // ← Used for title
         projectTitle: formData.Project_Title || '',      // ← createTask expects camelCase!
         taskDescription: formData.taskDescription || '',
-        // priority: formData.priority,                     // ← String 'High', 'Medium', etc.
+        // priority: formData.priority,                     // ← String 'High', 'Medium', 'Low'.
         priority: getPriorNumber(formData.priority),     // ← Convert to Integer
         assignUserId: parseInt(formData.assignUserId),   // ← Integer
         startTime: formData.startTime,
@@ -897,13 +878,29 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
     setShowDateTimePicker(true);
   };
 
+  const handleProceedHoliday = () => {
+    setShowHolidayAlert(false);
+    if (pendingDate) {
+      // Proceed with the pending date
+      if (dateTimePickerMode === 'date') {
+        const currentVal = formData[currentPicker] ? new Date(formData[currentPicker]) : new Date();
+        currentVal.setFullYear(pendingDate.getFullYear(), pendingDate.getMonth(), pendingDate.getDate());
+        handleInputChange(currentPicker, currentVal.toISOString());
+        // Automatically open time picker next
+        setTimeout(() => openDateTimePicker(currentPicker, 'time'), 200);
+      }
+      setPendingDate(null);
+    }
+  };
+
   const onDateTimeChange = (event, selectedDate) => {
     setShowDateTimePicker(false);
     if (selectedDate) {
       if (dateTimePickerMode === 'date') {
         const holidayCheck = isHolidayOrWeekend(selectedDate, holidays);
         if (holidayCheck.isHoliday) {
-          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason || 'a non-working day'}. We don't assign tasks on holidays/weekends. Please pick another date!`);
+          setPendingDate(selectedDate);
+          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason || 'a non-working day'}. We don't assign tasks on holidays/weekends.`);
           setShowHolidayAlert(true);
           return;
         }
@@ -1113,6 +1110,7 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
                   </View>
 
                   {/* Project Title */}
+
                   <Text style={styles.fieldLabel}>Project Title</Text>
                   <View>
                     <TouchableOpacity
@@ -1189,17 +1187,29 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
 
                   </View>
 
-                  {/* Task Description */}
-                  <Text style={styles.fieldLabel}>Task Description</Text>
-                  <TextInput
-                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
-                    placeholder="Enter task description"
-                    placeholderTextColor={COLORS.textLight}
-                    value={formData.taskDescription}
-                    onChangeText={value => handleInputChange('taskDescription', value)}
-                    editable={!loading}
-                    multiline
-                  />
+                  {/* Status */}
+                  {/* <Text style={styles.fieldLabel}>Status</Text>
+                  <View style={styles.statusPicker}>
+                    {['Pending', 'In Progress', 'completed', 'Paused', 'In complete'].map((status) => (
+                      <TouchableOpacity
+                        key={status}
+                        style={[
+                          styles.statusOption,
+                          editedTask.status === status && styles.statusOptionActive
+                        ]}
+                        onPress={() => handleInputChange('status', status)}
+                      >
+                        <Text
+                          style={[
+                            styles.statusOptionText,
+                            editedTask.status === status && styles.statusOptionTextActive
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View> */}
 
                   {/* Priority Dropdown (required) */}
                   <Text style={styles.fieldLabel}>Priority <Text style={{ color: COLORS.danger }}>*</Text></Text>
@@ -1243,6 +1253,18 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
                       </View>
                     )}
                   </View>
+
+                  {/* Task Description */}
+                  <Text style={styles.fieldLabel}>Task Description</Text>
+                  <TextInput
+                    style={[styles.input, { minHeight: 80, textAlignVertical: 'top' }]}
+                    placeholder="Enter task description"
+                    placeholderTextColor={COLORS.textLight}
+                    value={formData.taskDescription}
+                    onChangeText={value => handleInputChange('taskDescription', value)}
+                    editable={!loading}
+                    multiline
+                  />
 
                   {/* Duration */}
                   <View style={styles.durationSection}>
@@ -1376,13 +1398,15 @@ function AssignTaskModal({ visible, onClose, onSave, allUsers, projects, holiday
         visible={showHolidayAlert}
         message={holidayAlertMessage}
         onConfirm={() => setShowHolidayAlert(false)}
+        onProceed={handleProceedHoliday}
+        proceedText="Assign Anyway"
       />
     </Modal>
   );
 }
 
 // ========== COMPLETE EDIT TASK MODAL WITH ALL FEATURES ==========
-function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, projects, holidays }) {
+function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, projects, holidays, onUnassign, onShowHolidayAlert }) {
   const [editedTask, setEditedTask] = useState({
     title: '',
     description: '',
@@ -1405,6 +1429,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
   const [currentPicker, setCurrentPicker] = useState(null);
   const [showHolidayAlert, setShowHolidayAlert] = useState(false);
   const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
+  const [calendarPickerMode, setCalendarPickerMode] = useState(null); // 'start' or 'end'
 
   const departments = ['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation'];
   const projectOptions = ['Admin Portal', 'Mobile App', 'Infrastructure', 'Performance Enhancement'];
@@ -1593,7 +1618,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
       if (dateTimePickerMode === 'date') {
         const holidayCheck = isHolidayOrWeekend(selectedDate, holidays);
         if (holidayCheck.isHoliday) {
-          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason}. We don't assign tasks on non-working days. Please pick another date!`);
+          setHolidayAlertMessage(`Oops! You've selected ${holidayCheck.reason}. We don't assign tasks on non-working days. Please pick another date! Else click 'Assign Anyway' to proceed.`);
           setShowHolidayAlert(true);
           return;
         }
@@ -1608,6 +1633,28 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         handleInputChange(currentPicker, currentVal.toISOString());
         handleInputChange('durationInputMode', 'auto');
       }
+    }
+  };
+
+  const openCalendar = (key) => {
+    setCalendarPickerMode(key);
+  };
+
+  const handleDateSelect = (date) => {
+    if (date) {
+      // Preserve time from existing date
+      const currentKey = calendarPickerMode === 'start' ? 'startTime' : 'endTime';
+      const currentDate = new Date(editedTask[currentKey]);
+      date.setHours(currentDate.getHours(), currentDate.getMinutes(), 0, 0);
+
+      setEditedTask(prev => ({ ...prev, [currentKey]: date.toISOString() }));
+      setCalendarPickerMode(null);
+    }
+  };
+
+  const handleHolidayPress = (holiday) => {
+    if (onShowHolidayAlert) {
+      onShowHolidayAlert(`Holiday: ${holiday.holiday_name || holiday.reason || 'No description'}`);
     }
   };
 
@@ -1670,14 +1717,6 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
 
                     {/* Task Title */}
                     <Text style={styles.fieldLabel}>Task Title *</Text>
-                    {/* <TextInput
-                    style={styles.input}
-                    placeholder="Enter task title"
-                    placeholderTextColor={COLORS.textLight}
-                    value={editedTask.title}
-                    onChangeText={(value) => handleInputChange('title', value)}
-                    editable={!loading}
-                  /> */}
 
                     <View>
                       <TouchableOpacity
@@ -1739,62 +1778,9 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                       onChangeText={(value) => handleInputChange('description', value)}
                       editable={!loading}
                       multiline
-                    />
-
-                    {/* Department Dropdown */}
-                    {/* <Text style={styles.fieldLabel}>Department</Text>
-                  <View>
-                    <TouchableOpacity
-                      style={styles.dropdown}
-                      onPress={() => setDepartmentOpen(prev => !prev)}
-                      disabled={loading}
-                    >
-                      <Text style={[
-                        styles.dropdownText,
-                        !editedTask.department && { color: COLORS.textLight },
-                      ]}>
-                        {editedTask.department || 'Select department'}
-                      </Text>
-                      <Ionicons
-                        name={departmentOpen ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={COLORS.textLight}
-                      />
-                    </TouchableOpacity>
-
-                    {departmentOpen && (
-                      <View style={styles.customInputWrapper}>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Type custom department"
-                          placeholderTextColor={COLORS.textLight}
-                          value={editedTask.department}
-                          onChangeText={(value) => handleInputChange('department', value)}
-                          editable={!loading}
-                        />
-                      </View>
-                    )}
-
-                    {departmentOpen && (
-                      <View style={[styles.dropdownMenu, { zIndex: 1000 }]}>
-                        {departments.map((dept, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              handleInputChange('department', dept);
-                              setDepartmentOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{dept}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View> */}
+                    /> 
 
                     {/* Project Title */}
-
                     <Text style={styles.fieldLabel}>Project Title</Text>
                     <View>
                       <TouchableOpacity
@@ -1826,25 +1812,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                             editable={!loading}
                           />
                         </View>
-                      )}
-
-                      {/* {projectTitleOpen && (
-                      <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
-                        {projectOptions.map((proj, idx) => (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                              handleInputChange('Project_Title', proj);
-                              setProjectTitleOpen(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownItemText}>{proj}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )} */}
-
+                      )} 
                       {projectTitleOpen && (
                         <View style={[styles.dropdownMenu, { zIndex: 900 }]}>
                           {(projects || []).map((proj) => (
@@ -1968,7 +1936,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     <Text style={styles.fieldLabel}>Start Time *</Text>
                     <TouchableOpacity
                       style={styles.dropdown}
-                      onPress={() => openDateTimePicker('startTime', 'date')}
+                      onPress={() => openCalendar('start')}
                       disabled={loading}
                     >
                       <Text style={[
@@ -1984,7 +1952,7 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                     <Text style={styles.fieldLabel}>End Time *</Text>
                     <TouchableOpacity
                       style={styles.dropdown}
-                      onPress={() => openDateTimePicker('endTime', 'date')}
+                      onPress={() => openCalendar('end')}
                       disabled={loading}
                     >
                       <Text style={[
@@ -1996,18 +1964,28 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
                       <Ionicons name="calendar" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
 
-                    {/* DateTimePicker */}
-                    {showDateTimePicker && (
-                      <DateTimePicker
-                        value={editedTask[currentPicker] ? new Date(editedTask[currentPicker]) : new Date()}
-                        mode={dateTimePickerMode}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={onDateTimeChange}
-                      />
-                    )}
+                    {/* Custom Calendar Modal */}
+                    <CustomCalendarModal
+                      visible={!!calendarPickerMode}
+                      onClose={() => setCalendarPickerMode(null)}
+                      selectedDate={calendarPickerMode === 'start' ? editedTask.startTime : editedTask.endTime}
+                      onDateSelect={handleDateSelect}
+                      holidays={holidays}
+                      onHolidayPress={handleHolidayPress}
+                    />
 
                     {/* Action Buttons */}
                     <View style={styles.buttonGroup}>
+                      {onUnassign && (
+                        <TouchableOpacity
+                          style={[styles.cancelButton, { backgroundColor: COLORS.warning, flex: 0.8 }]}
+                          onPress={() => onUnassign(task.id)}
+                          disabled={loading}
+                        >
+                          <Text style={[styles.cancelButtonText, { color: '#fff' }]}>Unassign</Text>
+                        </TouchableOpacity>
+                      )}
+
                       <TouchableOpacity
                         style={styles.cancelButton}
                         onPress={onClose}
@@ -2040,13 +2018,15 @@ function EditTaskModal({ visible, task, onClose, onSave, loading, allUsers, proj
         message={holidayAlertMessage}
         onConfirm={() => setShowHolidayAlert(false)}
       />
-    </Modal >
+    </Modal>
   );
 }
 
+
+
 // ========== ADVANCED FILTER BAR ==========
 const AdvancedFilterBar = ({ filterUser, setFilterUser, filterDept, setFilterDept,
-  filterStatus, setFilterStatus, departments = [] }) => {
+  filterStatus, setFilterStatus, filterProject, setFilterProject, projects = [], departments = [] }) => {
   const statuses = ['Pending', 'In Progress', 'Paused', 'Completed', 'In Complete'];
 
   return (
@@ -2116,7 +2096,7 @@ const AdvancedFilterBar = ({ filterUser, setFilterUser, filterDept, setFilterDep
 
 // ========== MAIN HOME SCREEN ==========
 
-export default function HomePage({ user }) {
+export default function HomePage({ user, userCompany }) {
   const {
     allUsers = [],
     allTasks = [],
@@ -2145,7 +2125,13 @@ export default function HomePage({ user }) {
   const [showDashboard, setShowDashboard] = useState(false);
 
   const [shifts, setShifts] = useState([]);
-  const [showTimeline, setShowTimeline] = useState(true);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // Timeline Data
+  const [timeValues, setTimeValues] = useState({});
+  const [reasonValues, setReasonValues] = useState({});
 
   const [isDetailVisible, setIsDetailVisible] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -2166,18 +2152,22 @@ export default function HomePage({ user }) {
   const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [emailAlertVisible, setEmailAlertVisible] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [adminNotifications, setAdminNotifications] = useState([]);
 
   const fetchHolidays = React.useCallback(async () => {
     try {
       // Backend route is /api/declare-holiday, which automatically filters by company_id in the controller
       const response = await api.get('/declare-holiday');
       if (response.data && Array.isArray(response.data)) {
-        const holidayDates = response.data.map(h => {
-          const d = new Date(h.holiday_date);
-          return d.toISOString().split('T')[0];
-        });
-        setHolidays(holidayDates);
-        console.log('✅ Holidays fetched:', holidayDates.length);
+        // Store full objects for calendar compatibility
+        const holidayData = response.data.map(h => ({
+          ...h,
+          holiday_date: new Date(h.holiday_date).toISOString().split('T')[0]
+        }));
+        setHolidays(holidayData);
+        console.log('✅ Holidays fetched:', holidayData.length);
       }
     } catch (error) {
       console.error('Fetch holidays error:', error.message);
@@ -2222,7 +2212,14 @@ export default function HomePage({ user }) {
     on('shift:updated', handleShiftUpdate);
     on('shift:deleted', handleShiftUpdate);
 
+    const handleNewUserTask = (data) => {
+      console.log('New User Task Request:', data);
+      fetchPendingNotifications();
+    };
+    on('newUserTaskRequest', handleNewUserTask);
+
     return () => {
+      off('newUserTaskRequest', handleNewUserTask);
       off('shift:created', handleShiftUpdate);
       off('shift:updated', handleShiftUpdate);
       off('shift:deleted', handleShiftUpdate);
@@ -2246,10 +2243,6 @@ export default function HomePage({ user }) {
           ? { ...t, startTime: newStartIso, endTime: newEndIso }
           : t
       );
-
-      // Update your state (adjust based on your state management)
-      // setFilteredTasks(updatedTasks);
-
       console.log('✅ Task rescheduled:', { taskId, newStartIso, newEndIso });
     } catch (error) {
       console.error('❌ Drag error:', error);
@@ -2297,7 +2290,7 @@ export default function HomePage({ user }) {
 
   // ===== RESPONSIVE CALCULATIONS =====
   const bottomPadding = useMemo(() => {
-    // Dock height is approximately 80-100px
+    // Dock height is approximately 80-100px => always go for height not maxHeight. nd use low values !!
     if (isTablet) {
       return insets.bottom + 150;
     }
@@ -2328,7 +2321,7 @@ export default function HomePage({ user }) {
     }
   };
 
-  // convert backend tasks to UI tasks for TaskCard
+  // convert backend tasks to UI tasks for TaskCard uuh
   const uiTasks = useMemo(() => {
     if (!Array.isArray(allTasks)) return [];
 
@@ -2354,6 +2347,26 @@ export default function HomePage({ user }) {
       }
     });
   }, [allTasks, allUsers]);
+
+  // Fetch Timeline Data when visible
+  useEffect(() => {
+    if (showTimeline && allTasks.length > 0) {
+      const fetchTimelineDetails = async () => {
+        try {
+          const ids = allTasks.map(t => t.id);
+          const [timeRes, reasonRes] = await Promise.all([
+            api.post('/time_update/bulkTimeUpdate', { taskIds: ids }),
+            api.post('/taskReasons/bulkTaskReasons', { taskIds: ids })
+          ]);
+          setTimeValues(timeRes.data || {});
+          setReasonValues(reasonRes.data || {});
+        } catch (err) {
+          console.error('Timeline fetch error:', err);
+        }
+      };
+      fetchTimelineDetails();
+    }
+  }, [showTimeline, allTasks.length]); // Depend on length to avoid loops if allTasks content changes deeply
 
   //  Filter and Sort tasks
   const filteredTasks = useMemo(() => {
@@ -2401,7 +2414,7 @@ export default function HomePage({ user }) {
       return true;
     });
 
-    // Premium Sorting: Running tasks at TOP, then sort by startDate desc
+    // Sorting: Running tasks at TOP, then sort by startDate desc
     return [...filtered].sort((a, b) => {
       const aRunning = (a.status || '').toLowerCase() === 'in progress';
       const bRunning = (b.status || '').toLowerCase() === 'in progress';
@@ -2423,12 +2436,40 @@ export default function HomePage({ user }) {
   //   setSelectedTask(task);
   //   setIsDetailVisible(true);
   // };
+  const fetchPendingNotifications = async () => {
+    try {
+      const res = await api.get('/tasks/admin/getPendingUserTaskRequests');
+      const reqs = res.data || [];
+      const formatted = reqs.map(r => ({
+        id: r.id,
+        title: 'New Task Request',
+        body: `${r.AssignedTo?.username} requested: ${r.title}`,
+        time: new Date(r.createdAt).toLocaleString(),
+        icon: 'alert-circle',
+        color: COLORS.warning,
+        project: r.Project_Title,
+        data: r
+      }));
+      setAdminNotifications(formatted);
+    } catch (err) {
+      console.log('Fetch notifications error', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingNotifications();
+  }, []);
+
   const handleTaskPress = (task) => {
     // console.log('📋 Selected task data:', JSON.stringify(task, null, 2));
     setSelectedTask(task);
     setIsDetailVisible(true);
   };
   const handleAddTask = () => {
+    if (!userCompany?.hasEmailConfig) {
+      setEmailAlertVisible(true);
+      return;
+    }
     setAssignTaskModalVisible(true);
   };
 
@@ -2439,18 +2480,37 @@ export default function HomePage({ user }) {
   const handleUpdateTask = async (id, data) => {
     try {
       await updateTask(id, data);
-      // Close edit modal after save
       setIsEditModalVisible(false);
-      // Keep detail sheet open to show updated data
-      // if (isConnected) emit
       console.log('task:updatedrrr', { id, ...data });
       await fetchAllTasks();
-      setSelectedTask(null); // Close detail sheet too
+      setSelectedTask(null);
       setIsDetailVisible(false);
     } catch (err) {
       if (err.message === 'SESSION_EXPIRED') return;
       console.error('Update failed:', err);
     }
+  };
+
+  const handleUnassignTask = async (taskId) => {
+    Alert.alert("Confirm Unassign", "Are you sure you want to unassign this task?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Unassign", style: "destructive", onPress: async () => {
+          try {
+            await updateTask(taskId, { assigned_to: null, status: 'Pending' });
+            // await api.patch(`/tasks/${taskId}/assign`, { assigned_to: null }); // Alternative
+            setIsEditModalVisible(false);
+            setSelectedTask(null);
+            setIsDetailVisible(false);
+            await fetchAllTasks();
+            Alert.alert("Success", "Task unassigned.");
+          } catch (err) {
+            console.error("Unassign failed:", err);
+            Alert.alert("Error", "Failed to unassign task");
+          }
+        }
+      }
+    ]);
   };
 
   // if (isConnected) emit('task:deleted', id);
@@ -2476,7 +2536,7 @@ export default function HomePage({ user }) {
   const isSmall = width < 360;
   return (
     <View style={styles.container}>
-      <Header />
+      <Header onNotificationPress={() => setShowNotifications(true)} notificationCount={adminNotifications.length} />
       <View style={styles.headerSpacer} />
       <FilterBar
         selectedDate={selectedDate}
@@ -2485,12 +2545,19 @@ export default function HomePage({ user }) {
         showTimeline={showTimeline}
         setShowTimeline={setShowTimeline}
         isSmall={isSmall}
+        holidays={holidays}
+        onShowHolidayAlert={(msg) => {
+          setHolidayAlertMessage(msg);
+          setShowHolidayAlert(true);
+        }}
+        onExportPress={() => setShowExportModal(true)}
       />
 
       <AdvancedFilterBar
         filterUser={filterUser} setFilterUser={setFilterUser}
         filterDept={filterDept} setFilterDept={setFilterDept}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+        projects={projects}
         departments={['Development', 'UI/UX', 'Infrastructure', 'QA Testing', 'Documentation']}
       />
 
@@ -2524,6 +2591,7 @@ export default function HomePage({ user }) {
                       <TaskCard
                         task={item}
                         onPress={() => handleTaskPress(item)}
+                        onLongPress={() => handleUnassignTask(item.id)}
                       />
                     )}
                     style={{ flex: 1 }}
@@ -2552,12 +2620,13 @@ export default function HomePage({ user }) {
                 tasks={filteredTasks}
                 shifts={shifts}
                 selectedDate={selectedDate}
-                onTaskDragEnd={handleTaskDragEnd}
+                // onTaskDragEnd={handleTaskDragEnd}
                 onTaskPress={(task) => handleTaskPress(task)}
-                holidays={holidays}
+                holidays={holidays.map(h => h.holiday_date)}
+                timeValues={timeValues}
+                reasonValues={reasonValues}
               />
             )}
-
           </View>
         </View>
       </View>
@@ -2592,10 +2661,15 @@ export default function HomePage({ user }) {
         task={selectedTask}
         onClose={() => setIsEditModalVisible(false)}
         onSave={handleUpdateTask}
+        onUnassign={handleUnassignTask}
         loading={loading}
         allUsers={allUsers}
         projects={projects}
         holidays={holidays}
+        onShowHolidayAlert={(msg) => {
+          setHolidayAlertMessage(msg);
+          setShowHolidayAlert(true);
+        }}
       />
 
       <HolidayAlert
@@ -2610,12 +2684,38 @@ export default function HomePage({ user }) {
         message="Are you sure you want to delete this task? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        type="danger"
+        type="delete"
         onConfirm={confirmDeleteTask}
         onCancel={() => {
           setShowDeleteAlert(false);
           setTaskToDelete(null);
         }}
+      />
+
+      <PremiumAlert
+        visible={emailAlertVisible}
+        title="Email Config Missing 📧"
+        message="Your company email settings are not configured. Please set up your SMTP credentials in the Profile section to enable automated task notifications."
+        onConfirm={() => setEmailAlertVisible(false)}
+        type="warning"
+      />
+
+      <ExportModal
+        visible={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={async (start, end) => {
+          setExportLoading(true);
+          try {
+            await exportTasksToExcel(allTasks, { start, end });
+            setShowExportModal(false);
+          } catch (e) {
+            console.error(e);
+            Alert.alert('Export Failed', e.message);
+          } finally {
+            setExportLoading(false);
+          }
+        }}
+        loading={exportLoading}
       />
     </View>
   );
@@ -2623,12 +2723,10 @@ export default function HomePage({ user }) {
 
 // ========== STYLES ==========
 const styles = StyleSheet.create({
-  // ========== CONTAINER ==========
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
   // ========== HEADER STYLES ==========
   headerGradient: {
     paddingTop: isTablet ? 40 : 45,
@@ -2667,30 +2765,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-
-  // ========== STATUS STYLES ==========
-  // statusBadgenf: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  //   paddingHorizontal: 12,
-  //   paddingVertical: 6,
-  //   borderRadius: 20,
-  //   gap: 6,
-  //   alignSelf: 'flex-start',
-  // },
-  // statusDotnf: {
-  //   width: 8,
-  //   height: 8,
-  //   borderRadius: 4,
-  //   backgroundColor: COLORS.success,
-  //   marginRight: 6,
-  // },
-  // statusTextnf: {
-  //   fontSize: 12,
-  //   fontWeight: '600',
-  //   color: '#fff',
-  // },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2754,61 +2828,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-
-  // ========== STATS OVERVIEW ==========
-  // statsOverviewCard: {
-  //   backgroundColor: 'rgba(255, 255, 255, 0.95)',
-  //   borderRadius: 20,
-  //   padding: isTablet ? 24 : 20,
-  //   shadowColor: '#000',
-  //   shadowOffset: { width: 0, height: 10 },
-  //   shadowOpacity: 0.15,
-  //   shadowRadius: 20,
-  //   elevation: 10,
-  // },
-  // statsTitle: {
-  //   fontSize: isTablet ? 20 : 18,
-  //   fontWeight: '700',
-  //   color: COLORS.text,
-  //   textAlign: 'center',
-  //   marginBottom: 5,
-  // },
-  // statsContainer: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  // },
-  // overviewRow: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  // },
-  // overviewItem: {
-  //   flex: 1,
-  //   alignItems: 'center',
-  // },
-  // overviewValue: {
-  //   fontSize: isTablet ? 28 : 24,
-  //   fontWeight: '800',
-  //   color: COLORS.text,
-  //   marginBottom: 4,
-  // },
-  // overviewLabel: {
-  //   fontSize: isTablet ? 13 : 12,
-  //   color: COLORS.textLight,
-  //   fontWeight: '500',
-  // },
-  // overviewDivider: {
-  //   width: 1,
-  //   height: 40,
-  //   backgroundColor: COLORS.border,
-  // },
-
   // ========== FILTER BAR ==========
   filterBarContainer: {
     backgroundColor: COLORS.cardBg,
-    paddingHorizontal: isTablet ? 20 : 16,
-    paddingVertical: 12,
+    paddingHorizontal: isTablet ? 20 : 2,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
@@ -2818,13 +2842,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    // marginBottom: 16,
+    marginBottom: 6,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
     backgroundColor: `${COLORS.primary}15`,
     gap: 6,
@@ -2884,7 +2908,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: COLORS.success,
     gap: 6,
@@ -2903,7 +2927,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: isTablet ? 24 : 16,
   },
   tasksSection: {
-    paddingVertical: 16,
+    paddingVertical: 6,
   },
   sectionTitle: {
     fontSize: isTablet ? 24 : 22,
@@ -3133,9 +3157,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
-
   //=======
-
   label: {
     fontSize: isTablet ? 15 : 14,
     fontWeight: '600',
@@ -3558,6 +3580,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textLight,
     fontWeight: '500',
+  },
+  taskDescriptionText:{
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontWeight: '400',
   },
   employeeRow: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
-  PanResponder,
+  // PanResponder,
   Animated,
   Alert,
   TouchableOpacity,
@@ -15,6 +15,59 @@ import { Ionicons } from '@expo/vector-icons';
 import HolidayAlert from '../../common/HolidayAlert';
 import Svg, { Defs, Pattern, Rect, Line as SvgLine } from 'react-native-svg';
 import { isHolidayOrWeekend } from '../../../utils/holidayUtils';
+
+// Helper to build actual segments
+const buildActualSegments = (updates = [], reasons = []) => {
+  const events = [];
+
+  const hasStart = updates.some(u => u.type === 1);
+  if (!hasStart) return [];
+
+  updates.forEach(u => {
+    if (u.type === 1) { // Start
+      events.push({ type: "START", time: new Date(u.time_logged) });
+    }
+    if (u.type === 2) { // Stop
+      events.push({ type: "STOP", time: new Date(u.time_logged) });
+    }
+  });
+
+  reasons
+    .filter(r => r.reason_type === 3) // Pause
+    .forEach(r => {
+      events.push({ type: "PAUSE", time: new Date(r.createdAt) });
+    });
+
+  events.sort((a, b) => a.time - b.time);
+
+  const segments = [];
+  let currentStart = null;
+
+  for (const e of events) {
+    if (e.type === "START") {
+      currentStart = e.time;
+    }
+
+    if ((e.type === "PAUSE" || e.type === "STOP") && currentStart) {
+      segments.push({
+        start: currentStart,
+        end: e.time,
+      });
+      currentStart = null;
+    }
+  }
+
+  // still running
+  if (currentStart) {
+    segments.push({
+      start: currentStart,
+      end: new Date(),
+      running: true,
+    });
+  }
+
+  return segments;
+};
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,6 +79,7 @@ const COLORS = {
   warning: '#F59E0B',
   danger: '#EF4444',
   background: '#F8FAFC',
+  transparent: 'transparent',
   cardBg: '#FFFFFF',
   text: '#0F172A',
   textLight: '#64748B',
@@ -47,7 +101,7 @@ const STATUS_COLORS = {
   // ['#ff6b6b', '#ee5a52'],
   'completed': ['#4caf50', '#6bcf7f'],
   'In complete': ['#95A5A6', '#7F8C8D'],
-  'In in complete': ['#95A5A6', '#7F8C8D'], // Fallback if typo
+  'in complete': ['#95A5A6', '#7F8C8D'], // Fallback if typo
   'Paused': ['#E74C3C', '#C0392B'],
   'paused': ['#E74C3C', '#C0392B'],
 };
@@ -66,10 +120,9 @@ const isoToMinutes = (isoString) => {
   }
 };
 
-/**
- * Helper: Calculate duration between two ISO times
- * Returns milliseconds
- */
+//   Calculate duration between two ISO times
+//  Returns milliseconds
+
 const getIsoDuration = (startIso, endIso) => {
   if (!startIso || !endIso) return 0;
   try {
@@ -140,19 +193,21 @@ const formatDurationText = (durationMs) => {
  * - tasks: Array of task objects with startTime, endTime (ISO strings)
  * - shifts: Array of shift objects with startTime, endTime
  * - selectedDate: Selected date (for reference)
- * - onTaskDragEnd: Callback(taskId, newStartIso, newEndIso)
  * - onTaskPress: Callback(task)
  */
 export const DraggableTimeline = ({
   tasks = [],
   shifts = [],
   selectedDate,
-  onTaskDragEnd,
+  // onTaskDragEnd,
   onTaskPress,
   holidays = [],
+  timeValues = {},
+  reasonValues = {},
 }) => {
   const horizontalScrollRef = useRef(null);
-  const [draggingTaskId, setDraggingTaskId] = useState(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  // const [draggingTaskId, setDraggingTaskId] = useState(null);
   const [showHolidayAlert, setShowHolidayAlert] = useState(false);
   const [holidayAlertMessage, setHolidayAlertMessage] = useState('');
 
@@ -213,7 +268,8 @@ export const DraggableTimeline = ({
   const HOURS_LABEL_WIDTH = 60;
   const pixelsPerMinute = 2.5; // Wider for better visibility
   const tracksWidth = totalMinutes * pixelsPerMinute;
-  const TIMELINE_WIDTH = tracksWidth + HOURS_LABEL_WIDTH + (TIMELINE_PADDING * 2);
+  const TRACK_CONTAINER_WIDTH = tracksWidth + (TIMELINE_PADDING * 2); // Full width including padding
+  const TIMELINE_WIDTH = TRACK_CONTAINER_WIDTH + HOURS_LABEL_WIDTH;
 
   // Group tasks by employee
   const tasksByEmployee = useMemo(() => {
@@ -229,6 +285,7 @@ export const DraggableTimeline = ({
       .map(([emp, empTasks]) => ({ employee: emp, tasks: empTasks }))
       .slice(0, 15);
   }, [normalizedTasks]);
+  // console.log(tasksByEmployee);
 
   // Calculate task position
   const getTaskPosition = useCallback(
@@ -237,7 +294,9 @@ export const DraggableTimeline = ({
       const endMin = isoToMinutes(task.endTime);
 
       const offsetFromShiftStart = Math.max(0, startMin - shiftStartMin);
-      const left = HOURS_LABEL_WIDTH + TIMELINE_PADDING + offsetFromShiftStart * pixelsPerMinute;
+
+      // FIX: Left relative to the TRACK (not container), so remove HOURS_LABEL_WIDTH
+      const left = TIMELINE_PADDING + offsetFromShiftStart * pixelsPerMinute;
 
       // Calculate duration properly
       const taskDuration = Math.max(15, endMin - startMin); // Min 15 mins for visibility
@@ -311,7 +370,9 @@ export const DraggableTimeline = ({
         setDraggingTaskId(null);
       }
     },
-    [pixelsPerMinute, shiftStartMin, shiftEndMin, minToIsoDate, onTaskDragEnd, onTaskPress]
+    [pixelsPerMinute, shiftStartMin, shiftEndMin, minToIsoDate,
+      //  onTaskDragEnd,
+        onTaskPress]
   );
 
   // Render hour labels
@@ -321,7 +382,8 @@ export const DraggableTimeline = ({
     const endHour = Math.ceil(shiftEndMin / 60);
 
     for (let h = startHour; h <= endHour; h++) {
-      const xPos = (h * 60 - shiftStartMin) * pixelsPerMinute;
+      // FIX: Add TIMELINE_PADDING to align with content
+      const xPos = TIMELINE_PADDING + (h * 60 - shiftStartMin) * pixelsPerMinute;
       labels.push(
         <View key={h} style={[styles.hourLabel, { left: xPos }]}>
           <Text style={styles.hourLabelText}>{String(h).padStart(2, '0')}:00</Text>
@@ -338,7 +400,8 @@ export const DraggableTimeline = ({
     const endHour = Math.ceil(shiftEndMin / 60);
 
     for (let h = startHour; h <= endHour; h++) {
-      const xPos = (h * 60 - shiftStartMin) * pixelsPerMinute;
+      // FIX: Add TIMELINE_PADDING to align with content
+      const xPos = TIMELINE_PADDING + (h * 60 - shiftStartMin) * pixelsPerMinute;
       lines.push(
         <View key={`line-${h}`} style={[styles.gridLine, { left: xPos }]} />
       );
@@ -359,7 +422,8 @@ export const DraggableTimeline = ({
       let duration = endMin - startMin;
       if (duration < 0) duration += 1440;
 
-      const left = (relStart * pixelsPerMinute);
+      // Add TIMELINE_PADDING for big sizee
+      const left = TIMELINE_PADDING + (relStart * pixelsPerMinute);
       const width = (duration * pixelsPerMinute);
 
       return (
@@ -393,84 +457,203 @@ export const DraggableTimeline = ({
         </View>
         <View style={styles.timelineInfo}>
           <Text style={styles.timelineInfoText}>
-            {shiftTimes.startTime} - {shiftTimes.endTime}
+            <Text style={{ color: COLORS.danger, fontWeight: '800' }}>
+              {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </Text>
+            {'  |  '}{shiftTimes.startTime} - {shiftTimes.endTime}
           </Text>
         </View>
       </View>
 
-      {/* Horizontal Scroll */}
-      <ScrollView
+      {/* Sync horizontal scroll position */}
+      <Animated.ScrollView
         ref={horizontalScrollRef}
         horizontal
         showsHorizontalScrollIndicator={true}
         scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+          { useNativeDriver: false }
+        )}
         style={styles.scrollView}
       >
-        <View style={{ width: TIMELINE_WIDTH }}>
-          {/* Hour Labels Row */}
+        <View style={[
+          styles.marginBottomSpace,
+          { width: TIMELINE_WIDTH }
+        ]}>
+          {/* Hour Labels Row - Sticky at top */}
           <View style={styles.hoursRow}>
-            <View style={[styles.employeeCell, styles.hoursCellLabel]} />
-            <View style={[styles.timelineTrack, { width: tracksWidth }]}>
+            {/* Sticky Corner Box */}
+            <Animated.View
+              style={[
+                styles.hoursCellLabel,
+                {
+                  width: HOURS_LABEL_WIDTH,
+                  transform: [{ translateX: scrollX }],
+                  zIndex: 100,
+                }
+              ]}
+            />
+            {/* Useimg TRACK_CONTAINER_WIDTH */}
+            <View style={[styles.timelineTrack, { width: TRACK_CONTAINER_WIDTH }]}>
               {renderHourLabels()}
             </View>
           </View>
 
-          {/* Employee Rows */}
-          {tasksByEmployee.map((empData, idx) => (
-            <View key={idx} style={styles.employeeRow}>
-              {/* Employee Name */}
-              <View style={[styles.employeeCell, { width: HOURS_LABEL_WIDTH }]}>
-                <Text style={styles.employeeNameText} numberOfLines={2}>
-                  {empData.employee}
-                </Text>
-              </View>
+          {/* Vertical Scroll for Employee Rows */}
+          <ScrollView
+            style={{ maxHeight: height - 250 }}
+            showsVerticalScrollIndicator={true}
+          >
+            {/* Employee Rows */}
+            {tasksByEmployee.map((empData, idx) => (
+              <View key={idx} style={styles.employeeRow}>
+                {/* Employee Name - Sticky Column */}
+                <Animated.View
+                  style={[
+                    styles.employeeCell,
+                    {
+                      width: HOURS_LABEL_WIDTH,
+                      transform: [{ translateX: scrollX }],
+                      zIndex: 10,
+                      borderRightWidth: 1,
+                      borderRightColor: COLORS.border,
+                      backgroundColor: COLORS.cardBg,
+                    }
+                  ]}
+                >
+                  <Text style={styles.employeeNameText} numberOfLines={2}>
+                    {empData.employee}
+                  </Text>
+                </Animated.View>
 
-              {/* Tasks Track */}
-              <View
-                style={[
-                  styles.tasksTrack,
-                  { width: tracksWidth },
-                ]}
-              >
-                {/* Grid Background */}
-                <View style={styles.gridOverlay}>
-                  {renderGridLines()}
-                  {/* Breaks rendered per row for correct z-index */}
-                  {renderBreaks()}
+                {/* Tasks Track */}
+                <View
+                  style={[
+                    styles.tasksTrack,
+                    { width: TRACK_CONTAINER_WIDTH },
+                  ]}
+                >
+                  {/* Grid Background */}
+                  <View style={styles.gridOverlay}>
+                    {renderGridLines()}
+                    {/* Breaks rendered per row for correct z-index */}
+                    {renderBreaks()}
+                  </View>
+
+                  {/* Task Bars */}
+                  {empData.tasks.map((task, taskIdx) => {
+                    const { left, taskWidth } = getTaskPosition(task);
+                    const statusKey = (task.status || 'pending').toLowerCase();
+                    const statusColor = STATUS_COLORS[statusKey] || STATUS_COLORS['pending'];
+
+                    // Calculate Actual Bar Position
+                    let actualLeft = left;
+                    let actualWidth = 0;
+
+                    // Original single-bar logic removed in favor of segments loop below
+                    /*
+                  if (task.task_start) {
+                    const actualStartMin = isoToMinutes(task.task_start);
+                    const offset = Math.max(0, actualStartMin - shiftStartMin);
+                    // FIX: Remove HOURS_LABEL_WIDTH, add TIMELINE_PADDING
+                    actualLeft = TIMELINE_PADDING + offset * pixelsPerMinute;
+
+                    let actualEndMin = actualStartMin;
+                    if (statusKey === 'completed' && task.end_time) {
+                      actualEndMin = isoToMinutes(task.end_time);
+                    } else if (statusKey === 'in progress') {
+                      // Live update ideally, for now use current time or shift end
+                      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+                      actualEndMin = Math.min(nowMin, shiftEndMin);
+                    }
+
+                    const dur = Math.max(0, actualEndMin - actualStartMin);
+                    actualWidth = dur * pixelsPerMinute;
+                  }
+                    */
+
+                    return (
+                      <React.Fragment key={`${idx}-${taskIdx}`}>
+                        {/* Planned Bar (Top) */}
+                        {/* <ResizableTaskBar
+                          task={task}
+                          left={left}
+                          width={taskWidth}
+                          statusColor={statusColor}
+                          isDragging={draggingTaskId === task.id}
+                          onInteractionStart={() => setDraggingTaskId(task.id)}
+                          onUpdate={(type, dx) => handleTaskUpdate(task, type, dx)}
+                        /> */}
+
+                        <TouchableTaskBar 
+                        task={task}
+                        left={left}
+                        width={taskWidth}
+                        statusColor={statusColor}
+                        onPress={() => onTaskPress && onTaskPress(task)}
+                        />
+
+                        {/* Actual Bars (Bottom) - Read Only */}
+                        {(() => {
+                          // Use passed timeValues/reasonValues if available, else fallback to task props
+                          const updates = timeValues[task.id] || [];
+                          const reasons = reasonValues[task.id] || [];
+
+                          const segments = buildActualSegments(updates, reasons);
+
+                          // Fallback for simple "Started" status if no detailed logs (e.g. newly started)
+                          if (segments.length === 0 && task.task_start) {
+                            if (task.task_start) {}
+                          }
+
+                          return segments.map((seg, segIdx) => {
+                            const actualStartMin = isoToMinutes(seg.start.toISOString());
+                            const offset = Math.max(0, actualStartMin - shiftStartMin);
+                            const actualLeft = TIMELINE_PADDING + offset * pixelsPerMinute;
+
+                            let actualEndMin = isoToMinutes(seg.end.toISOString());
+                            if (seg.running) {
+                              // Cap at now or shift end
+                              const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+                              actualEndMin = Math.min(nowMin, shiftEndMin);
+                            }
+
+                            const dur = Math.max(0, actualEndMin - actualStartMin);
+                            const actualWidth = dur * pixelsPerMinute;
+
+                            if (actualWidth <= 0) return null;
+
+                            return (
+                              <ActualTaskBar
+                                key={`actual-${task.id}-${segIdx}`}
+                                task={task}
+                                left={actualLeft}
+                                width={actualWidth}
+                                statusColor={seg.running ? ['#ffb700', '#ffd93d'] : ['#4caf50', '#6bcf7f']} // Yellow if running, Green if done step
+                                label={seg.running ? 'Running' : 'Worked'}
+                              />
+                            );
+                          });
+                        })()}
+                      </React.Fragment>
+                    );
+                  })}
                 </View>
-
-                {/* Task Bars */}
-                {empData.tasks.map((task, taskIdx) => {
-                  const { left, taskWidth } = getTaskPosition(task);
-                  const statusKey = (task.status || 'pending').toLowerCase();
-                  const statusColor = STATUS_COLORS[statusKey] || STATUS_COLORS['pending'];
-
-                  return (
-                    <ResizableTaskBar
-                      key={`${idx}-${taskIdx}`}
-                      task={task}
-                      left={left}
-                      width={taskWidth}
-                      statusColor={statusColor}
-                      isDragging={draggingTaskId === task.id}
-                      onInteractionStart={() => setDraggingTaskId(task.id)}
-                      onUpdate={(type, dx) => handleTaskUpdate(task, type, dx)}
-                    />
-                  );
-                })}
               </View>
-            </View>
-          ))}
+            ))}
 
-          {/* Empty State */}
-          {tasksByEmployee.length === 0 && (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="calendar-outline" size={48} color={COLORS.textLight} />
-              <Text style={styles.emptyText}>No tasks scheduled</Text>
-            </View>
-          )}
+            {/* Empty State */}
+            {tasksByEmployee.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="calendar-outline" size={48} color={COLORS.textLight} />
+                <Text style={styles.emptyText}>No tasks scheduled</Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+      {/* <Text style={styles.statusText}>statusText</Text> */}
       <HolidayAlert
         visible={showHolidayAlert}
         message={holidayAlertMessage}
@@ -480,8 +663,39 @@ export const DraggableTimeline = ({
   );
 };
 
-//  ResizableTaskBar - Task bar with drags and resize handles
+//  Actual Task Bar (Read Only)
+function ActualTaskBar({ task, left, width, statusColor }) {
+  return (
+    <View
+      style={[
+        styles.taskBar,
+        {
+          left,
+          width: Math.max(width, 5),
+          backgroundColor: statusColor[0],
+          top: 38,   // Shift down
+          height: 24, // Smaller height
+          opacity: 0.9,
+          zIndex: 1
+        }
+      ]}
+    >
+      <LinearGradient
+        colors={statusColor}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[StyleSheet.absoluteFill, { borderRadius: 4 }]}
+      />
+      <View style={styles.taskBarContent}>
+        <Text style={[styles.taskTitle, { fontSize: 9 }]} numberOfLines={1}>
+          {/* {task.status} */}{"Actual"}
+        </Text>
+      </View>
+    </View>
+  )
+}
 
+//  ResizableTaskBar - Task bar with drags and resize handles
 function ResizableTaskBar({
   task,
   left,
@@ -537,7 +751,9 @@ function ResizableTaskBar({
           backgroundColor: statusColor,
           opacity: isDragging ? 0.7 : 1,
           transform: [{ translateX: pan }],
-          zIndex: isDragging ? 100 : 2
+          zIndex: isDragging ? 100 : 2,
+          top: 4, // Shift up
+          height: 30, // Smaller height
         },
       ]}
       {...panResponder.panHandlers}
@@ -546,7 +762,7 @@ function ResizableTaskBar({
         colors={statusColor}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={[StyleSheet.absoluteFill, { borderRadius: 6 }]}
+        style={[StyleSheet.absoluteFill, { borderRadius: 4 }]}
       />
 
       <View style={styles.resizeHandleLeft}>
@@ -555,7 +771,7 @@ function ResizableTaskBar({
 
       <View style={styles.taskBarContent}>
         <Text style={styles.taskTitle} numberOfLines={1}>
-          {task.id}. {task.name || task.title || 'Task'} - {formatDurationText(getIsoDuration(task.startTime, task.endTime))}
+          {task.name || 'Task'} ({formatDurationText(getIsoDuration(task.startTime, task.endTime))})
         </Text>
       </View>
 
@@ -564,12 +780,46 @@ function ResizableTaskBar({
       </View>
     </Animated.View>
   );
+};
+
+// --- Touchable Task BAr ---
+function TouchableTaskBar({ task, left, width, statusColor, onPress }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[
+        styles.taskBar,
+        {
+          left,
+          width,
+          backgroundColor: statusColor,
+          top: 4, 
+          height: 30,
+          zIndex: 2, 
+        },
+      ]}
+    >
+      <LinearGradient
+        colors={statusColor}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[StyleSheet.absoluteFill, { borderRadius: 4 }]}
+      />
+      <View style={styles.taskBarContent}>
+        <Text style={styles.taskTitle} numberOfLines={1}>
+          {task.name || 'Task'} ({formatDurationText(getIsoDuration(task.startTime, task.endTime))})
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.transparent,
+    marginBottom: 110,
   },
   header: {
     flexDirection: 'row',
@@ -609,6 +859,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.cardBg,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.primary,
+    zIndex: 1000,
   },
   hoursCellLabel: {
     backgroundColor: COLORS.background,
@@ -645,8 +896,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
     backgroundColor: COLORS.cardBg,
   },
   employeeNameText: {
@@ -658,7 +907,7 @@ const styles = StyleSheet.create({
   tasksTrack: {
     position: 'relative',
     paddingVertical: 6,
-    paddingHorizontal: 6,
+    // paddingHorizontal: 6, // Removed to rely on explicit TIMELINE_PADDING
   },
   gridOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -342,21 +342,6 @@ export default function AdminProjectPage({
 
   return (
     <View style={styles.container}>
-      {/* <LinearGradient
-        colors={['#00D4FF', '#0099FF', '#667EEA']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerGradient}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 50, left: 20, zIndex: 20 }}>
-          <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>📃 Projects</Text>
-          <Text style={styles.headerSubtitle}>Manage all projects !!</Text>
-        </View>
-      </LinearGradient> */}
-
        <LinearGradient
                     colors={['#00D4FF', '#0099FF', '#667EEA']}
                     start={{ x: 0, y: 0 }}
@@ -375,7 +360,8 @@ export default function AdminProjectPage({
                         onPress={() => navigation.goBack()}
                         style={styles.backButtonRight}
                       >
-                        <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" />
+                        <Ionicons name="chevron-back-circle-outline" size={32} color="#ffff" />
+                          {/* <Ionicons name="arrow-back-circle-outline" size={32} color="#fff" /> */}
                       </TouchableOpacity>
                     </View>
                   </LinearGradient>

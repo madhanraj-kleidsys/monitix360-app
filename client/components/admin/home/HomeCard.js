@@ -27,6 +27,7 @@ const COLORS = {
 
 const STATUS_COLORS = {
     'pending': '#F39C12',
+    'Pending': '#F39C12',
     'in progress': '#3498DB',
     'In Progress': '#3498DB',
     'completed': '#27AE60',
