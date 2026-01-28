@@ -15,6 +15,8 @@ const StyledConfirmAlert = ({
 }) => {
     const getColors = () => {
         switch (type) {
+            case 'logout': return ['#EF4444', '#B91C1C'];
+            case 'delete': return ['#EF4444', '#cc4141e1'];
             case 'danger': return ['#EF4444', '#B91C1C'];
             case 'warning': return ['#F59E0B', '#D97706'];
             case 'info': return ['#3B82F6', '#2563EB'];
@@ -24,6 +26,8 @@ const StyledConfirmAlert = ({
 
     const getIcon = () => {
         switch (type) {
+            case 'logout': return 'log-out-outline';
+            case 'delete': return 'trash-outline';
             case 'danger': return 'trash-outline';
             case 'warning': return 'alert-circle-outline';
             case 'info': return 'information-circle-outline';

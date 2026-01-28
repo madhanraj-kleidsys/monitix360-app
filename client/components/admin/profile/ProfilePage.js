@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Alert, Image,Modal,
+  Alert, Image, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,12 @@ import api from '../../../api/client';
 import companyServices from '../services/CompanyService';
 import StyledConfirmAlert from '../../common/StyledConfirmAlert';
 import EmailSettings from './EmailSettings';
+import ChangePasswordModal from '../../common/ChangePasswordModal';
+import { useWebSocket } from '../hooks/useWebSocket';
 const { width } = Dimensions.get('window');
+import { useNavigation } from '@react-navigation/native';
+import { Switch } from 'react-native';
+import { useTheme } from '../../../utils/ThemeContext';
 
 const COLORS = {
   primary: '#0099FF',
@@ -66,9 +71,12 @@ function ProfileMenuItem({ icon, label, onPress, isDanger = false }) {
 }
 
 // ========== PROFILE STAT COMPONENT ==========
-function ProfileStat({ label, value }) {
+function ProfileStat({ label, value, onPress }) {
   return (
-    <View style={styles.statItem}>
+    <TouchableOpacity style={styles.statItem}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <Text style={[
         styles.statValue,
         value === '—' && styles.statValueLoading
@@ -77,13 +85,12 @@ function ProfileStat({ label, value }) {
       </Text>
       {/* <Text style={styles.statValue}>{value}</Text> */}
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 // ========== MAIN ADMIN PROFILE PAGE ==========
-export default function AdminProfilePage({ onLogout, user }) {
-
+export default function AdminProfilePage({ onLogout, user, refreshUserCompany }) {
   const [projectsCount, setProjectsCount] = useState(0);
   const [employeesCount, setEmployeesCount] = useState(0);
   const [shiftsCount, setShiftsCount] = useState(0);
@@ -91,7 +98,11 @@ export default function AdminProfilePage({ onLogout, user }) {
   const [companyData, setCompanyData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [emailSettingsVisible, setEmailSettingsVisible] = useState(false);
+  const [changePasswordVisible, setChangePasswordVisible] = useState(false);
   const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
+  const { on, off, isConnected } = useWebSocket();
+
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchAllStats = async () => {
@@ -124,6 +135,52 @@ export default function AdminProfilePage({ onLogout, user }) {
     fetchAllStats();
   }, []);
 
+  // Real-time stats updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleUpdate = () => {
+      console.log('🔄 Profile stats update received');
+      // Re-fetch all stats
+      const fetchAllStats = async () => {
+        try {
+          const [p, u, s, h] = await Promise.all([
+            api.get('/projects'),
+            api.get('/users'),
+            api.get('/shifts'),
+            api.get('/declare-holiday')
+          ]);
+          setProjectsCount(p.data.length);
+          setEmployeesCount(u.data.length);
+          setShiftsCount(s.data.length);
+          setHolidaysCount(h.data.length);
+        } catch (err) {
+          console.error('Real-time stats fetch error:', err);
+        }
+      };
+      fetchAllStats();
+    };
+
+    on('project:created', handleUpdate);
+    on('project:deleted', handleUpdate);
+    on('user:created', handleUpdate);
+    on('user:deleted', handleUpdate);
+    on('shift:created', handleUpdate);
+    on('shift:deleted', handleUpdate);
+    on('holiday:created', handleUpdate);
+    on('holiday:deleted', handleUpdate);
+
+    return () => {
+      off('project:created', handleUpdate);
+      off('project:deleted', handleUpdate);
+      off('user:created', handleUpdate);
+      off('user:deleted', handleUpdate);
+      off('shift:created', handleUpdate);
+      off('shift:deleted', handleUpdate);
+      off('holiday:created', handleUpdate);
+      off('holiday:deleted', handleUpdate);
+    };
+  }, [isConnected, on, off]);
 
   // ✅ Fetch company using companyServices
   useEffect(() => {
@@ -131,7 +188,7 @@ export default function AdminProfilePage({ onLogout, user }) {
       try {
         if (user?.company_id) {
           const company = await companyServices.getCompanyById(user.company_id);
-          console.log('Company fetched:', company);
+          // console.log('Company fetched:', company);
           setCompanyData({
             name: company?.company_name || 'N/A',
             code: company?.company_code || '—',
@@ -144,7 +201,6 @@ export default function AdminProfilePage({ onLogout, user }) {
 
     fetchCompany();
   }, [user?.company_id]);
-
 
   const adminData = {
     id: user?.id || 'N/A',
@@ -164,14 +220,24 @@ export default function AdminProfilePage({ onLogout, user }) {
     holidays: loadingStats ? '—' : holidaysCount,
   }), [loadingStats, projectsCount, employeesCount, shiftsCount, holidaysCount]);
 
+  const ADMIN_INFO = [
+    { id: '1', label: 'Admin ID', value: adminData.id, icon: 'id-card' },
+    { id: '2', label: 'Company Code', value: adminData.CompanyCode, icon: 'card' },
+    { id: '3', label: 'Company Name', value: adminData.CompanyName, icon: 'business' },
+    { id: '4', label: 'Email Id', value: adminData.email, icon: 'mail' },
+  ];
+
   // console.log('Stats object:', stats);
   // console.log('Company data:', companyData);
- 
+
   const handleEmailSettings = () => {
     setEmailSettingsVisible(true);
   };
   const handleEditProfile = () => {
     Alert.alert('Edit Profile', 'Coming in next update !');
+  };
+  const handleChangePass = () => {
+    setChangePasswordVisible(true);
   };
 
   const handleNotifications = () => {
@@ -189,22 +255,10 @@ export default function AdminProfilePage({ onLogout, user }) {
     );
   };
 
+  const { isDarkMode, toggleTheme } = useTheme();
+
   const handleLogout = () => {
     setLogoutAlertVisible(true);
-    // Alert.alert(
-    //   'Logout',
-    //   'Are you sure you want to logout?',
-    //   [
-    //     { text: 'Cancel', onPress: () => { } },
-    //     {
-    //       text: 'Logout',
-    //       onPress: () => {
-    //         onLogout();
-    //       },
-    //       style: 'destructive',
-    //     },
-    //   ]
-    // );
   };
 
   return (
@@ -236,7 +290,7 @@ export default function AdminProfilePage({ onLogout, user }) {
 
             {/* Profile Info */}
             <Text style={styles.profileName}>{adminData.name}</Text>
-            <Text style={styles.profileRole}>{adminData.CompanyName}</Text>
+            {/* <Text style={styles.profileRole}>{adminData.CompanyName}</Text> */}
 
             {/* Status Badge */}
             {/* <View style={styles.statusBadge}>
@@ -247,81 +301,41 @@ export default function AdminProfilePage({ onLogout, user }) {
 
           {/* Profile Stats */}
           <View style={styles.statsContainer}>
-            <ProfileStat label="Employees" value={stats.employees} />
-            <ProfileStat label="Projects" value={stats.projects} />
-            <ProfileStat label="Shifts" value={stats.shifts} />
-            <ProfileStat label="Holidays" value={stats.holidays} />
+            <ProfileStat label={stats.employees > 1 ? "Staffs" : "Staff"} value={stats.employees}
+              onPress={() => navigation.navigate('AdminEmployees')} />
+            <View style={styles.dividing} />
+
+            <ProfileStat label={stats.projects > 1 ? "Projects" : "Project"} value={stats.projects}
+              onPress={() => navigation.navigate('AdminProjects')} />
+            <View style={styles.dividing} />
+
+            <ProfileStat label={stats.shifts > 1 ? "Shifts" : "Shift"} value={stats.shifts}
+              onPress={() => navigation.navigate('AdminShift')} />
+            <View style={styles.dividing} />
+
+            <ProfileStat label={stats.holidays > 1 ? "Holidays" : "Holiday"} value={stats.holidays}
+              onPress={() => navigation.navigate('AdminHolidays')} />
           </View>
         </LinearGradient>
 
-
-
         {/* Admin Info Card */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoCardTitle}>Admin Information</Text>
+          <Text style={styles.infoCardTitle}>Admin Info Card</Text>
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="id-card" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Admin ID</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.id}</Text>
-          </View>
-          <View style={styles.divider} />
+          {ADMIN_INFO.map((item, index) => (
+            <React.Fragment key={item.id}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoLabel}>
+                  <Ionicons name={item.icon} size={16} color={COLORS.primary} />
+                  <Text style={styles.infoLabelText}>{item.label}</Text>
+                </View>
+                <Text style={styles.infoValue}>{item.value}</Text>
+              </View>
 
-          <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="card" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Company Code</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.CompanyCode}</Text>
-          </View>
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="business-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Company Name</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.CompanyName}</Text>
-          </View>
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="mail" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Email Id</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.email}</Text>
-          </View>
-          <View style={styles.divider} />
-          {/* <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="briefcase" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Department</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.department}</Text>
-          </View> */}
-
-          {/* <View style={styles.divider} /> */}
-
-          {/* <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="calendar" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Join Date</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.joinDate}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <View style={styles.infoLabel}>
-              <Ionicons name="lock-closed" size={16} color={COLORS.primary} />
-              <Text style={styles.infoLabelText}>Permissions</Text>
-            </View>
-            <Text style={styles.infoValue}>{adminData.permissions}</Text>
-          </View> */}
+              {/* Hide divider if it's the last item */}
+              {index < ADMIN_INFO.length - 1 && <View style={styles.divider} />}
+            </React.Fragment>
+          ))}
         </View>
 
         {/* Menu Section */}
@@ -331,6 +345,12 @@ export default function AdminProfilePage({ onLogout, user }) {
             label="Email Settings"
             onPress={handleEmailSettings}
             isDanger={false}
+          />
+
+          <ProfileMenuItem
+            icon="lock-closed"
+            label="Change Password"
+            onPress={handleChangePass}
           />
 
           <ProfileMenuItem
@@ -357,6 +377,22 @@ export default function AdminProfilePage({ onLogout, user }) {
             onPress={handleHelpSupport}
           />
 
+          {/* Dark Mode Toggle */}
+          <View style={styles.menuItem}>
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIconContainer, { backgroundColor: isDarkMode ? '#334155' : '#E0F2FE' }]}>
+                <Ionicons name="moon" size={20} color={COLORS.primary} />
+              </View>
+              <Text style={styles.menuItemLabel}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#767577', true: COLORS.primary }}
+              thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+
           <ProfileMenuItem
             icon="log-out"
             label="Logout"
@@ -367,10 +403,10 @@ export default function AdminProfilePage({ onLogout, user }) {
           <StyledConfirmAlert
             visible={logoutAlertVisible}
             title="Logout"
-            message="Are you sure !! you want to logout from your account?"
+            message="Are you sure !! you want to logout from your account ?"
             confirmText="Logout"
             cancelText="Cancel"
-            type="danger"
+            type="logout"
             onConfirm={() => {
               setLogoutAlertVisible(false);
               if (onLogout) onLogout();
@@ -382,14 +418,19 @@ export default function AdminProfilePage({ onLogout, user }) {
 
         {/* Version Info */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionSubtext}>© 2025 Kleidsys Technologies</Text>
+          <Text style={styles.versionSubtext}>© {new Date().getFullYear()} Kleidsys Technologies</Text>
         </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
+      <ChangePasswordModal
+        visible={changePasswordVisible}
+        onClose={() => setChangePasswordVisible(false)}
+      />
+
       {/* ✅ Email Settings Modal - Built-in Modal */}
-      {/* <Modal
+      <Modal
         animationType="slide"
         visible={emailSettingsVisible}
         transparent={true}
@@ -397,10 +438,10 @@ export default function AdminProfilePage({ onLogout, user }) {
         style={styles.emailModal}
       >
         <View style={styles.modalOverlay}>
-        
+
           <View style={styles.emailModalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Oc</Text>
+              <Text style={styles.modalTitle}>Email Settings</Text>
               <TouchableOpacity
                 onPress={() => setEmailSettingsVisible(false)}
                 hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -408,16 +449,15 @@ export default function AdminProfilePage({ onLogout, user }) {
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
-          
-          </View>
-          
-        </View>
-      </Modal> */}
-
-        <EmailSettings
+            <EmailSettings
               companyId={user?.company_id}
               onClose={() => setEmailSettingsVisible(false)}
+              onUpdate={refreshUserCompany}
             />
+          </View>
+
+        </View>
+      </Modal>
 
     </View>
   );
@@ -441,10 +481,12 @@ const styles = StyleSheet.create({
   // HEADER GRADIENT
   headerGradient: {
     paddingTop: 40,
-    paddingBottom: 40,
+    paddingBottom: 15,
     paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    zIndex: 10,
+    elevation: 10,
   },
   profileHeader: {
     alignItems: 'center',
@@ -453,7 +495,7 @@ const styles = StyleSheet.create({
 
   // AVATAR
   avatarContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   avatar: {
     width: 110,
@@ -535,7 +577,7 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 10,
     // marginBottom: 24,
     backgroundColor: COLORS.cardBg,
     borderRadius: 16,
@@ -547,6 +589,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  dividing: {
+    width: 1,
+    backgroundColor: COLORS.border,
   },
   statItem: {
     flex: 1,
@@ -696,16 +742,20 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   modalOverlay: {
-    // flex: 1,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   emailModalContent: {
+    width: '100%',
+    maxWidth: 400,
     backgroundColor: COLORS.cardBg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
+    borderRadius: 24,
+    // maxHeight: '85%',
     paddingTop: 16,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',

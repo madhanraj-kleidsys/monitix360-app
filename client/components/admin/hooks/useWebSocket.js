@@ -1,10 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import io from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from '../../../utils/tokenStorage';
 
-// Ensure this matches your backend IP and port
-// const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.216:3000';
-const SOCKET_URL = 'http://192.168.0.216:3000';
+const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL ;
 
 let socketInstance = null;
 let isInitializing = false;
@@ -59,8 +57,8 @@ export const useWebSocket = () => {
       if (!socketInstance && !isInitializing) {
         isInitializing = true;
         try {
-          // CONSISTENCY: LoginScreen saves 'accessToken', so we use that.
-          const token = await AsyncStorage.getItem('accessToken') || await AsyncStorage.getItem('authToken');
+          // CONSISTENCY: Use tokenStorage
+          const token = await getAccessToken();
           console.log('🔌 Initializing socket with token:', token ? 'Present' : 'Missing');
 
           socketInstance = io(SOCKET_URL, {

@@ -3,7 +3,7 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-const HolidayAlert = ({ visible, onConfirm, message }) => {
+const HolidayAlert = ({ visible, onConfirm, onProceed, message, confirmText = "Understood", proceedText = "Proceed Anyway" }) => {
     return (
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.alertOverlay}>
@@ -17,18 +17,43 @@ const HolidayAlert = ({ visible, onConfirm, message }) => {
                     <View style={styles.alertBody}>
                         <Text style={styles.alertTitle}>Non-Working Day</Text>
                         <Text style={styles.alertMessage}>{message}</Text>
-                        <TouchableOpacity
-                            style={styles.alertButton}
-                            onPress={onConfirm}
-                            activeOpacity={0.8}
-                        >
-                            <LinearGradient
-                                colors={['#6366F1', '#4F46E5']}
-                                style={styles.alertButtonGradient}
+
+                        {onProceed ? (
+                            <View style={{ width: '100%', gap: 10 }}>
+                                <TouchableOpacity
+                                    style={styles.alertButton}
+                                    onPress={onProceed}
+                                    activeOpacity={0.8}
+                                >
+                                    <LinearGradient
+                                        colors={['#EF4444', '#DC2626']}
+                                        style={styles.alertButtonGradient}
+                                    >
+                                        <Text style={styles.alertButtonText}>{proceedText}</Text>
+                                    </LinearGradient>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.alertSecondaryButton}
+                                    onPress={onConfirm}
+                                >
+                                    <Text style={styles.alertSecondaryText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.alertButton}
+                                onPress={onConfirm}
+                                activeOpacity={0.8}
                             >
-                                <Text style={styles.alertButtonText}>Understood</Text>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                                <LinearGradient
+                                    colors={['#6366F1', '#4F46E5']}
+                                    style={styles.alertButtonGradient}
+                                >
+                                    <Text style={styles.alertButtonText}>{confirmText}</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </View>
@@ -91,6 +116,17 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    alertSecondaryButton: {
+        width: '100%',
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    alertSecondaryText: {
+        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 
