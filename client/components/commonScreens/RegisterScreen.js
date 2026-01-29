@@ -302,7 +302,7 @@ export default function RegisterScreen({ navigation }) {
 
               </View>
 
-              <Text style={styles.copyright}>© 2025 Kleidsys Technologies Pvt Ltd</Text>
+              <Text style={styles.copyright}>© {new Date().getFullYear()} Kleidsys Technologies Pvt Ltd</Text>
             </ScrollView>
           </KeyboardAvoidingView>
         </LinearGradient>

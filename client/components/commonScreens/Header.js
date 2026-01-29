@@ -7,7 +7,7 @@ export default function Header() {
     <View style={styles.headerContainer}>
       {/* Logo */}
       <Image
-        source={require('../assets/kleidsys.png')}
+        source={require('../../assets/kleidsys.png')}
         style={styles.logo}
         resizeMode="contain"
       />
@@ -19,7 +19,7 @@ export default function Header() {
         end={{ x: 1, y: 1 }}
         style={styles.gradientTitle}
       >
-        <Text style={styles.title}>Kleidswwwwwwwwwsys</Text>
+        <Text style={styles.title}>Kleidsys</Text>
         <Text style={styles.subtitle}>Planning Tool</Text>
       </LinearGradient>
     </View>

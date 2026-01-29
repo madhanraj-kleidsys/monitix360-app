@@ -108,14 +108,32 @@ export default function HomePage({ user }) {
         console.log('🏠 Task Updated Event Received:', task.id);
         if (String(task.assigned_to) !== String(user.id)) return;
 
+        let title = "Task Updated 🔄";
+        let body = `Status: ${task.status}`;
+        let icon = "refresh";
+        let color = COLORS.warning;
+
+        // Check for approval status updates
+        if (task.approval_status === 'approved') {
+          title = "Task Approved! ✅";
+          body = `Your request "${task.title}" has been approved.`;
+          icon = "checkmark-circle";
+          color = COLORS.success;
+        } else if (task.approval_status === 'rejected') {
+          title = "Request Rejected ❌";
+          body = `Your request "${task.title}" was rejected.`;
+          icon = "close-circle";
+          color = COLORS.danger;
+        }
+
         const newNotif = {
           id: Date.now().toString(),
-          title: "Task Updated 🔄",
-          body: `Status: ${task.status}`,
+          title,
+          body,
           project: task.project_title,
           time: moment().format('hh:mm A'),
-          icon: "refresh",
-          color: COLORS.warning,
+          icon,
+          color,
         };
         setNotifications(prev => [newNotif, ...prev]);
         fetchStats();

@@ -370,8 +370,8 @@ function startReminderTicker() {
     const lastNotificationSent = new Map();
     const NOTIFICATION_COOLDOWN_MS = 25 * 60 * 1000; // 25 mins between notifications per task
 
-    // 1. Every 30 minutes (at second 15): Check for PENDING tasks that were assigned but not started
-    cron.schedule('15 */30 * * * *', async () => {
+    // 1. Every 10 minutes (at second 15): Check for PENDING tasks that were assigned but not started
+    cron.schedule('15 */10 * * * *', async () => {
         try {
             const now = new Date();
             const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -408,13 +408,16 @@ function startReminderTicker() {
                 const lastSent = lastNotificationSent.get(`pending_user_${userId}`);
                 if (lastSent && (now - lastSent) < NOTIFICATION_COOLDOWN_MS) continue;
 
-                const taskTitles = tasks.map(t => `"${t.title || t.project_title || t.Project_Title}"`).join(', ');
-                const displayTitle = tasks.length > 1 ? `${tasks.length} Pending Tasks` : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+                // const taskTitles = tasks.map(t => `"${t.title || t.project_title || t.Project_Title}"`).join(', ');
+                // const displayTitle = tasks.length > 1 ? `${tasks.length} Pending Tasks` : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+
+                //  || t.title || t.project_title || t.Project_Title
+                const displayTitle = tasks.map(t => t.description).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '');
 
                 await sendPushNotification(
                     user.expo_push_token,
-                    'Task Reminder 🤨',
-                    `Hey ${user.username || 'there'}, you have ${tasks.length === 1 ? 'a pending task' : 'pending tasks'}: ${displayTitle}. When will you start?`,
+                    '⚠️ Pending Task Reminder 🚨',
+                    `Hey ${user.username || 'there'}, you have ${tasks.length === 1 ? 'a pending task' : 'pending tasks'} (${displayTitle}) ${tasks.length === 1 ? 'is' : 'are'} still pending. When will you start?`,
                     { type: 'reminder', count: tasks.length }
                 );
                 lastNotificationSent.set(`pending_user_${userId}`, now);
@@ -424,8 +427,8 @@ function startReminderTicker() {
         }
     });
 
-    // 2. Every 60 minutes (at second 30): Check for ACTIVE tasks (Still Working?)
-    cron.schedule('30 0 * * * *', async () => {
+    // 2. sooooo fr every 60 minutes (at second 30): Check for ACTIVE tasks (Still Working?)
+    cron.schedule('30 */2 * * * *', async () => {
         try {
             const now = new Date();
             const activeTasks = await Task.findAll({
@@ -454,7 +457,9 @@ function startReminderTicker() {
                 // Use 50 minutes as a hard minimum between these reminders
                 if (lastSent && (now - lastSent) < 50 * 60 * 1000) continue;
 
-                const displayTitle = tasks.length > 1 ? `${tasks.length} Active Tasks` : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+                // const displayTitle = tasks.length > 1 ? `${tasks.length} Active Tasks` : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+                // || t.title || t.project_title || t.Project_Title
+                const displayTitle = tasks.map(t => t.description).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '');
 
                 await sendPushNotification(
                     user.expo_push_token,
@@ -469,8 +474,8 @@ function startReminderTicker() {
         }
     });
 
-    // 3. Every 10 minutes (at second 45): Check for PAUSED tasks (When will you resume?)
-    cron.schedule('45 */10 * * * *', async () => {
+    // 3. Every 15 minutes (at second 45): Check for PAUSED tasks (When will you resume?)
+    cron.schedule('45 */15 * * * *', async () => {
         try {
             const now = new Date();
             const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -511,13 +516,19 @@ function startReminderTicker() {
                 const lastSent = lastNotificationSent.get(`paused_user_${userId}`);
                 if (lastSent && (now - lastSent) < NOTIFICATION_COOLDOWN_MS) continue;
 
-                const displayTitle = tasks.length > 1
-                    ? tasks.map(t => t.title || t.project_title || t.Project_Title).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '')
-                    : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+                // const displayTitle = tasks.length > 1
+                //     ? tasks.map(t => t.title || t.project_title || t.Project_Title).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '')
+                //     : tasks[0].title || tasks[0].project_title || tasks[0].Project_Title;
+
+                // || t.title || t.project_title || t.Project_Title
+
+                const displayTitle = tasks.map(t => t.description).slice(0, 3).join(', ') + (tasks.length > 3 ? ` +${tasks.length - 3} more` : '');
+
+                // console.error("task :::::::",tasks);
 
                 await sendPushNotification(
                     user.expo_push_token,
-                    'Task still Paused? ⏸️',
+                    'Task still Paused ? ⏸️',
                     `Hey ${user.username || 'there'}, your ${tasks.length === 1 ? 'task' : 'tasks'} (${displayTitle}) ${tasks.length === 1 ? 'is' : 'are'} still paused. When will you resume?`,
                     { type: 'paused_reminder', count: tasks.length }
                 );

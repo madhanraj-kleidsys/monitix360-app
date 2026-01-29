@@ -91,54 +91,130 @@ exports.createNewTask = async (req, res) => {
 
       const subject = `New Task Assigned: ${title}`;
 
-      // 3. Professional HTML Template
       const html = `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-            <div style="background-color: #0099FF; padding: 20px; text-align: center;">
-                <h2 style="color: #ffffff; margin: 0; font-size: 24px;">New Task Assignment</h2>
-            </div>
-            
-            <div style="padding: 30px;">
-                <p style="font-size: 16px; color: #333;">Hello <strong>${assignedUser.username}</strong>,</p>
-                <p style="font-size: 16px; color: #555; line-height: 1.5;">You have been assigned a new task. Please review the details below:</p>
-                
-                <div style="background-color: #f8f9fa; border-left: 4px solid #0099FF; padding: 15px; margin: 20px 0;">
-                    <h3 style="margin: 0 0 10px 0; color: #0099FF; font-size: 18px;">${title}</h3>
-                    <p style="margin: 0; color: #666; font-size: 14px;">${Project_Title}</p>
-                </div>
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Task Assignment</title>
+          <style>
+              /* Animations */
+              @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+              @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+              @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+              @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+              
+              /* Mobile Optimization */
+              @media only screen and (max-width: 600px) {
+                  .container { width: 100% !important; margin: 0 !important; border-radius: 0 !important; }
+                  .outer-padding { padding: 0 !important; }
+                  .content-padding { padding: 25px 20px !important; }
+                  .header-padding { padding: 30px 20px !important; }
+                  .header-text { font-size: 24px !important; }
+                  .mobile-stack { display: block !important; width: 100% !important; padding-left: 0 !important; box-sizing: border-box !important; }
+                  .priority-badge { display: inline-block !important; margin-top: 10px !important; }
+              }
+              
+              .cta-button:hover { background: linear-gradient(135deg, #0066CC 0%, #004499 100%) !important; transform: translateY(-2px) !important; box-shadow: 0 8px 25px rgba(0, 102, 204, 0.4) !important; }
+              .task-card:hover { transform: translateY(-5px) !important; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important; }
+          </style>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8fafc;">
+              <tr>
+                  <td class="outer-padding" style="padding: 20px 10px;">
+                      <div class="container" style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 102, 204, 0.1); animation: fadeInUp 0.8s ease-out;">
+                          
+                          <div class="header-padding" style="background: linear-gradient(135deg, #0099FF 0%, #0066CC 50%, #004499 100%); background-size: 200% 200%; animation: gradientShift 8s ease infinite; padding: 35px 30px; text-align: center; position: relative; overflow: hidden;">
+                              <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px); background-size: 50px 50px; animation: slideIn 20s linear infinite;"></div>
+                              <h1 class="header-text" style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; position: relative; z-index: 1; animation: fadeInUp 1s ease-out 0.3s both;">🎯 New Task Assignment</h1>
+                              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 15px; font-weight: 300; position: relative; z-index: 1; animation: fadeInUp 1s ease-out 0.5s both;">Your next challenge awaits</p>
+                          </div>
+                          
+                          <div class="content-padding" style="padding: 30px 30px;">
+                              
+                              <div style="animation: fadeInUp 0.8s ease-out 0.7s both;">
+                                  <p style="font-size: 18px; color: #1a202c; margin: 0 0 15px 0; font-weight: 600;">Hello <strong style="color: #0099FF;">${assignedUser.username}</strong>! 👋</p>
+                                  <p style="font-size: 15px; color: #4a5568; line-height: 1.6; margin: 0 0 25px 0;">You have been assigned a new task. Please review the details below:</p>
+                              </div>
+                              
+                              <div class="task-card" style="background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; animation: slideIn 0.8s ease-out 0.9s both;">
+                                  
+                                  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                      <tr>
+                                          <td width="50" style="vertical-align: middle; padding-right: 15px;">
+                                              <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0099FF 0%, #0066CC 100%); border-radius: 50%; text-align: center; line-height: 40px; font-size: 20px; color: white;">📋</div>
+                                          </td>
+                                          <td style="vertical-align: middle;">
+                                              <h2 style="margin: 0; color: #1a202c; font-size: 20px; font-weight: 700; line-height: 1.2;">${title}</h2>
+                                              <p style="margin: 4px 0 0 0; color: #718096; font-size: 13px; font-weight: 500;">${Project_Title}</p>
+                                          </td>
+                                      </tr>
+                                  </table>
 
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; width: 140px; color: #666; font-weight: bold;">Priority</td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">
-                            <span style="background-color: ${priorityText === 'High' ? '#ffebee' : priorityText === 'Medium' ? '#fff3e0' : '#e3f2fd'}; color: ${priorityText === 'High' ? '#c62828' : priorityText === 'Medium' ? '#ef6c00' : '#1565c0'}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
-                                ${priorityText}
-                            </span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Description</td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">${description}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #666; font-weight: bold;">Schedule</td>
-                        <td style="padding: 10px; border-bottom: 1px solid #eee; color: #333;">
-                            <div>Start: ${new Date(start).toLocaleString()}</div>
-                            <div>End: ${new Date(end_time).toLocaleString()}</div>
-                        </td>
-                    </tr>
-                </table>
+                                  <div style="margin-top: 15px;">
+                                      <span style="display: inline-block; background: ${priorityText === 'High' ? 'linear-gradient(135deg, #ff4757 0%, #c44569 100%)' : priorityText === 'Medium' ? 'linear-gradient(135deg, #ffa726 0%, #ff9800 100%)' : 'linear-gradient(135deg, #42a5f5 0%, #1976d2 100%)'}; color: white; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); animation: pulse 2s ease-in-out infinite;">
+                                          ${priorityText} Priority
+                                      </span>
+                                  </div>
+                              </div>
+                              
+                              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 25px 0; border-collapse: collapse; animation: fadeInUp 0.8s ease-out 1.1s both;">
+                                  <tr>
+                                      <td colspan="2" style="padding: 10px 0 15px 0; border-bottom: 2px solid #e2e8f0;">
+                                          <h3 style="margin: 0; color: #2d3748; font-size: 16px; font-weight: 700; display: flex; align-items: center;">
+                                              Task Details
+                                          </h3>
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td class="mobile-stack" style="padding: 12px 0; border-bottom: 1px solid #edf2f7; width: 120px; color: #4a5568; font-weight: 600; font-size: 14px;">Description</td>
+                                      <td class="mobile-stack" style="padding: 12px 0; border-bottom: 1px solid #edf2f7; color: #2d3748; line-height: 1.5; font-size: 14px;">${description}</td>
+                                  </tr>
+                                  <tr>
+                                      <td class="mobile-stack" style="padding: 12px 0; border-bottom: 1px solid #edf2f7; color: #4a5568; font-weight: 600; font-size: 14px;">Schedule</td>
+                                      <td class="mobile-stack" style="padding: 12px 0; border-bottom: 1px solid #edf2f7; color: #2d3748; font-size: 14px;">
+                                          <div style="margin-bottom: 5px;"><span style="color: #0099FF; font-weight: 600;">Start:</span> ${new Date(start).toLocaleString()}</div>
+                                          <div><span style="color: #0099FF; font-weight: 600;">End:</span> ${new Date(end_time).toLocaleString()}</div>
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td style="padding: 15px 0; color: #4a5568; font-weight: 600;" class="mobile-stack">
+                                          Status
+                                      </td>
+                                      <td style="padding: 15px 0; color: #2d3748;" class="mobile-stack">
+                                          <span style="background: #f0fff4; color: #38a169; padding: 6px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                              ✅ Assigned
+                                          </span>
+                                      </td>
+                                  </tr>
+                              </table>
+                              
+                              <div style="text-align: center; margin: 35px 0 20px 0; animation: fadeInUp 0.8s ease-out 1.3s both;">
+                                  <a href="${process.env.FRONTEND_URL || '#'}" class="cta-button" style="background: linear-gradient(135deg, #0099FF 0%, #0066CC 100%); color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 30px; font-weight: 700; font-size: 15px; display: inline-block; transition: all 0.3s ease; box-shadow: 0 6px 20px rgba(0, 102, 204, 0.3); text-transform: uppercase; letter-spacing: 0.5px;">
+                                      <span style="margin-right: 6px;">🚀</span> View Task in App
+                                  </a>
+                              </div>
 
-                <div style="text-align: center; margin-top: 30px;">
-                    <a href="${process.env.FRONTEND_URL || '#'}" style="background-color: #0099FF; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">View Task in App</a>
-                </div>
-            </div>
-            
-            <div style="background-color: #f1f3f4; padding: 15px; text-align: center; font-size: 12px; color: #888;">
-                <p style="margin: 0;">&copy; ${new Date().getFullYear()} Kleidsys Planning Tool. All rights reserved.</p>
-            </div>
-        </div>
-      `;
+                              <div style="background: #f7fafc; border-radius: 8px; padding: 15px; margin: 25px 0 10px 0; border-left: 4px solid #0099FF; animation: fadeInUp 0.8s ease-out 1.5s both;">
+                                  <p style="margin: 0; color: #4a5568; font-size: 13px; line-height: 1.5;">
+                                      <strong>💡 Pro tip:</strong> Click the button above to access your task dashboard and start working on this assignment right away!
+                                  </p>
+                              </div>
+                          </div>
+                          
+                          <div style="background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%); padding: 25px 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                              <p style="margin: 0 0 10px 0; font-size: 13px; color: #718096;">&copy; ${new Date().getFullYear()} Kleidsys Planning Tool. All rights reserved.</p>
+                              <p style="margin: 0; font-size: 12px; color: #a0aec0;">You're receiving this because you're a valued team member.</p>
+                          </div>
+                      </div>
+                  </td>
+              </tr>
+          </table>
+      </body>
+      </html>
+`;
 
       await sendTaskEmail(assignedUser.email, subject, html, companyCredentials);
     }

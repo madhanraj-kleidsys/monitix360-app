@@ -7,8 +7,8 @@ const { sequelize, initializeTables } = require("./src/config/db");
 const { initializeSocket } = require("./src/socket/socket");
 const { startReminderTicker } = require("./src/services/reminderTicker");
 
-const port = process.env.PORT || 3000; // Updated default port to 3000
-const HOST = process.env.HOST || "0.0.0.0"; // Listen on all available network interfaces
+const port = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 // Create HTTP server wrapping the Express app
 const server = http.createServer(app);
