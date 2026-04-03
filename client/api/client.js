@@ -2,7 +2,7 @@ import axios from 'axios';
 import { DeviceEventEmitter } from 'react-native';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from '../utils/tokenStorage';
 
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL}/api`;
+const BASE_URL = 'http://192.168.0.117:3000/api';
 
 const axiosInstance = axios.create({ baseURL: BASE_URL, timeout: 15000 });
 

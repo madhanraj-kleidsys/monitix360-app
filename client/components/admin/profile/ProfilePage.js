@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     gap: 12,
     flex: 1,
   },
-  menuIconContainer: {
+    menuIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 10,

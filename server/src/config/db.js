@@ -15,6 +15,12 @@ const sequelize = new Sequelize(
     dialect: "mssql",
     port: Number(process.env.DB_PORT) || 1433,
     logging: false,
+    pool:{
+      max:20,
+      min:5,
+      acquire:60000,
+      idle:10000
+    },
     dialectOptions: {
       options: {
         encrypt: false,
