@@ -47,11 +47,11 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
   }, [user?.company_id]);
 
   const menuItems = [
-    { icon: 'person-outline', label: 'Edit Profile', color: COLORS.primary, action: () => { } },
+    // { icon: 'person-outline', label: 'Edit Profile', color: COLORS.primary, action: () => { } },
     { icon: 'lock-closed-outline', label: 'Change Password', color: COLORS.primary, action: () => { setChangePasswordVisible(true) } },
     // { icon: 'notifications-outline', label: 'Notifications', color: COLORS.primary, action: () => { } },
-    { icon: 'settings-outline', label: 'Settings', color: COLORS.primary, action: () => { } },
-    { icon: 'help-circle-outline', label: 'Help & Support', color: COLORS.primary, action: () => { } },
+    // { icon: 'settings-outline', label: 'Settings', color: COLORS.primary, action: () => { } },
+    // { icon: 'help-circle-outline', label: 'Help & Support', color: COLORS.primary, action: () => { } },
     {
       icon: 'log-out-outline',
       label: 'Logout',
@@ -185,7 +185,7 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
 
         <View style={styles.menuSection}>
           {/* Custom Dark Mode Item */}
-          <View style={styles.menuItem}>
+          {/* <View style={styles.menuItem}>
             <View style={[styles.menuIcon, { backgroundColor: isDarkMode ? '#334155' : '#E0F2FE' }]}>
               <Ionicons name="moon" size={22} color={COLORS.primary} />
             </View>
@@ -196,7 +196,7 @@ export default function ProfilePage({ onLogout, user, userCompany }) {
               trackColor={{ false: '#767577', true: COLORS.primary }}
               thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
             />
-          </View>
+          </View> */}
 
           {menuItems.map((item, index) => (
             <TouchableOpacity

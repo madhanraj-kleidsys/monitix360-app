@@ -29,7 +29,10 @@ import Modal from 'react-native-modal';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const API_URL = 'http://192.168.0.117:3000' || process.env.EXPO_PUBLIC_API_URL;
+// const API_URL ='http://192.168.0.147:5000'
+//  || 'http://192.168.0.147:5000';
+// const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.147:5000';
+const API_URL = 'http://192.168.0.147:5000' || process.env.EXPO_PUBLIC_API_URL;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -86,10 +89,11 @@ export default function LoginScreen({ navigation, onLogin }) {
         password: password.trim(),
       });
 
-      const { user, accessToken, refreshToken } = res.data;
+      const { user, accessToken, refreshToken, token } = res.data;
+      const finalAccessToken = accessToken || token;
 
       // Passing to parent (App.js handles storage)
-      if (onLogin) onLogin(user, accessToken, refreshToken);
+      if (onLogin) onLogin(user, finalAccessToken, refreshToken);
 
     } catch (err) {
       Alert.alert('Login Failed', err.response?.data?.message || 'Unable to connect to server');

@@ -124,66 +124,72 @@ export default function TaskPage({ user, ListHeaderComponent, initialFilter }) {
     };
   }, [loadShiftBreaks]);
 
-  useEffect(() => {
-    if (!breakWindows.length) return;
-
-    const checkBreaks = async () => {
-      if (!breakWindows.length) return;
-      const now = new Date();
-      const current = now.toTimeString().substring(0, 8); // "HH:MM:SS"
-
-      // Find active break
-      const activeBreak = breakWindows.find(b => {
-        // Normalize locally just in case
-        const bStart = b.start.length === 5 ? `${b.start}:00` : b.start;
-        const bEnd = b.end.length === 5 ? `${b.end}:00` : b.end;
-        return bStart <= current && bEnd >= current;
-      });
-
-      if (activeBreak) {
-        // console.log(`☕ Active Break Found: ${activeBreak.type} (${activeBreak.start}-${activeBreak.end}) vs ${current}`);
-      } else {
-        // console.log(`▶️ No Active Break. Current: ${current}`);
-      }
-
-      const currentTasks = tasksRef.current;
-      let updatedPausedByBreak = { ...pausedByBreakTasks };
-      let tasksChanged = false;
-
-      for (const task of currentTasks) {
-        // ... (rest of logic)
-        const isRunning = task.task_start && task.timer_start;
-        const wasPausedByBreak = pausedByBreakTasks[task.id];
-        const isAllowedDuringBreak = allowRunDuringBreakRef.current[task.id];
-
-        // 1. Auto-Pause if break started
-        if (activeBreak && isRunning && !isAllowedDuringBreak) {
-          console.log(`⏸️ Client Auto-Pausing Task ${task.id}`);
-          // ...
-          await executePause(task); // Calls API
-          updatedPausedByBreak[task.id] = true;
-          tasksChanged = true;
-        }
-
-        // 2. Auto-Resume if break ended
-        if (!activeBreak && wasPausedByBreak) {
-          console.log(`▶️ Client Auto-Resuming Task ${task.id}`);
-          await executeStart(task); // Calls API
-          delete updatedPausedByBreak[task.id];
-          allowRunDuringBreakRef.current[task.id] = false;
-          tasksChanged = true;
-        }
-      }
-
-      if (tasksChanged) {
-        setPausedByBreakTasks(updatedPausedByBreak);
-        AsyncStorage.setItem('pausedByBreakTasks', JSON.stringify(updatedPausedByBreak));
-      }
-    };
-
-    const interval = setInterval(checkBreaks, 10000);
-    return () => clearInterval(interval);
-  }, [breakWindows, pausedByBreakTasks]);
+  // ⛔ CLIENT-SIDE AUTO-PAUSE/RESUME DISABLED
+  // The server's reminderTicker.js cron job (running every 5s) handles all
+  // auto-pause and auto-resume logic based on shift breaks. Having both the
+  // client AND server do this simultaneously causes race conditions and
+  // duplicate API calls. The server emits 'task:updated' via socket when it
+  // pauses/resumes a task, which this component already listens for below.
+  //
+  // useEffect(() => {
+  //   if (!breakWindows.length) return;
+  //
+  //   const checkBreaks = async () => {
+  //     if (!breakWindows.length) return;
+  //     const now = new Date();
+  //     const current = now.toTimeString().substring(0, 8); // "HH:MM:SS"
+  //
+  //     // Find active break
+  //     const activeBreak = breakWindows.find(b => {
+  //       // Normalize locally just in case
+  //       const bStart = b.start.length === 5 ? `${b.start}:00` : b.start;
+  //       const bEnd = b.end.length === 5 ? `${b.end}:00` : b.end;
+  //       return bStart <= current && bEnd >= current;
+  //     });
+  //
+  //     if (activeBreak) {
+  //       // console.log(`☕ Active Break Found: ${activeBreak.type} (${activeBreak.start}-${activeBreak.end}) vs ${current}`);
+  //     } else {
+  //       // console.log(`▶️ No Active Break. Current: ${current}`);
+  //     }
+  //
+  //     const currentTasks = tasksRef.current;
+  //     let updatedPausedByBreak = { ...pausedByBreakTasks };
+  //     let tasksChanged = false;
+  //
+  //     for (const task of currentTasks) {
+  //       // ... (rest of logic)
+  //       const isRunning = task.task_start && task.timer_start;
+  //       const wasPausedByBreak = pausedByBreakTasks[task.id];
+  //       const isAllowedDuringBreak = allowRunDuringBreakRef.current[task.id];
+  //
+  //       // 1. Auto-Pause if break started
+  //       if (activeBreak && isRunning && !isAllowedDuringBreak) {
+  //         console.log(`⏸️ Client Auto-Pausing Task ${task.id}`);
+  //         await executePause(task); // Calls API
+  //         updatedPausedByBreak[task.id] = true;
+  //         tasksChanged = true;
+  //       }
+  //
+  //       // 2. Auto-Resume if break ended
+  //       if (!activeBreak && wasPausedByBreak) {
+  //         console.log(`▶️ Client Auto-Resuming Task ${task.id}`);
+  //         await executeStart(task); // Calls API
+  //         delete updatedPausedByBreak[task.id];
+  //         allowRunDuringBreakRef.current[task.id] = false;
+  //         tasksChanged = true;
+  //       }
+  //     }
+  //
+  //     if (tasksChanged) {
+  //       setPausedByBreakTasks(updatedPausedByBreak);
+  //       AsyncStorage.setItem('pausedByBreakTasks', JSON.stringify(updatedPausedByBreak));
+  //     }
+  //   };
+  //
+  //   const interval = setInterval(checkBreaks, 10000);
+  //   return () => clearInterval(interval);
+  // }, [breakWindows, pausedByBreakTasks]);
 
   useEffect(() => {
     if (socket && isConnected && user?.id) {

@@ -84,7 +84,7 @@ export const scheduleTaskReminder = async (user, taskId, taskName, delaySeconds 
 
         return await Notifications.scheduleNotificationAsync({
             content: {
-                title: "⚠️Task Reminder 🤨",
+                title: "⚠️Task Reminder",
                 body: `Hey ${user.username}, task "${taskName}" is still Pending. When will you start?`,
                 data: { taskId, type: 'reminder' },
                 sound: true,
