@@ -352,7 +352,7 @@ export default function AdminProfilePage({ onLogout, user, refreshUserCompany })
             label="Change Password"
             onPress={handleChangePass}
           />
-
+{/* 
           <ProfileMenuItem
             icon="person-circle"
             label="Edit Profile"
@@ -375,10 +375,10 @@ export default function AdminProfilePage({ onLogout, user, refreshUserCompany })
             icon="help-circle"
             label="Help & Support"
             onPress={handleHelpSupport}
-          />
+          /> */}
 
           {/* Dark Mode Toggle */}
-          <View style={styles.menuItem}>
+          {/* <View style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <View style={[styles.menuIconContainer, { backgroundColor: isDarkMode ? '#334155' : '#E0F2FE' }]}>
                 <Ionicons name="moon" size={20} color={COLORS.primary} />
@@ -391,7 +391,7 @@ export default function AdminProfilePage({ onLogout, user, refreshUserCompany })
               trackColor={{ false: '#767577', true: COLORS.primary }}
               thumbColor={isDarkMode ? '#fff' : '#f4f3f4'}
             />
-          </View>
+          </View> */}
 
           <ProfileMenuItem
             icon="log-out"

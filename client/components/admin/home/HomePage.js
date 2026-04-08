@@ -2325,6 +2325,17 @@ export default function HomePage({ user, userCompany }) {
   const uiTasks = useMemo(() => {
     if (!Array.isArray(allTasks)) return [];
 
+    // DEBUG: Log task date range
+    if (allTasks.length > 0) {
+      const dates = allTasks.map(t => t.start).filter(Boolean).sort();
+      console.log('📊 Task date range:', {
+        earliest: dates[0],
+        latest: dates[dates.length - 1],
+        totalTasks: allTasks.length,
+        sampleTask: allTasks[0]
+      });
+    }
+
     return allTasks.map(t => {
       // Find full user info for searching
       const assignedUser = allUsers.find(u => u.id === t.assigned_to);
@@ -2426,6 +2437,19 @@ export default function HomePage({ user, userCompany }) {
       return new Date(b.startDate) - new Date(a.startDate);
     });
   }, [uiTasks, selectedDate, filterUser, filterDept, filterStatus]);
+
+  // DEBUG: Log filtering results
+  useEffect(() => {
+    console.log('🔍 Filter Results:', {
+      selectedDate: selectedDate.toISOString(),
+      totalUiTasks: uiTasks.length,
+      filteredTasks: filteredTasks.length,
+      filteredDateRange: filteredTasks.length > 0 ? {
+        earliest: filteredTasks[filteredTasks.length - 1]?.startDate,
+        latest: filteredTasks[0]?.startDate
+      } : null
+    });
+  }, [selectedDate, uiTasks.length, filteredTasks.length]);
 
   //  In useEffect
   useEffect(() => {

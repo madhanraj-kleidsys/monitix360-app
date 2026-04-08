@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Alert,
-    RefreshControl,
-    ActivityIndicator
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../api/client'; // Adjust path if needed
+import api from '../../api/client';
+import { useWebSocket } from '../admin/hooks/useWebSocket';
 
 const COLORS = {
     primary: '#0099FF',
@@ -43,10 +35,29 @@ const AdminApprovalsPage = () => {
             setLoading(false);
         }
     };
+    const { socket, isConnected } = useWebSocket();
 
     useEffect(() => {
         fetchApprovals();
     }, []);
+
+    useEffect(() => {
+        if (socket && isConnected) {
+            socket.emit("joinAdmin");
+            const onNewRequest = ({ task, message }) => {
+                console.log("🔔 New Admin Request received:", task.id);
+                setApprovals(prev => {
+                    if (prev.find(t => t.id === task.id)) return prev;
+                    return [task, ...prev];
+                });
+                Alert.alert("New Request", message || "A new task requires approval");
+            };
+            socket.on("newUserTaskRequest", onNewRequest);
+            return () => {
+                socket.off("newUserTaskRequest", onNewRequest);
+            };
+        }
+  }, [socket, isConnected]);
 
     const handleAction = async (id, status) => {
         setActionLoading(id);
@@ -54,7 +65,6 @@ const AdminApprovalsPage = () => {
             const endpoint = status === 'approved'
                 ? `/tasks/admin/${id}/task-approved`
                 : `/tasks/admin/${id}/task-rejected`;
-
             await api.patch(endpoint);
 
             // Remove from list locally
